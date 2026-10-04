@@ -1,0 +1,12 @@
+# dsh-fft-bundle patch layer: inserts the FT workbench plugin rows with their
+# shared defaults. Applied when this package is installed via
+#
+#   dsh plugin --profile <name> add @ft/dsh-fft-bundle
+#
+# Each row's package comes from this bundle's dependencies. The connection
+# row from dsh-web-app is NOT overridden: on DSH 0.1.5-rc.2 the connection
+# plugin already waits for webServer internally, and pinning its activation
+# to webServer would break profiles that only provide webRuntime.
+- insert:
+    - id: dsh-fft-settings
+      name: '@ft/dsh-fft-settings'
