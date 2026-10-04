@@ -1,0 +1,18 @@
+# dsh-fft-settings bundle patch
+#
+# `dsh.bundle.patch` layer of the published package: installing through the
+# official CLI —
+#
+#   dsh plugin --profile <name> add @ft/dsh-fft-settings
+#
+# — appends this single `insert` (one plugin row) to the bundle stack. No
+# manual profile edits.
+#
+# The connection row from dsh-web-app is deliberately NOT overridden: on
+# DSH 0.1.5-rc.2 the connection plugin already waits for webServer
+# internally via ctx.inject(['webServer'], ...), so its /api transport
+# mounts without any row-level inject, and pinning its activation to
+# webServer would break profiles that only provide webRuntime.
+- insert:
+    - id: dsh-fft-settings
+      name: '@ft/dsh-fft-settings'

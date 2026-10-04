@@ -1,0 +1,74 @@
+import type { SettingsServices } from './module-registry.js'
+import type { settingsModules } from './modules.js'
+/** Browser-safe contract. Theme and preferences can become sibling namespaces. */
+export const FTSHARE_SETTINGS_API_VERSION = 1 as const
+export const FTSHARE_API_KEY_REF = 'FTSHARE_API_KEY' as const
+/**
+ * Identity of the settings section that carries this plugin's cards.
+ *
+ * The id replaces the old `ftshare`; the label is also the brand shown next to
+ * the desktop version, while the shell's own `productName` stays `DSH FFT`
+ * (spec B.5 Q6 leaves that rename out of scope).
+ */
+export const FTSHARE_SETTINGS_SECTION = { id: 'dsh-fft', order: 120, label: '非凸金融终端' } as const
+export const FTSHARE_CREDENTIAL_EVENTS = ['credentials/reference-updated', 'credentials/updated'] as const
+/**
+ * Browser-facing route for this plugin's settings calls.
+ *
+ * It sits below `/api` so the shared connection carrier applies the Host/Origin
+ * fence and browser authentication before dispatch; this plugin only handles
+ * the call itself.
+ */
+export const FTSHARE_SETTINGS_ROUTE = '/api/ftshare-settings' as const
+/** Largest request body accepted on {@link FTSHARE_SETTINGS_ROUTE}. */
+export const FTSHARE_SETTINGS_MAX_BODY_BYTES = 64 * 1024
+export const API_KEY_METHODS = ['describe', 'set', 'clear', 'configureAndTest', 'testConnection', 'getValidationStatus'] as const
+export type ApiKeyMethod = typeof API_KEY_METHODS[number]
+export type SubscribeChanges = (listener: () => void) => () => void
+export interface CredentialStatus { configured: boolean; writable: boolean; source?: string }
+export type ProbeState = 'available' | 'auth_required' | 'auth_failed' | 'permission_denied' | 'quota_exceeded' | 'rate_limited' | 'network_error' | 'timeout' | 'upstream_error' | 'invalid_response' | 'not_run'
+export interface ProbeResult { status: ProbeState; message: string }
+export interface ValidationResult {
+  status: 'not_tested' | 'not_run' | 'passed' | 'partial' | 'failed' | 'superseded'
+  remote: ProbeResult
+  apiKey: ProbeResult
+  testedAt?: string
+}
+export interface ApiKeyStatus extends CredentialStatus {
+  /** Display only. Fixed mask plus last four characters; never submit as a Key. */
+  maskedValue?: string
+  revision: number
+  validation: ValidationResult
+}
+export interface ConfigureResult {
+  save: { status: 'saved' | 'failed'; code?: 'invalid_input' | 'read_only' | 'save_failed'; message: string }
+  validation: ValidationResult
+}
+/** Local syntax validation, never an assertion of upstream validity. */
+export function normalizeApiKey(input: string): string {
+  const value = input.trim()
+  if (!value) throw new Error('请输入 API Key')
+  if (value.length > 512 || /[\x00-\x1f\x7f]/.test(value)) throw new Error('API Key 长度不能超过 512 个字符，且不能包含控制字符')
+  return value
+}
+export function untested(status: 'not_tested' | 'not_run' | 'superseded' = 'not_tested', message = '尚未测试'): ValidationResult {
+  return { status, remote: { status: 'not_run', message }, apiKey: { status: 'not_run', message } }
+}
+export interface ApiKeyPublicApi {
+  describe(): Promise<ApiKeyStatus>
+  set(value: string): Promise<void>
+  clear(): Promise<void>
+  configureAndTest(value: string): Promise<ConfigureResult>
+  testConnection(): Promise<ValidationResult>
+  getValidationStatus(): Promise<ValidationResult>
+}
+export interface ApiKeySettings extends ApiKeyPublicApi {
+  readonly credentialRef: typeof FTSHARE_API_KEY_REF
+  /** Host only. Re-resolve per operation; never send this value to browsers. */
+  resolve(): Promise<string | undefined>
+  createEnvironment(base?: Readonly<Record<string, string | undefined>>): Promise<Record<string, string | undefined>>
+  subscribe: SubscribeChanges
+}
+export interface FtshareSettingsService extends SettingsServices<typeof settingsModules> {
+  readonly apiVersion: typeof FTSHARE_SETTINGS_API_VERSION
+}

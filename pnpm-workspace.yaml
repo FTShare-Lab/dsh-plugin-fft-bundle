@@ -1,2 +1,4 @@
 packages:
   - packages/*
+overrides:
+  '@deepseek-ai/cordis': 4.0.2
