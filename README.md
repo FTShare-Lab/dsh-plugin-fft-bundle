@@ -34,6 +34,7 @@ dsh plugin --profile <name> add @ft/dsh-fft-bundle
 
 ## 文档
 
+- `.agents/skills/dsh-plugin-development/` DSH 插件开发/移植公共知识（bundle 组合、包骨架、兼容门、安装路径、升级清单）
 - `docs/plans/` 迁移与架构决策草稿
 - `docs/thirdparty/` 第三方插件调研
 - `docs/releases.md` Release notes（版本倒序）
