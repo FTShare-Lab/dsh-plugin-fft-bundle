@@ -11,7 +11,7 @@ export const FTSHARE_API_KEY_REF = 'FTSHARE_API_KEY' as const
  * (spec B.5 Q6 leaves that rename out of scope).
  */
 export const FTSHARE_SETTINGS_SECTION = { id: 'dsh-fft', order: 120, label: '非凸金融终端' } as const
-export const FTSHARE_CREDENTIAL_EVENTS = ['credentials/reference-updated', 'credentials/updated'] as const
+export const FTSHARE_CREDENTIAL_EVENTS = ['credentials/reference-updated'] as const
 /**
  * Browser-facing route for this plugin's settings calls.
  *

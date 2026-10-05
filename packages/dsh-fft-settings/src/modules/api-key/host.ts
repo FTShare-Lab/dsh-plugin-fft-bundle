@@ -6,7 +6,6 @@ import { createApiKeyRpcMethods } from './rpc.js'
 declare module '@deepseek-ai/cordis' {
   interface Events {
     'credentials/reference-updated'(ref: CredentialRef): void
-    'credentials/updated'(ref: CredentialRef): void
   }
 }
 export const apiKeyModule = defineSettingsModule<'apiKey', ApiKeySettings>({
