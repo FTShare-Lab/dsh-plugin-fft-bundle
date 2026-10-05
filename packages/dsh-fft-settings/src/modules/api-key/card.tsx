@@ -45,7 +45,7 @@ export function FtshareSettingsSection({ api, subscribeChanges }: { readonly api
       <div className="ftshare-result"><dt>远端服务</dt><dd>{status?.validation.remote.message ?? '状态待确认'}</dd></div>
       <div className="ftshare-result"><dt>API Key</dt><dd>{status?.validation.apiKey.message ?? '状态待确认'}</dd></div>
       {status?.validation.testedAt && <div className="ftshare-result"><dt>测试时间</dt><dd>{new Date(status.validation.testedAt).toLocaleString()}</dd></div>}
-    </dl><small>“重新读取状态”只读取配置和上次检测结果；“测试当前连接”才会重新联网检测。节假日或收盘后的空数据不影响验证。</small></div>
+    </dl><small>节假日或收盘后的空数据不影响验证。</small></div>
     {message && <p role="status">{message}</p>}{statusError && <p className="ftshare-error" role="alert">{statusError}</p>}
   </section>
 }
