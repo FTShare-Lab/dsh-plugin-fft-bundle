@@ -1,0 +1,1298 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>ETF深度组合报告</title>
+    <!-- ECharts CDN -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script> -->
+    <script src="https://cdn.ft.tech/npm/echarts@5/dist/echarts.min.js "></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap');
+
+        :root {
+
+            --gs-navy: #0F2B5C;
+            /* 高盛深蓝 - 主导色 */
+            --gs-navy-light: #1E3A6F;
+            --gs-gold: #B89B5B;
+            /* 点缀金色 */
+            --gs-gray: #F5F7FA;
+            --gs-border: #E2E8F0;
+            --gs-dark: #1E2B3C;
+            --gs-text: #2D4059;
+            --gs-text-light: #5A6B7C;
+            --gs-white: #FFFFFF;
+
+            /* 强调色 */
+            --red: #D32F2F;
+            --green: #2E7D32;
+
+            --shadow: 0 8px 24px rgba(15, 43, 92, 0.12);
+            --shadow-hover: 0 12px 32px rgba(15, 43, 92, 0.18);
+
+            /* 字体家族 */
+            --font-sans: 'Inter', 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-display: 'Inter', 'Roboto', sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--gs-white);
+            color: var(--gs-text);
+            font-family: var(--font-sans);
+            line-height: 1.5;
+            padding: 0;
+            overflow-x: hidden;
+            width: 100%;
+            font-size: 14px;
+            font-weight: 400;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem 2rem;
+            width: 100%;
+        }
+
+        /* ----- 头部 ----- */
+        .report-header {
+            margin-bottom: 2.5rem;
+            padding: 2rem 0 1.5rem 0;
+            border-bottom: 3px solid var(--gs-navy);
+            position: relative;
+            background: linear-gradient(90deg, var(--gs-white) 70%, var(--gs-gray) 100%);
+        }
+
+        .report-header h1 {
+            font-family: var(--font-display);
+            font-size: clamp(1.8rem, 4vw, 2.4rem);
+            font-weight: 600;
+            color: var(--gs-navy);
+            letter-spacing: -0.01em;
+            margin-bottom: 0.5rem;
+        }
+
+        .report-subhead {
+            font-size: 0.9rem;
+            color: var(--gs-text-light);
+            background: var(--gs-gray);
+            display: inline-block;
+            padding: 0.4rem 1.5rem;
+            border-left: 4px solid var(--gs-gold);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02);
+        }
+
+        .top-date-badge {
+            position: absolute;
+            top: 2rem;
+            right: 0;
+            background: linear-gradient(90deg, var(--gs-gray), var(--gs-white));
+            padding: 0.5rem 1.5rem;
+            border-left: 4px solid var(--gs-gold);
+            font-weight: 500;
+            color: var(--gs-navy);
+            box-shadow: -2px 2px 5px rgba(0, 0, 0, 0.02);
+            font-size: clamp(0.8rem, 1.5vw, 0.9rem);
+            white-space: nowrap;
+        }
+
+        .top-date-badge::before {
+            content: "📅";
+            margin-right: 0.75rem;
+            opacity: 0.8;
+        }
+
+        /* ----- 章节标题 ----- */
+        .section-title {
+            font-family: var(--font-display);
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--gs-navy);
+            margin: 2.5rem 0 1.2rem 0;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--gs-border);
+            position: relative;
+            letter-spacing: 0.01em;
+            text-transform: uppercase;
+        }
+
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 60px;
+            height: 2px;
+            background: var(--gs-gold);
+        }
+
+        /* ===== 第一部分：核心持仓 - 单张综合卡片 ===== */
+        .summary-card {
+            background: var(--gs-white);
+            border: 1px solid var(--gs-border);
+            border-radius: 12px;
+            padding: clamp(1.2rem, 2.5vw, 1.8rem);
+            box-shadow: var(--shadow);
+            margin: 1.2rem 0 2.5rem;
+            position: relative;
+            overflow: hidden;
+            width: 100%;
+        }
+
+        .summary-title {
+            font-family: var(--font-display);
+            font-size: 1rem;
+            font-weight: 500;
+            color: var(--gs-text-light);
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .summary-title span {
+            background: var(--gs-gray);
+            color: var(--gs-text-light);
+            font-size: 0.8rem;
+            padding: 0.2rem 1rem;
+            border-radius: 30px;
+            font-family: var(--font-sans);
+            border: 1px solid var(--gs-border);
+        }
+
+        .stocks-mini-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 1rem;
+            margin-top: 0.5rem;
+            width: 100%;
+        }
+
+        .stock-mini-item {
+            background: var(--gs-gray);
+            border: 1px solid var(--gs-border);
+            border-radius: 8px;
+            padding: 1rem 0.8rem;
+            text-align: center;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stock-mini-item:hover {
+            background: var(--gs-white);
+            border-color: var(--gs-gold);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
+        .stock-mini-code {
+            font-size: 0.7rem;
+            color: var(--gs-gold);
+            font-weight: 500;
+            margin-bottom: 0.4rem;
+            letter-spacing: 0.3px;
+        }
+
+        .stock-mini-name {
+            font-family: var(--font-display);
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--gs-navy);
+            margin-bottom: 0.4rem;
+            line-height: 1.2;
+        }
+
+        .stock-mini-price {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--gs-text);
+        }
+
+        @media (max-width: 800px) {
+            .stocks-mini-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        /* ===== 行业分析区块 ===== */
+        .industry-box {
+            background: var(--gs-white);
+            border: 1px solid var(--gs-border);
+            padding: clamp(1.2rem, 2.5vw, 1.8rem);
+            margin: 1.5rem 0 3rem;
+            box-shadow: var(--shadow);
+            position: relative;
+            overflow: hidden;
+            border-radius: 12px;
+            width: 100%;
+        }
+
+        .industry-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.6rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--gs-border);
+            padding-bottom: 1.2rem;
+        }
+
+        .industry-tag {
+            background: var(--gs-gray);
+            padding: 0.3rem 1rem;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--gs-navy);
+            border: 1px solid var(--gs-border);
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .industry-tag:hover {
+            border-color: var(--gs-gold);
+            color: var(--gs-gold);
+        }
+
+        .industry-text {
+            font-size: 0.9rem;
+            color: var(--gs-text);
+            line-height: 1.6;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ===== 个股精析 - 左右结构卡片 ===== */
+        .deep-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            margin: 1.5rem 0 3rem;
+            width: 100%;
+        }
+
+        .deep-card {
+            background: var(--gs-white);
+            border: 1px solid var(--gs-border);
+            border-radius: 16px;
+            padding: 0;
+            box-shadow: var(--shadow);
+            transition: all 0.3s ease;
+            position: relative;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .deep-card:hover {
+            border-color: var(--gs-navy);
+            box-shadow: var(--shadow-hover);
+        }
+
+        /* 股票详细信息长条 - 顶部 */
+        .stock-detail-bar {
+            background: var(--gs-gray);
+            padding: 0.8rem 1.5rem;
+            border-bottom: 1px solid var(--gs-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.8rem;
+            width: 100%;
+        }
+
+        .stock-detail-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .detail-name {
+            font-family: var(--font-display);
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--gs-navy);
+        }
+
+        .detail-code {
+            background: var(--gs-white);
+            color: var(--gs-text-light);
+            padding: 0.2rem 0.8rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            border: 1px solid var(--gs-border);
+        }
+
+        .detail-sector {
+            color: var(--gs-gold);
+            font-weight: 500;
+            font-size: 0.8rem;
+            padding: 0.2rem 0.8rem;
+            background: var(--gs-white);
+            border-radius: 4px;
+            border: 1px solid var(--gs-border);
+        }
+
+        .stock-detail-right {
+            display: flex;
+            align-items: center;
+            gap: 1.2rem;
+            flex-wrap: wrap;
+        }
+
+        .detail-metric {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .metric-label-small {
+            font-size: 0.7rem;
+            color: var(--gs-text-light);
+            text-transform: uppercase;
+        }
+
+        .metric-value-small {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--gs-navy);
+        }
+
+        /* 左右内容区域 - 核心设计：默认就是左右结构，只在手机端变为上下 */
+        .deep-content-horizontal {
+            display: flex;
+            padding: 1.5rem;
+            gap: 1.5rem;
+            width: 100%;
+        }
+
+        /* 左侧 - K线图区域 (40%) */
+        .chart-section {
+            flex: 0 0 40%;
+            min-width: 0;
+        }
+
+        .chart-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .chart-label h4 {
+            font-family: var(--font-display);
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--gs-text-light);
+            text-transform: uppercase;
+        }
+
+        .chart-label span {
+            font-size: 0.7rem;
+            color: var(--gs-text-light);
+            background: var(--gs-gray);
+            padding: 0.2rem 0.8rem;
+            border-radius: 4px;
+        }
+
+        .mini-chart {
+            width: 100%;
+            height: 240px;
+            position: relative;
+            background: var(--gs-gray);
+            border: 1px solid var(--gs-border);
+            border-radius: 8px;
+        }
+
+        .mini-chart>div {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        /* 右侧 - 技术分析 + 推荐逻辑 (60%) */
+        .analysis-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            min-width: 0;
+        }
+
+        /* 技术形态分析卡片 */
+        .tech-card {
+            background: var(--gs-gray);
+            border-radius: 8px;
+            padding: 1rem;
+            border-left: 4px solid var(--gs-navy);
+        }
+
+        .tech-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .tech-header h4 {
+            font-family: var(--font-display);
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--gs-navy);
+            text-transform: uppercase;
+        }
+
+        .tech-header .line {
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, var(--gs-navy), transparent);
+        }
+
+        .tech-content {
+            font-size: 0.85rem;
+            color: var(--gs-text);
+            line-height: 1.5;
+        }
+
+        /* 推荐逻辑卡片 */
+        .thesis-card {
+            background: var(--gs-gray);
+            border-radius: 8px;
+            padding: 1rem;
+            border-left: 4px solid var(--gs-gold);
+        }
+
+        .thesis-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .thesis-header h4 {
+            font-family: var(--font-display);
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--gs-gold);
+            text-transform: uppercase;
+        }
+
+        .thesis-header .line {
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, var(--gs-gold), transparent);
+        }
+
+        .thesis-content {
+            font-size: 0.85rem;
+            color: var(--gs-text);
+            line-height: 1.5;
+        }
+
+        .thesis-content strong {
+            color: var(--gs-navy);
+            font-weight: 600;
+            display: block;
+            margin-bottom: 0.25rem;
+        }
+
+        /* 卡片底部 */
+        .card-footer {
+            padding: 0.6rem 1.5rem 1rem;
+            border-top: 1px solid var(--gs-border);
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+        }
+
+        .industry-badge {
+            color: var(--gs-text-light);
+            font-size: 0.8rem;
+            font-weight: 400;
+        }
+
+        /* 响应式布局 - 只在手机端（小于640px）时改为纵向 */
+        @media (max-width: 640px) {
+            .deep-content-horizontal {
+                flex-direction: column;
+            }
+
+            .chart-section {
+                flex: none;
+                width: 100%;
+            }
+
+            .mini-chart {
+                height: 200px;
+            }
+        }
+
+        /* ----- T0策略分析 ----- */
+        .t0-section {
+            background: var(--gs-gray);
+            border-left: 4px solid var(--gs-navy);
+            padding: 1.2rem 1.5rem;
+            margin: 1.2rem 0 2rem;
+            box-shadow: var(--shadow);
+            border-radius: 0 8px 8px 0;
+            width: 100%;
+        }
+
+        .t0-section h4 {
+            font-family: var(--font-display);
+            color: var(--gs-navy);
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.6rem;
+        }
+
+        .t0-section p {
+            font-size: 0.85rem;
+            color: var(--gs-text);
+            line-height: 1.5;
+        }
+
+        /* 累计收益率曲线容器 */
+        .chart-container {
+            width: 100%;
+            margin-bottom: 1.5rem;
+        }
+
+        .chart-container h4 {
+            font-family: var(--font-display);
+            color: var(--gs-navy);
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.8rem;
+        }
+
+        .responsive-chart {
+            width: 100%;
+            height: 280px;
+            position: relative;
+            background: var(--gs-gray);
+            border: 1px solid var(--gs-border);
+            border-radius: 8px;
+        }
+
+        .responsive-chart>div {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        /* ----- 组合优势网格 ----- */
+        .advantage-deep {
+            background: var(--gs-white);
+            border: 1px solid var(--gs-border);
+            padding: 1.5rem;
+            margin: 1.5rem 0 3rem;
+            box-shadow: var(--shadow);
+            position: relative;
+            border-radius: 12px;
+            width: 100%;
+        }
+
+        .advantage-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+
+        @media (max-width: 700px) {
+            .advantage-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .advantage-item {
+            background: var(--gs-gray);
+            padding: 1.2rem;
+            border-left: 3px solid var(--gs-gold);
+            border-top: 1px solid var(--gs-border);
+            border-right: 1px solid var(--gs-border);
+            border-bottom: 1px solid var(--gs-border);
+            transition: all 0.2s;
+            border-radius: 0 6px 6px 0;
+        }
+
+        .advantage-item:hover {
+            border-left-width: 4px;
+            background: var(--gs-white);
+        }
+
+        .advantage-item h4 {
+            font-family: var(--font-display);
+            color: var(--gs-navy);
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .advantage-item p {
+            font-size: 0.8rem;
+            color: var(--gs-text-light);
+            line-height: 1.5;
+        }
+
+        /* ----- 风险提示 ----- */
+        .risk-box {
+            background: var(--gs-white);
+            border: 1px solid var(--gs-border);
+            padding: 1.5rem;
+            border-left: 6px solid var(--red);
+            margin-bottom: 3rem;
+            box-shadow: var(--shadow);
+            border-radius: 0 12px 12px 0;
+            width: 100%;
+        }
+
+        .risk-list {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+
+        @media (max-width: 700px) {
+            .risk-list {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .risk-list li {
+            background: var(--gs-gray);
+            padding: 1rem;
+            list-style: none;
+            border-left: 3px solid var(--red);
+            border-top: 1px solid var(--gs-border);
+            border-right: 1px solid var(--gs-border);
+            border-bottom: 1px solid var(--gs-border);
+            font-size: 0.8rem;
+            color: var(--gs-text);
+            transition: all 0.2s;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .risk-list li:hover {
+            border-left-width: 4px;
+            background: var(--gs-white);
+        }
+
+        .risk-list li strong {
+            color: var(--gs-navy);
+            font-weight: 600;
+        }
+
+        .disclaimer {
+            margin-top: 1.5rem;
+            font-size: 0.7rem;
+            color: var(--gs-text-light);
+            text-align: center;
+            border-top: 1px dashed var(--gs-border);
+            padding-top: 1.2rem;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 2.5rem;
+            font-size: 0.7rem;
+            color: var(--gs-text-light);
+            border-top: 1px solid var(--gs-border);
+            padding-top: 1.5rem;
+        }
+
+        /* 确保ECharts容器正确渲染 */
+        [id^="deep-chart-"] {
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        #t0CumulativeChart {
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--gs-gray);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--gs-border);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--gs-text-light);
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 600px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .stock-detail-bar {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .stock-detail-right {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .detail-metric {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.2rem;
+            }
+
+            .top-date-badge {
+                position: static;
+                margin-top: 0.8rem;
+                display: inline-block;
+            }
+
+            .report-header {
+                padding-bottom: 0.8rem;
+            }
+
+            .responsive-chart {
+                height: 220px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- <div class="top-date-badge">{{date}}</div> -->
+    <div class="container">
+        <!-- 头部 -->
+        <header class="report-header">
+            <h1>⚡ {{date}} {{llm.report_title}}</h1>
+            <div class="report-subhead">专业分析 · 通俗解读 </div>
+        </header>
+
+        <!-- 一、核心持仓 - 单张综合卡片 -->
+        <section>
+            <h2 class="section-title">核心持仓 · 投资标的概览</h2>
+            <div class="summary-card">
+                <div class="summary-title">
+                    推荐组合五支核心标的
+                    <span>{{date}}</span>
+                </div>
+                <div class="stocks-mini-grid" id="summaryStocks"></div>
+            </div>
+        </section>
+
+        <!-- 二、行业深度解析 -->
+        <section>
+            <h2 class="section-title">投资逻辑 </h2>
+            <div class="industry-box">
+                <div class="industry-tags">
+                    {% for tag in llm.theme_analysis.tags %}
+                    <span class="industry-tag"> {{ tag }} </span>
+
+                    {% endfor %}
+                </div>
+                <div class="industry-text">
+                    <p>{{ llm.theme_analysis.text }}</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 三、个股精析 - 左右结构卡片（手机端才变纵向） -->
+        <section>
+            <h2 class="section-title">ETF精析 · 技术面与基本面</h2>
+            <div class="deep-grid" id="deepCards"></div>
+        </section>
+
+        <!-- 四、组合优势深度分析 -->
+        <section>
+            <h2 class="section-title">组合优势 · 超越单ETF逻辑</h2>
+            <div class="advantage-deep">
+                <div class="advantage-grid">
+                    {% for item in llm.portfolio_advantages.items %}
+                    <div class="advantage-item">
+                        <h4>{{ item.title }}</h4>
+                        <p>{{ item.description }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+                <p
+                    style="background:var(--gs-gray); padding:0.8rem; text-align:center; border-left:3px solid var(--gs-gold); border-4px 4px 0; font-size:0.85rem;">
+                    {{ llm.portfolio_advantages.highlight }}</p>
+            </div>
+        </section>
+
+        <!-- 五、风险提示 -->
+        <section>
+            <h2 class="section-title">风险揭示</h2>
+            <div class="risk-box">
+                <ul class="risk-list">
+                    {% for risk in llm.risks %}
+                    <li><strong>{{ risk.title }}：</strong>{{ risk.description }}</li>
+                    {% endfor %}
+                </ul>
+                <div class="disclaimer">
+                    本报告基于已接入的真实数据，不构成投资建议。请根据自身情况谨慎决策。
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        (function () {
+            // 原始数据 - 完全保留
+        const portfolios = {{ portfolio  | json_encode | safe
+        }};
+        const etfRows = Array.isArray(portfolios) ? portfolios : (Array.isArray(portfolios?.portfolio) ? portfolios.portfolio : []);
+        const fmt = (value, digits = 2, prefix = '') => {
+            const n = Number(value);
+            return Number.isFinite(n) ? `${prefix}${n.toFixed(digits)}` : '暂无';
+        };
+
+
+        // 渲染核心持仓 - 单张卡片
+        function renderSummary() {
+            const container = document.getElementById('summaryStocks');
+            container.innerHTML = '';
+            etfRows.forEach(s => {
+                const item = document.createElement('div');
+                item.className = 'stock-mini-item';
+                item.innerHTML = `
+                        <div class="stock-mini-code">${String(s.fundamental.symbol_id).padStart(6, '0')}</div>
+                        <div class="stock-mini-name">${s.fundamental.name}</div>
+                        <div class="stock-mini-price">${fmt(s.fundamental?.close, 2, '¥')}</div>
+                    `;
+                container.appendChild(item);
+            });
+        }
+
+        // ECharts K线图绘制
+        function renderEChart(canvasId, kLineData) {
+            const chartDom = document.getElementById(canvasId);
+            if (!chartDom) return;
+            if (!kLineData || !Array.isArray(kLineData.ohlc) || kLineData.ohlc.length === 0) {
+                chartDom.innerHTML = '<div class="data-unavailable">暂无行情数据</div>';
+                return;
+            }
+            const myChart = echarts.init(chartDom);
+
+            // 在设置图表选项之前，先计算整个区间的最高价和最低价
+            let globalHighPrice = -Infinity;
+            let globalLowPrice = Infinity;
+            let highIndex = -1;
+            let lowIndex = -1;
+
+            kLineData.ohlc.forEach((item, idx) => {
+                const high = item[1];  // 最高价在原始数据中的索引1
+                const low = item[2];   // 最低价在原始数据中的索引2
+                if (high > globalHighPrice) {
+                    globalHighPrice = high;
+                    highIndex = idx;
+                }
+                if (low < globalLowPrice) {
+                    globalLowPrice = low;
+                    lowIndex = idx;
+                }
+            });
+            // 1. 数据处理
+            const dates = kLineData.trade_date.map(d => String(d).slice(4, 6) + '-' + String(d).slice(6, 8));
+            const candlestickData = kLineData.ohlc.map(item => [item[0], item[3], item[2], item[1]]);
+            const volumeData = kLineData.volume.map(v => (v / 10000).toFixed(2));
+
+
+            // 2. 计算移动平均线
+            function calculateMA(dayCount) {
+                var result = [];
+                for (var i = 0, len = kLineData.ohlc.length; i < len; i++) {
+                    if (i < dayCount - 1) {
+                        result.push('-');
+                        continue;
+                    }
+                    var sum = 0;
+                    for (var j = 0; j < dayCount; j++) {
+                        sum += kLineData.ohlc[i - j][3]; // 使用收盘价
+                    }
+                    result.push((sum / dayCount).toFixed(2));
+                }
+                return result;
+            }
+
+            // 3. 计算最新涨跌幅
+            const lastClose = kLineData.ohlc[kLineData.ohlc.length - 1][3];
+            const prevClose = kLineData.ohlc[kLineData.ohlc.length - 2][3];
+            const change = (lastClose - prevClose).toFixed(2);
+            const changePercent = ((lastClose - prevClose) / prevClose * 100).toFixed(2);
+            const changeColor = change >= 0 ? '#D32F2F' : '#2E7D32';
+
+            myChart.setOption({
+                // 4. 工具提示优化
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: {
+                        type: 'cross',
+                        crossStyle: { color: '#999999' }
+                    },
+                    backgroundColor: 'rgba(255, 255, 255, 0.98)',
+                    borderColor: '#0F2B5C',
+                    borderWidth: 1,
+                    textStyle: { color: '#2D4059', fontSize: 11 },
+                    // 自定义提示框内容
+                    formatter: function (params) {
+                        let res = `<b>${params[0].name}</b><br/>`;
+                        for (let i = 0; i < params.length; i++) {
+                            if (params[i].seriesName === '成交量') {
+                                res += `${params[i].marker} ${params[i].seriesName}: ${params[i].value}万手<br/>`;
+                            } else if (params[i].seriesName === 'K线') {
+                                const data = params[i].data;
+                                res += `${params[i].marker} 开盘: ${data[1]}<br/>`;
+                                res += `收盘: ${data[2]}<br/>`;
+                                res += `最低: ${data[3]}<br/>`;
+                                res += `最高: ${data[4]}<br/>`;
+                            } else {
+                                res += `${params[i].seriesName}: ${params[i].value}<br/>`;
+                            }
+                        }
+                        return res;
+                    }
+                },
+
+                // 5. 图例配置（添加MA线）
+                legend: {
+                    data: [
+                        { name: 'MA5', itemStyle: { color: '#FAA755' } },
+                        { name: 'MA10', itemStyle: { color: '#4A90E2' } },
+                    ],
+                    textStyle: { color: '#5A6B7C', fontSize: 10 },
+                    bottom: 5,
+                    left: 'center',
+                    itemWidth: 12,
+                    itemHeight: 8,
+                    itemGap: 12
+                },
+
+                // 6. 网格布局调整
+                grid: [
+                    {
+                        left: '6%',
+                        right: '5%',
+                        top: '15%',
+                        height: '50%',
+                        containLabel: true
+                    },
+                    {
+                        left: '6%',
+                        right: '5%',
+                        top: '70%',
+                        height: '18%',
+                        containLabel: true
+                    }
+                ],
+
+                // 7. X轴配置
+                xAxis: [
+                    {
+                        type: 'category',
+                        data: dates,
+                        gridIndex: 0,
+                        axisLabel: {
+                            fontSize: 8,
+                            color: '#5A6B7C',
+                            rotate: window.innerWidth < 600 ? 30 : 0,
+                            margin: 8
+                        },
+                        axisLine: { lineStyle: { color: '#E2E8F0' } },
+                        axisTick: { show: true, length: 4 }
+                    },
+                    {
+                        type: 'category',
+                        data: dates,
+                        gridIndex: 1,
+                        show: false
+                    }
+                ],
+
+                // 8. Y轴配置
+                yAxis: [
+                    {
+                        type: 'value',
+                        gridIndex: 0,
+                        axisLabel: {
+                            fontSize: 8,
+                            color: '#5A6B7C',
+                            margin: 4
+                        },
+                        splitLine: {
+                            lineStyle: { color: '#E2E8F0', type: 'dashed' }
+                        },
+                        scale: true  // 自动缩放
+                    },
+                    {
+                        type: 'value',
+                        gridIndex: 1,
+                        axisLabel: {
+                            fontSize: 7,
+                            color: '#5A6B7C'
+                        },
+                        splitLine: { show: true },
+                        splitNumber: 2,        // 目标分割段数
+
+                        <!--name: '万手',-->
+                        nameTextStyle: { fontSize: 7, color: '#5A6B7C' }
+                    }
+                ],
+
+                // 9. 数据系列配置
+                series: [
+                    {
+                        name: 'K线',
+                        type: 'candlestick',
+                        data: candlestickData,
+                        xAxisIndex: 0,
+                        yAxisIndex: 0,
+                        itemStyle: {
+                            color: '#D32F2F',      // 上涨红色
+                            color0: '#2E7D32',     // 下跌绿色
+                            borderColor: '#D32F2F',
+                            borderColor0: '#2E7D32',
+                            borderWidth: 1
+                        },
+                        // 标记最高最低点
+                        markPoint: {
+                            symbol: 'pin',
+                            symbolSize: 12,
+                            label: {
+                                show: true,
+                                backgroundColor: 'transparent',
+                                fontSize: 10,
+                                fontWeight: 'bold',
+                                color: '#FFFFFF',
+                                backgroundColor: 'rgba(0,0,0,0.2)',
+                                padding: [2, 5, 2, 5],
+                                borderRadius: 3,
+                                formatter: function (params) {
+                                    if (params.name === '最高价') {
+                                        return ` ${params.value.toFixed(2)}`;
+                                    }
+                                    return ` ${params.value.toFixed(2)}`;
+                                }
+                            },
+                            data: [
+                                {
+                                    name: '最高价',
+                                    coord: [highIndex, globalHighPrice],  // [x轴索引, y轴值]
+                                    value: globalHighPrice,
+                                    label: { offset: [0, -12] },  // 向上偏移12px
+                                    symbolRotate: 0,  // 旋转180度，让水滴朝上
+                                    itemStyle: { color: '#D32F2F' }
+                                },
+                                {
+                                    name: '最低价',
+                                    coord: [lowIndex, globalLowPrice],
+                                    value: globalLowPrice,
+                                    symbolRotate: 180,   // 水滴朝下
+                                    label: { offset: [0, 20] },   // 向下偏移12px
+                                    itemStyle: { color: '#2E7D32' }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        name: 'MA5',
+                        type: 'line',
+                        data: calculateMA(5),
+                        smooth: true,
+                        lineStyle: {
+                            color: '#FAA755',      // 橙色
+                            width: 1.5,
+                            type: 'solid'
+                        },
+                        showSymbol: false,
+                        xAxisIndex: 0,
+                        yAxisIndex: 0
+                    },
+                    {
+                        name: 'MA10',
+                        type: 'line',
+                        data: calculateMA(10),
+                        smooth: true,
+                        lineStyle: {
+                            color: '#4A90E2',      // 蓝色
+                            width: 1.5
+                        },
+                        showSymbol: false,
+                        xAxisIndex: 0,
+                        yAxisIndex: 0
+                    },
+                    // {
+                    //     name: 'MA20',
+                    //     type: 'line',
+                    //     data: calculateMA(20),
+                    //     smooth: true,
+                    //     lineStyle: {
+                    //         color: '#9013FE',      // 紫色
+                    //         width: 1.5
+                    //     },
+                    //     showSymbol: false,
+                    //     xAxisIndex: 0,
+                    //     yAxisIndex: 0
+                    // },
+                    {
+                        name: '成交量',
+                        type: 'bar',
+                        data: volumeData,
+                        xAxisIndex: 1,
+                        yAxisIndex: 1,
+                        itemStyle: {
+                            color: (p) => {
+                                const ohlc = kLineData.ohlc[p.dataIndex];
+                                return ohlc[3] >= ohlc[0] ? '#D32F2F' : '#2E7D32';
+                            }
+                        },
+                        barWidth: '70%'
+                    }
+                ],
+
+
+
+                backgroundColor: 'transparent',
+                resizeObserver: true
+            });
+
+            // 窗口大小改变时重新调整图表
+            window.addEventListener('resize', () => {
+                myChart.resize();
+            });
+        }
+
+        // 渲染深度卡片 - 左右结构（手机端才变纵向）
+        function renderDeepCards() {
+            const container = document.getElementById('deepCards');
+            container.innerHTML = '';
+            etfRows.forEach((s, idx) => {
+                const card = document.createElement('div');
+                card.className = 'deep-card';
+                const canvasId = `deep-chart-${s.fundamental.symbol_id}-${idx}`;
+
+                card.innerHTML = `
+                        <!-- 股票详细信息长条 - 包含流通市值 -->
+                        <div class="stock-detail-bar">
+                            <div class="stock-detail-left">
+                                <span class="detail-name">${s.fundamental.name}</span>
+                                <span class="detail-code">${String(s.fundamental.symbol_id).padStart(6, '0')}</span>
+                                <span class="detail-sector">${s.fundamental.asset}</span>
+                            </div>
+                            <div class="stock-detail-right">
+                                <div class="detail-metric">
+                                    <span class="metric-label-small">换手率</span>
+                                <span class="metric-value-small">${fmt(Number(s.fundamental?.turnover_rate) * 100, 1)}%</span>
+                                </div>
+                                <div class="detail-metric">
+                                    <span class="metric-label-small">价格</span>
+                                <span class="metric-value-small">${fmt(s.fundamental?.close, 2, '¥')}</span>
+                                </div>
+                                <div class="detail-metric">
+                                    <span class="metric-label-small">流通市值</span>
+                                <span class="metric-value-small">${fmt(Number(s.fundamental?.fund_size) / 1e8, 1, '¥')}亿</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 左右内容区域 - 默认左右，手机端变为上下 -->
+                        <div class="deep-content-horizontal">
+                            <!-- 左侧 - K线图 -->
+                            <div class="chart-section">
+                                <div class="chart-label">
+                                    <h4>K线图</h4>
+                                <span>${s.tech?.kline?.trade_date?.length ? `${s.tech.kline.trade_date[0]} - ${s.tech.kline.trade_date.at(-1)}` : '暂无行情数据'}</span>
+                                </div>
+                                <div class="mini-chart">
+                                    <div id="${canvasId}"></div>
+                                </div>
+                            </div>
+                            
+                            <!-- 右侧 - 技术分析 + 推荐逻辑 -->
+                            <div class="analysis-wrapper">
+                                <!-- 技术形态分析卡片 -->
+                                <div class="tech-card">
+                                    <div class="tech-header">
+                                        <h4>技术形态分析</h4>
+                                        <div class="line"></div>
+                                    </div>
+                                    <div class="tech-content">
+                                        ${s.tech_analysis}
+                                    </div>
+                                </div>
+                                
+                                <!-- 推荐逻辑卡片 -->
+                                <div class="thesis-card">
+                                    <div class="thesis-header">
+                                        <h4>推荐逻辑</h4>
+                                        <div class="line"></div>
+                                    </div>
+                                    <div class="thesis-content">
+                                        <strong>${s.fundamental.name}</strong>
+                                        ${s.full_rec}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 卡片底部 -->
+                        <div class="card-footer">
+                            <span class="industry-badge">${s.fundamental.asset} · 核心配置</span>
+                        </div>
+                    `;
+                container.appendChild(card);
+
+                // 延迟渲染确保DOM已就绪
+                setTimeout(() => {
+                    renderEChart(canvasId, s.tech.kline);
+                }, 10);
+            });
+        }
+
+        // 渲染T0图表 - 使用响应式容器
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderSummary();
+            renderDeepCards();
+        });
+        }) ();
+    </script>
+    <div class="footer">© 2026 Ft tech. All rights reserved. For institutional investor use only.</div>
+</body>
+
+</html>

@@ -1,0 +1,4687 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <!--
+    Tera context: { "report": SectorAnalysisTemplateReport }
+    Text values are presentation-ready; financial tones use up/down/neutral.
+    Chart inputs: report.performance.sector_kline, report.performance.benchmark,
+    report.performance.fund_flow_history, report.performance.breadth_history,
+    and report.capital_flow.trend. Width/progress fields are percentages in [0, 100].
+    Industry-chain input: report.industry_chain { title, thesis, coverage[], stages[], cards[], boundary }.
+    Finpowers fields are representative-company one-hop candidates, never verified company relationships.
+  -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>{{ report.meta.sector_name }}板块分析｜{{ report.meta.analysis_date }}</title>
+  <script src="https://cdn.ft.tech/npm/echarts@5/dist/echarts.min.js"></script>
+  <script>
+    if (typeof echarts === "undefined") {
+      document.write('<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"><\/script>');
+    }
+  </script>
+  <style>
+    :root {
+      --page: #F7F8FA;
+      --surface: #FFFFFF;
+      --fill-1: #F7F8FA;
+      --fill-2: #F2F3F5;
+      --primary-1: #E8F2FF;
+      --primary-2: #D4E4FF;
+      --primary-6: #2354E6;
+      --primary-7: #1844CC;
+      --gray-3: #E7E8EB;
+      --gray-5: #C9CDD4;
+      --font-1: #1D2129;
+      --font-2: #4E5969;
+      --font-3: #86909C;
+      --red-1: #FFF1F0;
+      --red-6: #F53F3F;
+      --green-1: #E8F8ED;
+      --green-6: #00B42A;
+      --violet-1: #F4F0FF;
+      --violet-6: #7656E8;
+      --cyan-1: #ECF8FF;
+      --cyan-6: #168AC0;
+      --orange-1: #FFF5E8;
+      --orange-6: #D97916;
+      --radius-sm: 8px;
+      --radius-lg: 12px;
+      --shadow: 0 8px 24px rgba(29, 33, 41, 0.05);
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      min-width: 0;
+      background: var(--page);
+      scroll-behavior: smooth;
+    }
+
+    body {
+      min-width: 0;
+      background: var(--page);
+      color: var(--font-1);
+      font-family: var(--font);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    button,
+    a {
+      font: inherit;
+    }
+
+    button:focus-visible,
+    a:focus-visible,
+    summary:focus-visible {
+      outline: 2px solid var(--primary-6);
+      outline-offset: 2px;
+    }
+
+    .page {
+      width: min(100%, 1200px);
+      margin: 0 auto;
+      padding: 32px 24px 48px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-areas:
+        "identity meta"
+        "title title"
+        "summary summary";
+      gap: 12px 24px;
+      padding: 32px;
+      background: rgba(255, 255, 255, 0.96);
+      border: 1px solid var(--gray-3);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+    }
+
+    .identity {
+      grid-area: identity;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      color: var(--font-2);
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .ai-mark {
+      display: inline-flex;
+      width: 28px;
+      height: 28px;
+      flex: 0 0 28px;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary-6);
+      background: var(--primary-1);
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .hero-meta {
+      grid-area: meta;
+      display: flex;
+      max-width: 520px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .chip {
+      display: inline-flex;
+      min-height: 28px;
+      align-items: center;
+      padding: 4px 8px;
+      color: var(--font-2);
+      background: var(--fill-1);
+      border: 1px solid var(--gray-3);
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 500;
+      line-height: 20px;
+    }
+
+    .chip-primary {
+      color: var(--primary-6);
+      background: var(--primary-1);
+      border-color: var(--primary-2);
+      font-weight: 600;
+    }
+
+    .chip-orange {
+      color: var(--orange-6);
+      background: var(--orange-1);
+      border-color: #F7D6AA;
+    }
+
+    .hero-title {
+      grid-area: title;
+      min-width: 0;
+      padding-top: 4px;
+    }
+
+    h1 {
+      font-size: 24px;
+      font-weight: 700;
+      line-height: 1.4;
+    }
+
+    .hero-subline {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 16px;
+      margin-top: 8px;
+      color: var(--font-3);
+      font-size: 12px;
+    }
+
+    .hero-summary {
+      grid-area: summary;
+      width: 100%;
+      margin-top: 8px;
+      padding: 16px 20px;
+      color: var(--font-2);
+      background: var(--fill-1);
+      border: 1px solid var(--gray-3);
+      border-radius: var(--radius-sm);
+    }
+
+    .summary-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      color: var(--primary-6);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .summary-label::before {
+      width: 6px;
+      height: 6px;
+      background: var(--primary-6);
+      border-radius: 50%;
+      content: "";
+    }
+
+    .hero-summary strong {
+      color: var(--font-1);
+    }
+
+    .context-strip {
+      display: none;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 16px;
+      margin-top: 12px;
+      padding: 12px 16px;
+      color: var(--font-3);
+      background: var(--surface);
+      border: 1px solid var(--gray-3);
+      border-radius: var(--radius-lg);
+      font-size: 12px;
+    }
+
+    .section-nav {
+      display: flex;
+      flex: 1 1 520px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 4px 12px;
+    }
+
+    .section-nav a {
+      color: var(--font-2);
+      text-decoration: none;
+    }
+
+    .section-nav a:hover {
+      color: var(--primary-6);
+    }
+
+    .metrics-panel {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1px;
+      margin-top: 12px;
+      overflow: hidden;
+      background: var(--gray-3);
+      border: 1px solid var(--gray-3);
+      border-radius: var(--radius-lg);
+    }
+
+    .metric {
+      min-width: 0;
+      padding: 16px;
+      background: var(--surface);
+    }
+
+    .metric-label {
+      color: var(--font-3);
+      font-size: 12px;
+    }
+
+    .metric-value {
+      margin-top: 4px;
+      color: var(--font-1);
+      font-size: 20px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.4;
+    }
+
+    .metric-note {
+      margin-top: 4px;
+      color: var(--font-3);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    [data-semantic="up"] {
+      color: var(--red-6) !important;
+    }
+
+    [data-semantic="down"] {
+      color: var(--green-6) !important;
+    }
+
+    [data-semantic="neutral"] {
+      color: var(--font-2) !important;
+    }
+
+    .report-section {
+      scroll-margin-top: 20px;
+      margin-top: 40px;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .section-number {
+      display: inline-flex;
+      min-width: 32px;
+      height: 24px;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary-6);
+      background: var(--primary-1);
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .section-head h2 {
+      font-size: 18px;
+      font-weight: 700;
+      line-height: 1.45;
+    }
+
+    .section-head p {
+      margin-top: 2px;
+      color: var(--font-3);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .surface {
+      min-width: 0;
+      background: var(--surface);
+      border: 1px solid var(--gray-3);
+      border-radius: var(--radius-lg);
+    }
+
+    .surface-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--gray-3);
+    }
+
+    .surface-head h3 {
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1.5;
+    }
+
+    .surface-head p {
+      margin-top: 2px;
+      color: var(--font-3);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .chart-grid,
+    .structure-grid,
+    .two-column {
+      display: grid;
+      grid-template-columns: minmax(0, 1.65fr) minmax(280px, 0.85fr);
+      gap: 16px;
+    }
+
+    .two-column {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .capital-trend-grid {
+      align-items: start;
+      margin-top: 16px;
+    }
+
+    .chart-controls {
+      display: flex;
+      flex: 0 0 auto;
+      flex-wrap: nowrap;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .view-switcher {
+      display: inline-grid;
+      width: max-content;
+      max-width: 100%;
+      grid-template-columns: repeat(2, max-content);
+      align-items: center;
+      gap: 4px;
+      padding: 2px;
+      background: var(--fill-1);
+      border: 1px solid var(--gray-3);
+      border-radius: var(--radius-sm);
+    }
+
+    .view-btn {
+      min-width: 0;
+      min-height: 32px;
+      padding: 0 12px;
+      color: var(--font-3);
+      background: transparent;
+      border: 0;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .view-btn[aria-pressed="true"] {
+      color: var(--primary-6);
+      background: var(--surface);
+      box-shadow: 0 1px 4px rgba(29, 33, 41, 0.08);
+      font-weight: 700;
+    }
+
+    .chart-surface-head {
+      flex-wrap: wrap;
+    }
+
+    .chart-surface-head > div:first-child {
+      flex: 1 1 320px;
+      min-width: 0;
+    }
+
+    .chart-surface-head .chart-controls {
+      margin-left: auto;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    .kline-chart-body {
+      position: relative;
+      min-height: 408px;
+      padding: 4px 8px 0;
+    }
+
+    .kline-echart {
+      width: 100%;
+      height: 400px;
+      outline: none;
+    }
+
+    .kline-chart-empty {
+      display: flex;
+      min-height: 400px;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      color: var(--font-3);
+      background: var(--fill-1);
+      border-radius: var(--radius-sm);
+      text-align: center;
+    }
+
+    .kline-chart-body:focus-within {
+      box-shadow: inset 0 0 0 2px var(--primary-1);
+    }
+
+    .kline-tooltip {
+      position: absolute;
+      top: 20px;
+      right: 24px;
+      z-index: 3;
+      width: 296px;
+      overflow: hidden;
+      pointer-events: none;
+      background: var(--surface);
+      border: 1px solid var(--gray-3);
+      border-radius: var(--radius-sm);
+      box-shadow: 0 8px 24px rgba(29, 33, 41, 0.12);
+    }
+
+    .kline-tooltip[data-side="left"] {
+      right: auto;
+      left: 24px;
+    }
+
+    .kline-tooltip.is-locked {
+      pointer-events: auto;
+    }
+
+    .kline-tooltip-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--fill-1);
+      border-bottom: 1px solid var(--gray-3);
+    }
+
+    .kline-tooltip-title {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .kline-tooltip-title span,
+    .kline-tooltip-title strong {
+      display: block;
+    }
+
+    .kline-tooltip-title span {
+      color: var(--font-1);
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .kline-tooltip-title strong {
+      display: inline-flex;
+      margin-top: 0;
+      padding: 4px 8px;
+      color: var(--primary-6);
+      background: var(--primary-1);
+      border-radius: 999px;
+      font-size: 12px;
+    }
+
+    .kline-tooltip-close {
+      flex: 0 0 auto;
+      width: 32px;
+      min-height: 32px;
+      padding: 0;
+      color: var(--font-2);
+      background: transparent;
+      border: 0;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-size: 18px;
+    }
+
+    .kline-inspector-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1px;
+      background: var(--gray-3);
+    }
+
+    .kline-inspector-item {
+      min-width: 0;
+      padding: 4px 8px;
+      background: var(--fill-1);
+    }
+
+    .kline-inspector-item span,
+    .kline-inspector-item strong {
+      display: block;
+    }
+
+    .kline-inspector-item span {
+      color: var(--font-3);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .kline-inspector-item strong {
+      margin-top: 0;
+      color: var(--font-2);
+      font-size: 14px;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.4;
+    }
+
+    .kline-hit-area {
+      fill: transparent;
+      cursor: crosshair;
+      touch-action: pan-y;
+    }
+
+    .kline-focus-band {
+      fill: var(--primary-1);
+      opacity: 0.56;
+    }
+
+    .kline-crosshair {
+      stroke: var(--font-3);
+      stroke-dasharray: 4 4;
+      stroke-width: 1;
+    }
+
+    .kline-focus-close,
+    .kline-focus-amount,
+    .kline-focus-ma5,
+    .kline-focus-ma10,
+    .kline-focus-ma20 {
+      stroke: var(--surface);
+      stroke-width: 1.5;
+    }
+
+    .kline-focus-close {
+      fill: var(--font-1);
+    }
+
+    .kline-focus-amount {
+      fill: var(--cyan-6);
+    }
+
+    .kline-focus-ma5 {
+      fill: var(--orange-6);
+    }
+
+    .kline-focus-ma10 {
+      fill: var(--primary-6);
+    }
+
+    .kline-focus-ma20 {
+      fill: var(--violet-6);
+    }
+
+    .candle-up {
+      fill: var(--red-6);
+      stroke: var(--red-6);
+    }
+
+    .candle-down {
+      fill: var(--green-6);
+      stroke: var(--green-6);
+    }
+
+    .candle-flat {
+      fill: var(--gray-5);
+      stroke: var(--gray-5);
+    }
+
+    .ma-line,
+    .amount-ma-line {
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 2;
+    }
+
+    .ma5-line {
+      stroke: var(--orange-6);
+    }
+
+    .ma10-line {
+      stroke: var(--primary-6);
+    }
+
+    .ma20-line {
+      stroke: var(--violet-6);
+    }
+
+    .amount-ma-line {
+      stroke: var(--cyan-6);
+      stroke-width: 2;
+    }
+
+    .subplot-label {
+      fill: var(--font-3);
+      font-family: var(--font);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .legend-line.ma5 {
+      height: 2px;
+      background: var(--orange-6);
+    }
+
+    .legend-line.ma10 {
+      height: 2px;
+      background: var(--primary-6);
+    }
+
+    .legend-line.ma20 {
+      height: 2px;
+      background: var(--violet-6);
+    }
+
+    .legend-line.amount-ma {
+      height: 2px;
+      background: var(--cyan-6);
+    }
+
+    .chart-body {
+      min-height: 300px;
+      padding: 12px 16px 16px;
+    }
+
+    .chart-body svg {
+      display: block;
+      width: 100%;
+      height: 272px;
+    }
+
+    .grid-line {
+      stroke: var(--gray-3);
+      stroke-width: 1;
+    }
+
+    .zero-line {
+      stroke: var(--gray-5);
+      stroke-dasharray: 4 4;
+      stroke-width: 1;
+    }
+
+    .axis-label {
+      fill: var(--font-3);
+      font-size: 12px;
+      font-family: var(--font);
+    }
+
+    .sector-line,
+    .benchmark-line {
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 3;
+    }
+
+    .sector-line {
+      stroke: var(--red-6);
+    }
+
+    .benchmark-line {
+      stroke: var(--primary-6);
+      stroke-width: 2;
+    }
+
+    .chart-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 16px;
+      padding: 0 20px 16px;
+      color: var(--font-2);
+      font-size: 12px;
+    }
+
+    .legend-toggle {
+      display: inline-flex;
+      align-items: center;
+      min-height: 32px;
+      padding: 0;
+      color: var(--font-2);
+      background: transparent;
+      border: 0;
+      cursor: pointer;
+      font: inherit;
+      gap: 8px;
+    }
+
+    .legend-toggle[aria-pressed="false"] {
+      color: var(--font-3);
+      opacity: 0.48;
+    }
+
+    .legend-toggle[aria-pressed="false"] .legend-line {
+      background: var(--gray-5);
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .legend-line {
+      width: 18px;
+      height: 3px;
+      background: var(--red-6);
+      border-radius: 999px;
+    }
+
+    .legend-line.benchmark {
+      height: 2px;
+      background: var(--primary-6);
+    }
+
+    .flow-chart-body {
+      min-height: 320px;
+      padding: 12px 16px 8px;
+    }
+
+    .flow-chart-body svg {
+      display: block;
+      width: 100%;
+      height: 284px;
+    }
+
+    .flow-positive {
+      fill: var(--red-6);
+    }
+
+    .flow-negative {
+      fill: var(--green-6);
+    }
+
+    .flow-rolling-line {
+      fill: none;
+      stroke: var(--primary-6);
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 3;
+    }
+
+    .flow-sync {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 1px;
+      margin: 0 20px 16px;
+      overflow: hidden;
+      background: var(--gray-3);
+      border: 1px solid var(--gray-3);
+      border-radius: var(--radius-sm);
+    }
+
+    .flow-sync-item {
+      min-width: 0;
+      padding: 12px;
+      background: var(--fill-1);
+    }
+
+    .flow-sync-item span {
+      display: block;
+      color: var(--font-3);
+      font-size: 12px;
+    }
+
+    .flow-sync-item strong {
+      display: block;
+      margin-top: 2px;
+      color: var(--font-1);
+      font-size: 16px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .flow-horizons {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 1px;
+      margin-top: 20px;
+      overflow: hidden;
+      background: var(--gray-3);
+      border: 1px solid var(--gray-3);
+      border-radius: var(--radius-sm);
+    }
+
+    .flow-horizon {
+      min-width: 0;
+      padding: 12px;
+      background: var(--fill-1);
+    }
+
+    .flow-horizon span {
+      display: block;
+      color: var(--font-3);
+      font-size: 12px;
+    }
+
+    .flow-horizon strong {
+      display: block;
+      margin-top: 2px;
+      font-size: 16px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .flow-verdict-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .flow-verdict-details {
+      margin-top: 20px;
+      padding-top: 0;
+      border-top: 0;
+    }
+
+    .flow-verdict-summary {
+      display: flex;
+      min-height: 40px;
+      align-items: center;
+      padding: 8px 12px;
+      color: var(--primary-6);
+      background: var(--primary-1);
+      border: 1px solid #CFE3FF;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      list-style: none;
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 20px;
+    }
+
+    .flow-verdict-summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .flow-verdict-summary:focus-visible {
+      outline: 2px solid var(--primary-6);
+      outline-offset: 2px;
+    }
+
+    .flow-verdict-toggle {
+      display: flex;
+      width: 100%;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .flow-verdict-toggle::before {
+      content: "展开详细判读（" attr(data-count) "项）";
+    }
+
+    .flow-verdict-toggle::after {
+      content: "⌄";
+      font-size: 16px;
+      line-height: 1;
+      transition: transform 160ms ease;
+    }
+
+    .flow-verdict-details[open] .flow-verdict-toggle::before {
+      content: "收起详细判读（" attr(data-count) "项）";
+    }
+
+    .flow-verdict-details[open] .flow-verdict-toggle::after {
+      transform: rotate(180deg);
+    }
+
+    .flow-verdict-row {
+      min-width: 0;
+      padding: 12px;
+      color: var(--font-2);
+      background: var(--fill-1);
+      border-radius: var(--radius-sm);
+    }
+
+    .flow-verdict-row strong {
+      color: var(--font-1);
+    }
+
+    .flow-verdict-row strong::after {
+      color: var(--font-3);
+      content: " ·";
+    }
+
+    .flow-source-list,
+    .flow-direction-list {
+      display: grid;
+      gap: 16px;
+      padding: 20px;
+    }
+
+    .flow-source-item,
+    .flow-direction-item {
+      min-width: 0;
+    }
+
+    .flow-source-head,
+    .flow-direction-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .flow-source-head strong,
+    .flow-direction-head strong {
+      color: var(--font-1);
+      font-size: 14px;
+    }
+
+    .flow-source-head b,
+    .flow-direction-head b {
+      min-width: 0;
+      flex: 0 1 auto;
+      font-size: 14px;
+      font-variant-numeric: tabular-nums;
+      overflow-wrap: anywhere;
+      text-align: right;
+    }
+
+    .flow-source-item p {
+      margin-top: 4px;
+      color: var(--font-3);
+      font-size: 12px;
+    }
+
+    .flow-direction-track {
+      height: 8px;
+      margin-top: 8px;
+      overflow: hidden;
+      background: var(--fill-2);
+      border-radius: 999px;
+    }
+
+    .flow-direction-track span {
+      display: block;
+      height: 100%;
+      background: var(--red-6);
+      border-radius: inherit;
+    }
+
+    .flow-direction-track.is-out span {
+      background: var(--green-6);
+    }
+
+    .flow-methodology {
+      margin: 0 20px 20px;
+      padding: 12px;
+      color: var(--font-2);
+      background: var(--primary-1);
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+    }
+
+    .flow-methodology strong {
+      color: var(--primary-6);
+    }
+
+    .flow-analysis {
+      margin: 0 20px 20px;
+      padding: 12px;
+      color: var(--font-2);
+      background: var(--primary-1);
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    .flow-analysis strong {
+      color: var(--primary-6);
+    }
+
+    .flow-methodology-details {
+      grid-column: 1 / -1;
+      margin-top: -4px;
+      border-top: 1px solid var(--gray-3);
+    }
+
+    .flow-methodology-details > summary {
+      display: flex;
+      min-height: 40px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 4px;
+      color: var(--font-3);
+      cursor: pointer;
+      font-size: 12px;
+      list-style: none;
+    }
+
+    .flow-methodology-details > summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .flow-methodology-details > summary::after {
+      color: var(--primary-6);
+      content: "展开";
+    }
+
+    .flow-methodology-details[open] > summary::after {
+      content: "收起";
+    }
+
+    .flow-methodology-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      padding: 0 4px 4px;
+    }
+
+    .flow-methodology-list p {
+      margin: 0;
+      padding: 12px;
+      color: var(--font-3);
+      background: var(--fill-1);
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      line-height: 1.65;
+    }
+
+    .flow-methodology-list strong {
+      color: var(--font-2);
+    }
+
+    .capital-today-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 1px;
+      margin: 0 20px 16px;
+      overflow: hidden;
+      background: var(--gray-3);
+      border: 1px solid var(--gray-3);
+      border-radius: var(--radius-sm);
+    }
+
+    .capital-today-item {
+      min-width: 0;
+      padding: 12px;
+      background: var(--fill-1);
+    }
+
+    .capital-today-item span,
+    .capital-today-item small {
+      display: block;
+      color: var(--font-3);
+      font-size: 12px;
+    }
+
+    .capital-today-item strong {
+      display: block;
+      margin: 4px 0 2px;
+      color: var(--font-1);
+      font-size: 18px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .capital-classification-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .order-flow-list {
+      display: grid;
+      gap: 16px;
+      padding: 20px;
+    }
+
+    .order-flow-axis,
+    .order-flow-row {
+      display: grid;
+      grid-template-columns: minmax(104px, 0.7fr) minmax(180px, 1.5fr) 64px;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .order-flow-axis {
+      color: var(--font-3);
+      font-size: 12px;
+    }
+
+    .order-flow-axis-scale,
+    .order-flow-values {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .order-flow-axis-scale span:last-child,
+    .order-flow-values span:last-child {
+      text-align: right;
+    }
+
+    .order-flow-label strong,
+    .order-flow-label span {
+      display: block;
+    }
+
+    .order-flow-label strong {
+      color: var(--font-1);
+      font-size: 14px;
+    }
+
+    .order-flow-label span,
+    .order-flow-values {
+      color: var(--font-3);
+      font-size: 12px;
+    }
+
+    .order-flow-bar-cell {
+      min-width: 0;
+    }
+
+    .order-flow-track {
+      position: relative;
+      height: 10px;
+      margin-top: 8px;
+      overflow: hidden;
+      background: var(--fill-2);
+      border-radius: 999px;
+    }
+
+    .order-flow-track::after {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 50%;
+      width: 1px;
+      background: var(--gray-5);
+      content: "";
+    }
+
+    .order-flow-track .is-buy,
+    .order-flow-track .is-sell {
+      position: absolute;
+      top: 0;
+      height: 100%;
+    }
+
+    .order-flow-track .is-buy {
+      left: 50%;
+      background: var(--red-6);
+      border-radius: 0 999px 999px 0;
+    }
+
+    .order-flow-track .is-sell {
+      right: 50%;
+      background: var(--green-6);
+      border-radius: 999px 0 0 999px;
+    }
+
+    .order-flow-net {
+      text-align: right;
+      font-size: 14px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .market-share-list {
+      display: grid;
+      gap: 20px;
+      padding: 20px;
+    }
+
+    .market-share-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .market-share-head strong {
+      color: var(--font-1);
+      font-size: 14px;
+    }
+
+    .market-share-head b {
+      flex: 1 1 auto;
+      min-width: 0;
+      max-width: 100%;
+      overflow-wrap: anywhere;
+      text-align: right;
+      white-space: normal;
+      font-size: 18px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .market-share-track {
+      position: relative;
+      height: 10px;
+      margin-top: 8px;
+      overflow: hidden;
+      background: var(--fill-2);
+      border-radius: 999px;
+    }
+
+    .market-share-track span {
+      display: block;
+      height: 100%;
+      background: var(--primary-6);
+      border-radius: inherit;
+    }
+
+    .market-share-track.is-attraction span {
+      background: var(--red-6);
+    }
+
+    .market-share-track i {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: var(--font-2);
+    }
+
+    .market-share-meta {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 4px 12px;
+      margin-top: 8px;
+      color: var(--font-3);
+      font-size: 12px;
+    }
+
+    .capital-reading {
+      margin: 0 20px 20px;
+      padding: 12px;
+      color: var(--font-2);
+      background: var(--red-1);
+      border-left: 3px solid var(--red-6);
+      border-radius: var(--radius-sm);
+    }
+
+    .capital-reading strong {
+      color: var(--font-1);
+    }
+
+    .phase-body {
+      padding: 20px;
+    }
+
+    .phase-current {
+      padding: 16px;
+      background: var(--red-1);
+      border-left: 3px solid var(--red-6);
+      border-radius: var(--radius-sm);
+    }
+
+    .phase-current span {
+      color: var(--font-3);
+      font-size: 12px;
+    }
+
+    .phase-current strong {
+      display: block;
+      margin-top: 4px;
+      color: var(--font-1);
+      font-size: 18px;
+    }
+
+    .phase-current p {
+      margin-top: 8px;
+      color: var(--font-2);
+    }
+
+    .phase-track {
+      display: grid;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .phase-step {
+      display: grid;
+      grid-template-columns: 68px minmax(0, 1fr);
+      gap: 12px;
+      align-items: center;
+      color: var(--font-3);
+      font-size: 12px;
+    }
+
+    .phase-bar {
+      height: 8px;
+      overflow: hidden;
+      background: var(--fill-2);
+      border-radius: 999px;
+    }
+
+    .phase-bar span {
+      display: block;
+      height: 100%;
+      background: var(--gray-5);
+      border-radius: inherit;
+    }
+
+    .phase-step.is-current {
+      color: var(--font-1);
+      font-weight: 700;
+    }
+
+    .phase-step.is-current .phase-bar span {
+      background: var(--red-6);
+    }
+
+    [data-scroll="horizontal"] {
+      max-height: none;
+      overflow-x: auto;
+      overscroll-behavior-inline: contain;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    table {
+      width: 100%;
+      min-width: 680px;
+      border-collapse: collapse;
+      color: var(--font-2);
+      font-size: 14px;
+    }
+
+    th,
+    td {
+      padding: 12px;
+      border-bottom: 1px solid var(--gray-3);
+      text-align: right;
+      vertical-align: middle;
+      font-variant-numeric: tabular-nums;
+    }
+
+    th {
+      color: var(--font-3);
+      background: var(--fill-1);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    th:first-child,
+    td:first-child {
+      padding-left: 20px;
+      text-align: left;
+    }
+
+    th:last-child,
+    td:last-child {
+      padding-right: 20px;
+    }
+
+    tbody tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .row-title {
+      color: var(--font-1);
+      font-weight: 600;
+    }
+
+    .row-subtitle {
+      display: block;
+      margin-top: 2px;
+      color: var(--font-3);
+      font-size: 12px;
+      font-weight: 400;
+    }
+
+    .breadth-body {
+      padding: 20px;
+    }
+
+    .breadth-number {
+      color: var(--font-1);
+      font-size: 24px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .breadth-caption {
+      color: var(--font-3);
+      font-size: 12px;
+    }
+
+    .breadth-bar {
+      display: flex;
+      height: 12px;
+      margin-top: 16px;
+      overflow: hidden;
+      background: var(--fill-2);
+      border-radius: 999px;
+    }
+
+    .breadth-bar .up {
+      width: 71.3%;
+      background: var(--red-6);
+    }
+
+    .breadth-bar .flat {
+      width: 2.5%;
+      background: var(--gray-5);
+    }
+
+    .breadth-bar .down {
+      width: 26.2%;
+      background: var(--green-6);
+    }
+
+    .breadth-legend {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 8px;
+      color: var(--font-3);
+      font-size: 12px;
+    }
+
+    .breadth-stats {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1px;
+      margin-top: 20px;
+      overflow: hidden;
+      background: var(--gray-3);
+      border: 1px solid var(--gray-3);
+      border-radius: var(--radius-sm);
+    }
+
+    .breadth-stat {
+      padding: 12px;
+      background: var(--fill-1);
+    }
+
+    .breadth-stat span {
+      display: block;
+      color: var(--font-3);
+      font-size: 12px;
+    }
+
+    .breadth-stat strong {
+      display: block;
+      margin-top: 2px;
+      color: var(--font-1);
+      font-size: 16px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .judgement {
+      margin-top: 16px;
+      padding: 12px;
+      color: var(--font-2);
+      background: var(--primary-1);
+      border-left: 3px solid var(--primary-6);
+      border-radius: var(--radius-sm);
+    }
+
+    .drivers-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      align-items: stretch;
+      gap: 16px;
+    }
+
+    .driver-card {
+      display: flex;
+      grid-column: span 2;
+      flex-direction: column;
+      min-width: 0;
+      height: 100%;
+      padding: 20px;
+      background: var(--surface);
+      border: 1px solid var(--gray-3);
+      border-radius: var(--radius-lg);
+    }
+
+    .driver-card:nth-child(3n + 1):last-child {
+      grid-column: 1 / -1;
+    }
+
+    .driver-card:nth-child(3n + 1):nth-last-child(2),
+    .driver-card:nth-child(3n + 2):last-child {
+      grid-column: span 3;
+    }
+
+    .driver-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .driver-index {
+      color: var(--font-3);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .driver-card h3 {
+      margin-top: 4px;
+      font-size: 16px;
+      line-height: 1.5;
+    }
+
+    .confidence {
+      flex: 0 0 auto;
+      padding: 2px 8px;
+      color: var(--primary-6);
+      background: var(--primary-1);
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .driver-summary {
+      margin-top: 12px;
+      color: var(--font-2);
+    }
+
+    .driver-evidence {
+      margin-top: auto;
+      padding-top: 16px;
+    }
+
+    .driver-evidence-summary {
+      display: flex;
+      align-items: center;
+      min-height: 40px;
+      padding: 8px 12px;
+      color: var(--primary-6);
+      background: var(--primary-1);
+      border: 1px solid #CFE3FF;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      list-style: none;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .driver-evidence-summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .driver-evidence-summary:focus-visible {
+      outline: 2px solid var(--primary-6);
+      outline-offset: 2px;
+    }
+
+    .driver-evidence-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      gap: 8px;
+    }
+
+    .driver-evidence-toggle::before {
+      content: "展开证据（" attr(data-count) "条）";
+    }
+
+    .driver-evidence-toggle::after {
+      content: "⌄";
+      font-size: 16px;
+      line-height: 1;
+      transition: transform 160ms ease;
+    }
+
+    .driver-evidence[open] .driver-evidence-toggle::before {
+      content: "收起证据（" attr(data-count) "条）";
+    }
+
+    .driver-evidence[open] .driver-evidence-toggle::after {
+      transform: rotate(180deg);
+    }
+
+    .evidence-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .evidence-line {
+      min-width: 0;
+      padding: 12px;
+      overflow-wrap: anywhere;
+      color: var(--font-2);
+      background: var(--fill-1);
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      line-height: 1.7;
+    }
+
+    .evidence-line strong {
+      display: inline;
+      color: var(--font-1);
+      white-space: normal;
+    }
+
+    .evidence-line strong::after {
+      content: " ·";
+      color: var(--font-3);
+    }
+
+    .logic-surface {
+      padding: 20px;
+    }
+
+    .logic-summary {
+      max-width: 920px;
+      color: var(--font-2);
+    }
+
+    .logic-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1px;
+      margin-top: 20px;
+      overflow: hidden;
+      background: var(--gray-3);
+      border: 1px solid var(--gray-3);
+      border-radius: var(--radius-sm);
+    }
+
+    .logic-item {
+      min-width: 0;
+      padding: 16px;
+      background: var(--fill-1);
+    }
+
+    .logic-item h3 {
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .logic-status {
+      display: inline-flex;
+      margin-top: 8px;
+      padding: 2px 8px;
+      color: var(--cyan-6);
+      background: var(--cyan-1);
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .logic-item p {
+      margin-top: 8px;
+      color: var(--font-2);
+      font-size: 12px;
+    }
+
+    .panel-body {
+      padding: 20px;
+    }
+
+    .score-row {
+      display: grid;
+      grid-template-columns: 92px minmax(0, 1fr) 48px;
+      gap: 12px;
+      align-items: center;
+      margin-top: 16px;
+      color: var(--font-2);
+      font-size: 12px;
+    }
+
+    .score-row:first-child {
+      margin-top: 0;
+    }
+
+    .score-track {
+      height: 8px;
+      overflow: hidden;
+      background: var(--fill-2);
+      border-radius: 999px;
+    }
+
+    .score-track span {
+      display: block;
+      height: 100%;
+      background: var(--primary-6);
+      border-radius: inherit;
+    }
+
+    .score-track.is-hot span {
+      background: var(--red-6);
+    }
+
+    .score-value {
+      color: var(--font-1);
+      text-align: right;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .panel-conclusion {
+      margin-top: 20px;
+      padding: 12px;
+      color: var(--font-2);
+      background: var(--fill-1);
+      border-radius: var(--radius-sm);
+    }
+
+    .leader-table td:nth-child(2),
+    .leader-table th:nth-child(2),
+    .leader-table td:last-child,
+    .leader-table th:last-child {
+      text-align: left;
+    }
+
+    .role-tag {
+      display: inline-flex;
+      padding: 2px 8px;
+      color: var(--violet-6);
+      background: var(--violet-1);
+      border-radius: 999px;
+      font-size: 12px;
+    }
+
+    #events .two-column {
+      align-items: start;
+    }
+
+    #events .surface {
+      overflow: hidden;
+    }
+
+    .event-list,
+    .risk-list {
+      display: block;
+      background: var(--surface);
+    }
+
+    .event-item,
+    .risk-item {
+      min-width: 0;
+      margin-top: 0;
+      padding-top: 0;
+      background: var(--surface);
+      border-top: 0;
+    }
+
+    .event-item + .event-item,
+    .risk-item + .risk-item {
+      border-top: 1px solid var(--gray-3);
+    }
+
+    .event-summary,
+    .risk-summary {
+      display: grid;
+      min-height: 72px;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: start;
+      padding: 16px 20px;
+      color: var(--font-1);
+      cursor: pointer;
+      gap: 8px 12px;
+      line-height: normal;
+      list-style: none;
+      transition: background-color 0.16s ease;
+    }
+
+    .event-summary:hover,
+    .risk-summary:hover {
+      background: var(--fill-1);
+    }
+
+    .event-summary::-webkit-details-marker,
+    .risk-summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .event-summary:focus-visible,
+    .risk-summary:focus-visible {
+      outline: 2px solid var(--primary-6);
+      outline-offset: -2px;
+    }
+
+    .event-toggle {
+      display: inline-flex;
+      min-height: 24px;
+      grid-column: 2;
+      grid-row: 2;
+      align-items: center;
+      align-self: center;
+      justify-self: end;
+      color: var(--primary-6);
+      font-size: 12px;
+      font-weight: 700;
+      gap: 4px;
+      line-height: 1.5;
+    }
+
+    .event-toggle::before {
+      content: "展开详情";
+    }
+
+    .event-toggle::after {
+      display: inline-block;
+      color: var(--font-3);
+      content: "⌄";
+      font-size: 14px;
+      line-height: 1;
+      transition: transform 0.16s ease;
+    }
+
+    details[open] > summary .event-toggle::before {
+      content: "收起详情";
+    }
+
+    details[open] > summary .event-toggle::after {
+      transform: rotate(180deg);
+    }
+
+    .event-detail {
+      margin: 0 20px 16px;
+      padding: 12px 16px;
+      background: var(--fill-1);
+      border-left: 2px solid var(--primary-2);
+      border-radius: var(--radius-sm);
+    }
+
+    .event-head,
+    .risk-head {
+      display: contents;
+    }
+
+    .event-item h4,
+    .risk-item h4 {
+      min-width: 0;
+      color: var(--font-1);
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.6;
+      overflow-wrap: anywhere;
+    }
+
+    .event-item h4 {
+      position: relative;
+      grid-column: 1 / -1;
+      grid-row: 1;
+      padding-left: 16px;
+    }
+
+    .event-item h4::before {
+      position: absolute;
+      top: 0.72em;
+      left: 0;
+      width: 6px;
+      height: 6px;
+      background: var(--primary-6);
+      border-radius: 50%;
+      content: "";
+      transform: translateY(-50%);
+    }
+
+    .risk-item h4 {
+      grid-column: 1;
+      grid-row: 1;
+    }
+
+    .event-time,
+    .risk-level {
+      color: var(--font-3);
+      font-size: 12px;
+    }
+
+    .event-time {
+      grid-column: 1;
+      grid-row: 2;
+      align-self: center;
+      padding-left: 16px;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.5;
+    }
+
+    .risk-level {
+      display: inline-flex;
+      min-height: 24px;
+      grid-column: 2;
+      grid-row: 1;
+      align-items: center;
+      align-self: start;
+      justify-self: end;
+      padding: 2px 8px;
+      color: var(--font-2);
+      background: var(--fill-2);
+      border-radius: 999px;
+      font-weight: 600;
+      line-height: 1.5;
+    }
+
+    .risk-level[data-level="high"] {
+      color: var(--orange-6);
+      background: var(--orange-1);
+      font-weight: 700;
+    }
+
+    .risk-item .event-detail {
+      border-left-color: var(--orange-6);
+    }
+
+    .event-detail p {
+      color: var(--font-2);
+      font-size: 12px;
+      line-height: 1.75;
+      overflow-wrap: anywhere;
+    }
+
+    .final-answer {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 16px;
+      padding: 24px;
+      background: var(--surface);
+      border: 1px solid var(--gray-3);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+    }
+
+    .final-copy {
+      min-width: 0;
+    }
+
+    .final-copy h3 {
+      font-size: 18px;
+      line-height: 1.5;
+    }
+
+    .verdict-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .final-copy > p {
+      margin-top: 16px;
+      color: var(--font-2);
+    }
+
+    .conclusion-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 1px;
+      margin-top: 20px;
+      overflow: hidden;
+      background: var(--gray-3);
+      border: 1px solid var(--gray-3);
+      border-radius: var(--radius-sm);
+    }
+
+    .conclusion-item {
+      padding: 12px 16px;
+      background: var(--fill-1);
+    }
+
+    .conclusion-item span {
+      color: var(--font-3);
+      font-size: 12px;
+    }
+
+    .conclusion-item strong {
+      display: block;
+      margin-top: 2px;
+      color: var(--font-1);
+      font-size: 14px;
+    }
+
+    details {
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: 1px solid var(--gray-3);
+    }
+
+    summary {
+      min-height: 36px;
+      color: var(--primary-6);
+      cursor: pointer;
+      font-weight: 600;
+      line-height: 36px;
+    }
+
+    details ul {
+      display: grid;
+      gap: 8px;
+      margin: 4px 0 0 20px;
+      color: var(--font-2);
+    }
+
+    .footer {
+      margin-top: 32px;
+      padding-top: 20px;
+      color: var(--font-3);
+      border-top: 1px solid var(--gray-3);
+      font-size: 12px;
+    }
+
+    .footer strong {
+      color: var(--font-2);
+    }
+
+    /* Report reading refinements shared by every generated sector report. */
+    .hero-summary {
+      padding: 16px 20px;
+    }
+
+    .summary-headline {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--font-1);
+      font-size: 16px;
+      line-height: 1.55;
+    }
+
+    .hero-summary > p {
+      color: var(--font-2);
+    }
+
+    .section-head p,
+    .surface-head p,
+    #kline-panel .chart-legend > span:last-child {
+      display: none;
+    }
+
+    .report-toolbar {
+      margin-top: 12px;
+      background: var(--surface);
+      border: 1px solid var(--gray-3);
+      border-radius: var(--radius-lg);
+    }
+
+    .report-toolbar-head {
+      display: flex;
+      min-height: 44px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 8px 16px;
+      color: var(--font-1);
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .report-toolbar-head span {
+      color: var(--font-3);
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .report-toolbar nav {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 1px;
+      padding: 0 16px 12px;
+    }
+
+    .report-toolbar a {
+      min-width: 0;
+      padding: 8px 12px;
+      color: var(--font-2);
+      background: var(--fill-1);
+      border-radius: var(--radius-sm);
+      text-align: center;
+      text-decoration: none;
+      font-size: 12px;
+    }
+
+    .report-toolbar a:hover,
+    .report-toolbar a:focus-visible {
+      color: var(--primary-6);
+      background: var(--primary-1);
+    }
+
+    .metric-stale {
+      position: relative;
+    }
+
+    .metric-stale::after {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      padding: 2px 8px;
+      color: var(--orange-6);
+      background: var(--orange-1);
+      border-radius: 999px;
+      content: "数据滞后";
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .drivers-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .driver-card,
+    .driver-card:nth-child(3n + 1):last-child,
+    .driver-card:nth-child(3n + 1):nth-last-child(2),
+    .driver-card:nth-child(3n + 2):last-child {
+      grid-column: auto;
+    }
+
+    .driver-card {
+      padding: 16px;
+      border-left: 4px solid var(--primary-6);
+      border-radius: var(--radius-lg);
+    }
+
+    .driver-card:nth-child(1) {
+      border-left-color: var(--red-6);
+    }
+
+    .driver-card:nth-child(3) {
+      border-left-color: var(--orange-6);
+    }
+
+    .driver-card:nth-child(4) {
+      border-left-color: var(--cyan-6);
+    }
+
+    .driver-index {
+      display: inline-flex;
+      min-height: 24px;
+      align-items: center;
+      padding: 2px 8px;
+      color: var(--primary-6);
+      background: var(--primary-1);
+      border-radius: 999px;
+    }
+
+    .driver-card:nth-child(1) .driver-index {
+      color: var(--red-6);
+      background: var(--red-1);
+    }
+
+    .driver-card:nth-child(3) .driver-index {
+      color: var(--orange-6);
+      background: var(--orange-1);
+    }
+
+    .driver-card:nth-child(4) .driver-index {
+      color: var(--cyan-6);
+      background: var(--cyan-1);
+    }
+
+    .driver-card h3 {
+      margin-top: 12px;
+      font-size: 16px;
+      line-height: 1.55;
+    }
+
+    .driver-summary {
+      margin-top: 12px;
+      line-height: 1.75;
+    }
+
+    .driver-evidence {
+      display: none;
+    }
+
+    .industry-subhead {
+      margin: 24px 0 12px;
+      color: var(--font-1);
+      font-size: 18px;
+      line-height: 1.5;
+    }
+
+    #industry-chain .section-head p {
+      display: block;
+    }
+
+    .industry-chain-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .chain-overview {
+      padding: 20px;
+    }
+
+    .chain-overview-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.6fr) minmax(280px, 0.7fr);
+      gap: 20px;
+      align-items: start;
+    }
+
+    .chain-kicker {
+      color: var(--primary-6);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .chain-thesis h3 {
+      margin-top: 8px;
+      color: var(--font-1);
+      font-size: 18px;
+      line-height: 1.5;
+    }
+
+    .chain-thesis > p {
+      margin-top: 8px;
+      color: var(--font-2);
+      line-height: 1.75;
+    }
+
+    .chain-coverage {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1px;
+      overflow: hidden;
+      background: var(--gray-3);
+      border: 1px solid var(--gray-3);
+      border-radius: var(--radius-sm);
+    }
+
+    .chain-coverage div {
+      min-width: 0;
+      padding: 12px;
+      background: var(--fill-1);
+    }
+
+    .chain-coverage span,
+    .chain-metric span {
+      display: block;
+      color: var(--font-3);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .chain-coverage strong {
+      display: block;
+      margin-top: 4px;
+      color: var(--font-1);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .chain-path {
+      display: grid;
+      grid-template-columns: repeat(var(--chain-stage-count), minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 20px;
+    }
+
+    .chain-stage {
+      position: relative;
+      min-width: 0;
+      padding: 12px;
+      background: var(--fill-1);
+      border: 1px solid var(--gray-3);
+      border-radius: var(--radius-sm);
+    }
+
+    .chain-stage:not(:last-child)::after {
+      content: "→";
+      position: absolute;
+      z-index: 1;
+      top: 50%;
+      right: -9px;
+      width: 18px;
+      color: var(--primary-6);
+      background: var(--surface);
+      text-align: center;
+      transform: translateY(-50%);
+    }
+
+    .chain-stage span {
+      color: var(--font-3);
+      font-size: 12px;
+    }
+
+    .chain-stage strong {
+      display: block;
+      margin-top: 4px;
+      color: var(--font-1);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .industry-chain-card {
+      min-width: 0;
+      padding: 16px;
+      background: var(--surface);
+      border: 1px solid var(--gray-3);
+      border-left: 3px solid var(--primary-6);
+      border-radius: var(--radius-lg);
+    }
+
+    .industry-chain-card:nth-child(3n + 1):last-child {
+      grid-column: 1 / -1;
+    }
+
+    .industry-chain-card[data-chain-status="confirmed"] {
+      border-left-color: var(--red-6);
+    }
+
+    .industry-chain-card[data-chain-status="diverging"] {
+      border-left-color: var(--orange-6);
+    }
+
+    .industry-chain-card[data-chain-status="pressure"] {
+      border-left-color: var(--green-6);
+    }
+
+    .chain-card-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .chain-role {
+      min-width: 0;
+      color: var(--primary-6);
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+    }
+
+    .chain-status {
+      display: inline-flex;
+      min-height: 24px;
+      max-width: 64%;
+      align-items: center;
+      padding: 2px 8px;
+      color: var(--font-2);
+      background: var(--fill-1);
+      border: 1px solid var(--gray-3);
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 18px;
+      overflow-wrap: anywhere;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    [data-chain-status="confirmed"] .chain-status {
+      color: var(--red-6);
+      background: var(--red-1);
+      border-color: #FFD4D2;
+    }
+
+    [data-chain-status="diverging"] .chain-status {
+      color: var(--orange-6);
+      background: var(--orange-1);
+      border-color: #F7D6AA;
+    }
+
+    [data-chain-status="pressure"] .chain-status {
+      color: var(--green-6);
+      background: var(--green-1);
+      border-color: #BDEBC9;
+    }
+
+    .industry-chain-card h3 {
+      margin-top: 12px;
+      color: var(--font-1);
+      font-size: 16px;
+    }
+
+    .industry-chain-card > p {
+      margin-top: 8px;
+      color: var(--font-2);
+      line-height: 1.7;
+    }
+
+    .chain-metrics {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1px;
+      overflow: hidden;
+      margin-top: 12px;
+      background: var(--fill-1);
+      border: 1px solid var(--gray-3);
+      border-radius: var(--radius-sm);
+    }
+
+    .chain-metric {
+      min-width: 0;
+      padding: 12px 8px;
+      background: var(--fill-1);
+    }
+
+    .chain-metric strong {
+      display: block;
+      margin-top: 4px;
+      color: var(--font-1);
+      font-size: 14px;
+      line-height: 1.45;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .chain-evidence {
+      display: grid;
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .chain-evidence div {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .chain-evidence strong {
+      display: block;
+      color: var(--font-3);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .chain-evidence span {
+      display: block;
+      margin-top: 4px;
+      color: var(--font-1);
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    .chain-risk {
+      margin-top: 12px;
+      padding-top: 12px;
+      color: var(--font-3);
+      border-top: 1px solid var(--gray-3);
+      font-size: 12px;
+      line-height: 1.65;
+    }
+
+    .chain-risk strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--font-3);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .chain-risk span {
+      display: block;
+      color: var(--font-1);
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    .industry-chain-boundary {
+      margin-top: 12px;
+      color: var(--font-3);
+      font-size: 12px;
+      line-height: 1.65;
+    }
+
+    .confidence-high {
+      color: var(--primary-6);
+      background: var(--primary-1);
+    }
+
+    .confidence-medium {
+      color: var(--cyan-6);
+      background: var(--cyan-1);
+    }
+
+    .confidence-low {
+      color: var(--orange-6);
+      background: var(--orange-1);
+    }
+
+    .capital-details {
+      margin-top: 24px;
+    }
+
+    .capital-details > summary {
+      display: flex;
+      min-height: 44px;
+      align-items: center;
+      justify-content: flex-start;
+      margin-bottom: 12px;
+      padding: 8px 0;
+      color: var(--font-1);
+      background: transparent;
+      border: 0;
+      border-bottom: 1px solid var(--gray-3);
+      border-radius: 0;
+      cursor: default;
+      pointer-events: none;
+      list-style: none;
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .capital-details > summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .capital-details > .capital-classification-grid,
+    .capital-details > .two-column {
+      margin-top: 0;
+    }
+
+    #capital-channels .two-column > .surface {
+      display: flex;
+      flex-direction: column;
+    }
+
+    #capital-channels .flow-source-list,
+    #capital-channels .flow-direction-list {
+      flex: 1;
+    }
+
+    #capital-channels .flow-source-list {
+      grid-template-rows: repeat(3, minmax(0, 1fr));
+      gap: 0;
+    }
+
+    #capital-channels .flow-source-item {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 16px 0;
+    }
+
+    #capital-channels .flow-source-item + .flow-source-item {
+      border-top: 1px solid var(--gray-3);
+    }
+
+    .capital-trend-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .flow-visual-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.8fr) minmax(240px, 0.72fr);
+      gap: 16px;
+      align-items: stretch;
+      padding: 16px 20px 20px;
+    }
+
+    .flow-chart-column {
+      min-width: 0;
+    }
+
+    .flow-visual-grid .flow-chart-body {
+      min-height: 300px;
+      padding: 0;
+    }
+
+    .flow-visual-grid .chart-legend {
+      padding: 12px 0 0;
+    }
+
+    .flow-visual-grid .flow-sync {
+      grid-template-columns: minmax(0, 1fr);
+      margin: 0;
+    }
+
+    .flow-visual-grid .flow-sync-item {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .flow-verdict-details {
+      margin-top: 20px;
+    }
+
+    .flow-verdict-summary {
+      display: none;
+    }
+
+    .flow-verdict-list {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 0;
+    }
+
+    .flow-verdict-row {
+      padding: 16px;
+      border-left: 3px solid var(--primary-6);
+      line-height: 1.75;
+    }
+
+    .logic-item:last-child:nth-child(3n + 2) {
+      grid-column: span 2;
+    }
+
+    .event-summary,
+    .risk-summary {
+      cursor: default;
+      pointer-events: none;
+    }
+
+    .event-summary:hover,
+    .risk-summary:hover {
+      background: transparent;
+    }
+
+    .event-toggle {
+      display: none;
+    }
+
+    .valuation-fundamentals .score-row {
+      grid-template-columns: minmax(0, 1fr) auto;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--gray-3);
+    }
+
+    .valuation-fundamentals .score-row:last-of-type {
+      border-bottom: 0;
+    }
+
+    .valuation-fundamentals .score-track {
+      display: none;
+    }
+
+    .final-copy > details,
+    .footer-details {
+      border-top: 1px solid var(--gray-3);
+    }
+
+    .final-copy > details > summary,
+    .footer-details > summary {
+      min-height: 44px;
+      padding: 8px 0;
+      color: var(--font-1);
+      cursor: default;
+      pointer-events: none;
+      list-style: none;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .footer {
+      padding-top: 0;
+      border-top: 0;
+    }
+
+    .footer-details {
+      color: var(--font-3);
+    }
+
+    .footer-details > summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .footer-details p + p {
+      margin-top: 8px;
+    }
+
+    @media (max-width: 1100px) {
+      .report-toolbar nav {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .metrics-panel {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .capital-today-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .kline-inspector-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .drivers-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .driver-card,
+      .driver-card:nth-child(3n + 1):last-child,
+      .driver-card:nth-child(3n + 1):nth-last-child(2),
+      .driver-card:nth-child(3n + 2):last-child {
+        grid-column: auto;
+      }
+
+      .driver-card:nth-child(odd):last-child {
+        grid-column: 1 / -1;
+      }
+
+      .flow-verdict-list {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .flow-visual-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .flow-visual-grid .flow-sync {
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      }
+
+      .industry-chain-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .industry-chain-card:nth-child(3n + 1):last-child {
+        grid-column: auto;
+      }
+
+      .industry-chain-card:nth-child(odd):last-child {
+        grid-column: 1 / -1;
+      }
+
+      .chain-overview-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    @media (max-width: 860px) {
+      /* The order-structure grid carries a 320px secondary panel. Collapse it
+         before tablet widths so the page itself never becomes wider than the
+         viewport; the table remains the only intentional horizontal scroller. */
+      .capital-classification-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    @media (max-width: 760px) {
+      .page {
+        padding: 20px 12px 32px;
+      }
+
+      .hero {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas:
+          "identity"
+          "title"
+          "meta"
+          "summary";
+        padding: 20px;
+      }
+
+      .summary-headline {
+        font-size: 14px;
+      }
+
+      .hero-summary {
+        padding: 16px;
+      }
+
+      .report-toolbar nav {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .hero-meta {
+        justify-content: flex-start;
+      }
+
+      h1 {
+        font-size: 20px;
+      }
+
+      .context-strip {
+        align-items: flex-start;
+      }
+
+      .section-nav {
+        flex-basis: 100%;
+        justify-content: flex-start;
+      }
+
+      .chart-grid,
+      .structure-grid,
+      .two-column,
+      .capital-classification-grid,
+      .drivers-grid,
+      .logic-grid,
+      .industry-chain-grid,
+      .flow-methodology-list {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .chain-path {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .chain-stage:not(:last-child)::after {
+        top: auto;
+        right: 50%;
+        bottom: -12px;
+        transform: translateX(50%) rotate(90deg);
+      }
+
+      .logic-item:last-child:nth-child(3n + 2) {
+        grid-column: auto;
+      }
+
+      .industry-chain-card:nth-child(odd):last-child {
+        grid-column: auto;
+      }
+
+      .capital-today-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .driver-card,
+      .driver-card:nth-child(odd):last-child {
+        grid-column: auto;
+      }
+
+      .chart-body {
+        min-height: 260px;
+        padding: 8px 8px 12px;
+      }
+
+      .chart-body svg {
+        height: 244px;
+      }
+
+      .chart-controls {
+        justify-content: flex-start;
+      }
+
+      .kline-chart-body {
+        min-height: 388px;
+        padding: 0 4px;
+      }
+
+      .kline-tooltip,
+      .kline-tooltip[data-side="left"] {
+        top: 16px;
+        right: 16px;
+        left: 16px;
+        width: auto;
+      }
+
+      .kline-echart {
+        height: 380px;
+      }
+
+      .flow-chart-body {
+        min-height: 280px;
+        padding: 8px 8px 4px;
+      }
+
+      .flow-chart-body svg {
+        height: 252px;
+      }
+
+      .flow-visual-grid {
+        gap: 12px;
+        padding: 12px 16px 16px;
+      }
+
+      .surface-head {
+        padding: 16px;
+      }
+
+      .score-row {
+        grid-template-columns: 76px minmax(0, 1fr) 42px;
+        gap: 8px;
+      }
+
+      .conclusion-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 480px) {
+      .chain-metrics,
+      .chain-coverage {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .chart-surface-head > div:first-child {
+        width: 100%;
+        flex: 0 1 auto;
+      }
+
+      .chart-surface-head .chart-controls {
+        width: 100%;
+        margin-left: 0;
+      }
+
+      .view-switcher {
+        width: 100%;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .view-btn {
+        width: 100%;
+      }
+
+      .event-summary,
+      .risk-summary {
+        padding: 12px 16px;
+      }
+
+      .event-detail {
+        margin: 0 16px 12px;
+      }
+
+      .risk-item h4 {
+        grid-column: 1 / -1;
+      }
+
+      .risk-level {
+        grid-column: 1;
+        grid-row: 2;
+        justify-self: start;
+      }
+
+      .kline-tooltip,
+      .kline-tooltip[data-side="left"] {
+        right: 8px;
+        left: 8px;
+      }
+
+      .breadth-stats,
+      .conclusion-grid,
+      .flow-sync,
+      .flow-horizons {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .metrics-panel,
+      .capital-today-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .flow-visual-grid .flow-sync {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .metric-value {
+        font-size: 18px;
+      }
+
+      .metric-stale::after {
+        position: static;
+        display: inline-flex;
+        margin-top: 8px;
+      }
+
+      .order-flow-axis {
+        display: none;
+      }
+
+      .order-flow-row {
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px 12px;
+      }
+
+      .order-flow-bar-cell {
+        grid-column: 1 / -1;
+        grid-row: 2;
+      }
+
+      .metric {
+        padding: 12px 16px;
+      }
+
+      .surface-head {
+        flex-direction: column;
+      }
+
+      .final-answer {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .final-answer > .ai-mark {
+        width: 32px;
+        height: 32px;
+      }
+    }
+
+    @media print {
+      html,
+      body {
+        background: #FFFFFF;
+      }
+
+      .page {
+        width: 100%;
+        max-width: none;
+        padding: 0;
+      }
+
+      .hero,
+      .final-answer {
+        box-shadow: none;
+      }
+
+      .section-nav,
+      .chart-controls {
+        display: none;
+      }
+
+      .report-section {
+        break-inside: avoid;
+      }
+    }
+
+    /* Sector reading layout: one overview, quiet navigation, distinct evidence surfaces. */
+    .sector-report .page { padding-top: 20px; }
+    .hero {
+      grid-template-areas: "identity meta" "title title" "summary summary" "metrics metrics";
+      gap: 16px 24px; padding: 24px; box-shadow: none;
+    }
+    .hero-title { padding: 0; }
+    .hero-title h1 { letter-spacing: -.02em; }
+    .hero-summary { margin-top: 0; border: 0; padding: 20px; }
+    .summary-headline { font-size: 18px; line-height: 1.65; }
+    .hero-summary > p { line-height: 1.85; }
+    .hero .metrics-panel {
+      grid-area: metrics; grid-template-columns: repeat(4, minmax(0, 1fr));
+      margin: 4px 0 0; border: 0; border-top: 1px solid var(--gray-3);
+      border-radius: 0; gap: 0; background: transparent; overflow: visible;
+    }
+    .hero .metric { padding: 16px 16px 0; background: transparent; }
+    .hero .metric:first-child { padding-left: 0; }
+    .hero .metric + .metric { border-left: 1px solid var(--gray-3); }
+    .metric-label { color: var(--font-2); }
+    .metric-unavailable .metric-value { font-size: 16px; font-weight: 500; color: var(--font-3) !important; }
+    .metric-unavailable.metric-stale::after { display: none; }
+    .metric-value { margin-top: 8px; font-size: 24px; font-weight: 650; }
+    .metric-stale::after { position: static; display: inline-flex; margin-top: 8px; }
+    .report-toolbar { padding: 16px 0; border: 0; border-radius: 0; background: transparent; }
+    .report-toolbar-head { min-height: 0; padding: 0 0 8px; font-size: 12px; }
+    .report-toolbar nav { display: flex; flex-wrap: wrap; gap: 4px 8px; padding: 0; }
+    .report-toolbar a { padding: 8px 12px; background: var(--surface); border: 1px solid var(--gray-3); }
+    .report-section { margin-top: 32px; }
+    .section-head { align-items: baseline; gap: 12px; margin-bottom: 16px; }
+    .section-number { background: transparent; border-radius: 0; min-width: 24px; font-variant-numeric: tabular-nums; }
+    .section-head h2 { font-size: 20px; }
+    .section-head p { display: block; margin-top: 4px; }
+    .surface-head { padding: 20px 24px 16px; }
+    .surface-head h3 { font-size: 16px; }
+    .surface-head p { display: block; margin-top: 4px; line-height: 1.65; }
+    .chart-grid { grid-template-columns: minmax(0, 1fr); }
+    .chart-grid > aside { display: grid; grid-template-columns: minmax(0, .7fr) minmax(0, 2fr); align-items: start; }
+    .chart-grid > aside .surface-head { border: 0; }
+    .chart-grid .phase-body { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 20px; }
+    .capital-trend-grid > aside { display: block; }
+    .capital-trend-grid > aside .surface-head { border-bottom: 1px solid var(--gray-3); }
+    .capital-trend-grid .phase-body { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .capital-trend-grid .flow-horizons { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 0; }
+    .capital-trend-grid .flow-verdict-details { grid-column: 1 / -1; margin-top: 0; }
+    .capital-trend-grid .flow-verdict-list { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+    @media (max-width: 760px) {
+      .capital-trend-grid .phase-body { grid-template-columns: minmax(0, 1fr); }
+      .capital-trend-grid .flow-horizons { grid-template-columns: minmax(0, 1fr); }
+    }
+
+    .chart-grid .phase-track { margin-top: 0; }
+    .phase-current { background: var(--fill-1); border-left-color: var(--primary-6); }
+    .phase-bar > span { background: var(--primary-6); }
+    .structure-grid { align-items: start; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }
+    .drivers-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .driver-card { padding: 24px; border: 1px solid var(--gray-3); }
+    .driver-card:nth-child(n) { border-left: 1px solid var(--gray-3); }
+    .driver-card:nth-child(odd):last-child { grid-column: 1 / -1; }
+    .driver-card h3 { margin-top: 8px; font-size: 18px; }
+    .driver-evidence { display: block; margin-top: 16px; }
+    .driver-evidence-summary { min-height: 32px; }
+    .evidence-line strong { display: inline; margin-right: 8px; }
+    .evidence-line strong::after { content: "："; }
+    .industry-chain-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .industry-chain-card { padding: 24px; border-left-width: 1px; }
+    .industry-chain-card:nth-child(n) { grid-column: auto; }
+    .industry-chain-card:nth-child(odd):last-child { grid-column: 1 / -1; }
+    .chain-card-head { display: flex; flex-wrap: wrap; justify-content: space-between; }
+    .chain-status { max-width: 100%; white-space: normal; }
+    .chain-metrics { border: 0; }
+    .chain-evidence { gap: 8px; }
+    .chain-evidence strong, .chain-evidence span { display: inline; font-size: 14px; }
+    .chain-evidence strong::after { content: "："; }
+    .chain-overview-grid { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
+    .logic-item { border: 0; border-radius: 8px; padding: 20px; background: var(--fill-1); }
+    .capital-today-grid > :only-child { grid-column: 1 / -1; }
+    .two-column > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+    th { color: var(--font-2); font-weight: 500; background: var(--fill-1); }
+    th, td { padding: 12px 16px; }
+    tbody tr:hover { background: var(--fill-1); }
+    .row-title { font-weight: 600; }
+    .role-tag { white-space: normal; }
+    .final-answer { box-shadow: none; border-color: var(--primary-2); padding: 24px; }
+    .final-copy > p { font-size: 16px; line-height: 1.85; }
+    .conclusion-item { border: 0; background: var(--fill-1); }
+    .sector-report .ftshare-mask-host { min-height: 160px; }
+    .sector-report .ftshare-module-mask { align-self: stretch; justify-self: stretch; }
+    .sector-report .ftshare-mask-host-horizontal .ftshare-module-mask { padding: 16px; }
+    .sector-report .ftshare-module-mask-card strong { font-size: 16px; }
+    .sector-report .ftshare-module-mask-card { gap: 8px; }
+    .sector-report .ftshare-module-mask-card a { box-shadow: none; }
+    @media (max-width: 900px) {
+      .hero .metrics-panel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .hero .metric { padding: 16px; }
+      .hero .metric:first-child { padding-left: 16px; }
+      .hero .metric:nth-child(odd) { border-left: 0; }
+      .hero .metric:nth-child(n+3) { border-top: 1px solid var(--gray-3); }
+      .structure-grid, .chain-overview-grid { grid-template-columns: minmax(0, 1fr); }
+      .chart-grid > aside { grid-template-columns: minmax(0, 1fr); }
+    }
+    @media (max-width: 760px) {
+      .hero { padding: 20px; grid-template-areas: "identity" "title" "meta" "summary" "metrics"; }
+      .hero-summary { padding: 16px; }
+      .summary-headline { font-size: 16px; }
+      .section-head h2 { font-size: 18px; }
+      .drivers-grid, .industry-chain-grid, .chart-grid .phase-body { grid-template-columns: minmax(0, 1fr); }
+      .driver-card, .industry-chain-card, .final-answer { padding: 20px; }
+      .surface-head { padding: 16px; }
+      .report-toolbar-head { flex-wrap: wrap; gap: 4px; }
+      .metric-value { font-size: 20px; }
+    }
+    @media (max-width: 480px) {
+      .hero .metrics-panel { grid-template-columns: minmax(0, 1fr); }
+      .hero .metric { border-left: 0; padding: 12px 0; }
+      .hero .metric:first-child { padding-left: 0; }
+      .hero .metric + .metric { border-left: 0; border-top: 1px solid var(--gray-3); }
+      .hero-meta { max-width: 100%; }
+      .report-toolbar a { padding: 4px 8px; }
+    }
+    @media print {
+      .kline-chart-body, .flow-chart-body { break-inside: avoid; }
+      .report-toolbar { display: none; }
+      .report-section { break-inside: auto; }
+      .section-head { break-after: avoid; }
+      .hero, .surface, .driver-card, .industry-chain-card { box-shadow: none; }
+    }
+  </style>
+</head>
+<body class="sector-report">
+  <main class="page">
+<div class="nova-topbar report-brand"><a class="nova-brand" href="#overview"><span class="nova-logo">◈</span><span><strong>Nova Research</strong><small>行业洞察 · 数据驱动研究</small></span></a><label class="nova-search"><span aria-hidden="true">⌕</span><input id="nova-search" type="search" placeholder="搜索报告中的行业、公司、主题…" aria-label="搜索报告内容"></label><div class="nova-actions"><button type="button" id="nova-print">⇩ 导出 PDF</button><button type="button" id="nova-share">↗ 分享</button></div><span id="nova-action-status" role="status"></span></div>    <header class="hero nova-banner">
+      <div class="identity">
+        <span class="ai-mark" aria-hidden="true">AI</span>
+        <span>{{ report.meta.report_identity }}</span>
+      </div>
+
+      <div class="hero-meta" aria-label="报告元数据">
+        {% for tag in report.meta.tags %}
+        {% if tag.text != "shenwan" %}
+        <span class="chip {{ tag.class_name }}">{{ tag.text }}</span>
+        {% endif %}
+        {% endfor %}
+      </div>
+
+      <div class="hero-title">
+        <h1>{{ report.meta.sector_name }}板块分析</h1>
+        <div class="hero-subline">
+          <span>分析日期：{{ report.meta.analysis_date }}</span>
+          <span>数据截止：{{ report.meta.data_as_of }}</span>
+      {% if report.meta.constituent_count_text is not containing("未覆盖") and report.meta.constituent_count_text is not containing("当前模块尚无可核验事实") %}
+      <span>成分股：{{ report.meta.constituent_count_text }}</span>
+      {% endif %}
+          <span>板块阶段：{{ report.meta.phase }}</span>
+        </div>
+      </div>
+
+
+
+
+    </header>
+
+
+<section class="report-section nova-overview" id="overview"><div class="section-head"><span class="section-number">01</span><div><h2>AI 投资结论</h2><p>基于已核验数据与多维分析，形成板块研究判断</p></div><time>{{ report.meta.analysis_date }}</time></div><div class="nova-overview-grid"><div class="nova-verdict"><span>◎ 行情判断</span><strong>{{ report.performance.phase.current }}</strong><small>基于价格与均线结构</small></div><section class="metrics-panel" aria-label="板块关键指标">
+      {% for metric in report.key_metrics %}
+      <div class="metric{% if metric.value is containing("暂无") or metric.value is containing("未覆盖") %} metric-unavailable{% endif %}{% if metric.label == "最新主力净额" and metric.note is not containing(report.meta.analysis_date) %} metric-stale{% endif %}">
+        <div class="metric-label">{{ metric.label }}</div>
+        <div class="metric-value" data-semantic="{{ metric.tone }}">{{ metric.value }}</div>
+        <div class="metric-note">{{ metric.note }}</div>
+      </div>
+      {% endfor %}
+    </section></div><div class="hero-summary">
+        <div class="summary-label">AI 摘要</div><strong class="summary-headline">{{ report.summary.headline }}</strong><p>{{ report.summary.body }}</p></div><div class="nova-insights" data-analysis-status="{{ report.overview_analysis.status | default('unavailable') }}">
+{% for key, heading in {"core_logic": "◉ 核心逻辑", "major_risks": "△ 主要风险"} %}
+<div><h3>{{ heading }}</h3>
+{% if report.overview_analysis.status == "generated" %}
+<ul>{% for item in report.overview_analysis[key] %}
+<li><strong>{{ item.title }}</strong><p>{{ item.description }}</p><details class="nova-analysis-evidence"><summary>事实依据与验证条件</summary>{% for text in item.evidence %}<p>{{ text }}</p>{% endfor %}<p><strong>验证条件：</strong>{{ item.watch }}</p></details></li>
+{% endfor %}</ul>
+{% else %}<p class="nova-analysis-unavailable">本次 AI 分析未生成，请重新生成报告。</p>{% endif %}
+</div>{% endfor %}</div><div class="nova-ai"><span class="nova-ai-icon">✦</span><strong>AI 解读</strong><p>{{ report.section_analysis.overview }}</p></div><details class="nova-detail"><summary>展开核心驱动、验证证据与完整结论</summary><section class="report-section" id="drivers">
+      <div class="section-head">
+        <span class="section-number">04</span>
+        <div>
+          <h2>核心驱动因素</h2>
+          <p>区分已确认事实、数据推断和仍待验证的市场叙事。</p>
+        </div>
+      </div>
+
+      <div class="drivers-grid">
+        {% for driver in report.drivers %}
+        <article class="driver-card" data-driver-source="{{ driver.source_kind }}">
+          <div class="driver-top">
+            <div><span class="driver-index">驱动 {{ driver.index }}</span><h3>{{ driver.title }}</h3></div>
+            <span class="confidence{% if driver.confidence == "高" %} confidence-high{% elif driver.confidence == "中" %} confidence-medium{% elif driver.confidence == "低" %} confidence-low{% endif %}">证据：{{ driver.confidence }}</span>
+          </div>
+          <p class="driver-summary">{{ driver.summary }}</p>
+          <details class="driver-evidence">
+            <summary class="driver-evidence-summary" aria-label="展开或收起支撑证据">
+              <span class="driver-evidence-toggle" data-count="{{ driver.evidence | length }}" aria-hidden="true"></span>
+            </summary>
+            <div class="evidence-list">
+              {% for evidence in driver.evidence %}
+              <div class="evidence-line"><strong>{{ evidence.label }}</strong>{{ evidence.text }}</div>
+              {% endfor %}
+            </div>
+          </details>
+        </article>
+        {% endfor %}
+      </div>
+    </section><section class="report-section" id="conclusion">
+      <div class="section-head">
+        <span class="section-number">10</span>
+        <div>
+          <h2>综合结论</h2>
+          <p>用统一字段输出，便于行业板块与概念板块横向比较。</p>
+        </div>
+      </div>
+
+      <div class="final-answer">
+        <span class="ai-mark" aria-hidden="true">AI</span>
+        <div class="final-copy">
+          <h3>{{ report.conclusion.title }}</h3>
+          <div class="verdict-chips">
+            {% for tag in report.conclusion.tags %}
+            <span class="chip {{ tag.class_name }}">{{ tag.text }}</span>
+            {% endfor %}
+          </div>
+          <p>{{ report.conclusion.body }}</p>
+          <div class="conclusion-grid">
+            {% for item in report.conclusion.metrics %}
+            <div class="conclusion-item"><span>{{ item.label }}</span><strong data-semantic="{{ item.tone }}">{{ item.value }}</strong></div>
+            {% endfor %}
+          </div>
+          <details open>
+            <summary>核心观察点与失效条件</summary>
+            <ul>
+              {% for item in report.conclusion.observations %}
+              <li>{{ item }}</li>
+              {% endfor %}
+            </ul>
+          </details>
+        </div>
+      </div>
+    </section></details></section>
+<section class="report-section" id="performance">
+      <div class="section-head"><span class="section-number">02</span><div><h2>今日市场快照</h2><p>板块价格走势、市场广度与阶段判断</p></div><time>{{ report.meta.analysis_date }}</time></div>
+
+      <div class="chart-grid">
+        <article class="surface">
+          <div class="surface-head chart-surface-head">
+            <div>
+              <h3>板块价格结构</h3>
+              <p id="performance-caption">{{ report.performance.initial_caption }}</p>
+            </div>
+            <div class="chart-controls">
+              <div class="view-switcher" aria-label="切换图表类型">
+                <button class="view-btn" type="button" data-view="kline" aria-pressed="true">K线与成交量</button>
+                <button class="view-btn" type="button" data-view="relative" aria-pressed="false">相对收益</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="kline-panel">
+            <div class="kline-chart-body">
+              <div id="kline-chart" class="kline-echart" data-chart tabindex="0" role="application" aria-label="{{ report.meta.sector_name }}板块指数K线、均线、成交量及可缩放时间窗口"></div>
+              <div class="kline-tooltip" id="kline-inspector" data-side="right" hidden>
+                <div class="kline-tooltip-head">
+                  <div class="kline-tooltip-title">
+                    <span id="kline-inspector-date">{{ report.meta.analysis_date }}</span>
+                    <strong id="kline-inspector-status" aria-live="polite">悬停查看</strong>
+                  </div>
+                  <button class="kline-tooltip-close" id="kline-reset" type="button" aria-label="关闭单日详情" title="关闭单日详情" hidden>×</button>
+                </div>
+                <div class="kline-inspector-grid" aria-label="所选交易日行情详情">
+                  <div class="kline-inspector-item"><span>开盘</span><strong id="kline-detail-open" data-semantic="neutral">—</strong></div>
+                  <div class="kline-inspector-item"><span>最高</span><strong id="kline-detail-high" data-semantic="neutral">—</strong></div>
+                  <div class="kline-inspector-item"><span>最低</span><strong id="kline-detail-low" data-semantic="neutral">—</strong></div>
+                  <div class="kline-inspector-item"><span>收盘</span><strong id="kline-detail-close" data-semantic="neutral">—</strong></div>
+                  <div class="kline-inspector-item"><span>涨跌幅</span><strong id="kline-detail-change" data-semantic="neutral">—</strong></div>
+                  <div class="kline-inspector-item"><span>成交量</span><strong id="kline-detail-amount" data-semantic="neutral">—</strong></div>
+                  <div class="kline-inspector-item"><span>成交量比</span><strong id="kline-detail-amount-ratio" data-semantic="neutral">—</strong></div>
+                  <div class="kline-inspector-item"><span>主动净流入</span><strong id="kline-detail-fund-flow" data-semantic="neutral">—</strong></div>
+                  <div class="kline-inspector-item"><span>上涨占比</span><strong id="kline-detail-breadth" data-semantic="neutral">—</strong></div>
+                  <div class="kline-inspector-item"><span>MA5</span><strong id="kline-detail-ma5" data-semantic="neutral">—</strong></div>
+                  <div class="kline-inspector-item"><span>MA10</span><strong id="kline-detail-ma10" data-semantic="neutral">—</strong></div>
+                  <div class="kline-inspector-item"><span>MA20</span><strong id="kline-detail-ma20" data-semantic="neutral">—</strong></div>
+                </div>
+              </div>
+            </div>
+            <div class="chart-legend">
+              <span class="legend-item"><i class="legend-line" aria-hidden="true"></i>K线</span>
+              <button class="legend-toggle" type="button" data-series="ma5" aria-pressed="true"><i class="legend-line ma5" aria-hidden="true"></i>MA5</button>
+              <button class="legend-toggle" type="button" data-series="ma10" aria-pressed="true"><i class="legend-line ma10" aria-hidden="true"></i>MA10</button>
+              <button class="legend-toggle" type="button" data-series="ma20" aria-pressed="true"><i class="legend-line ma20" aria-hidden="true"></i>MA20</button>
+              <span class="legend-item"><i class="legend-line amount-ma" aria-hidden="true"></i>成交量20日均线</span>
+              <span>滚轮或双指缩放，拖动平移，点击锁定</span>
+            </div>
+            <div class="flow-sync" aria-label="量价结构摘要">
+              <div class="flow-sync-item"><span>趋势结构</span><strong id="kline-trend" data-semantic="{{ report.performance.kline_summary.trend_tone }}">{{ report.performance.kline_summary.trend }}</strong></div>
+              <div class="flow-sync-item"><span>成交量状态</span><strong id="kline-amount-ratio">{{ report.performance.kline_summary.amount_ratio }}</strong></div>
+              <div class="flow-sync-item"><span>距 MA20</span><strong id="kline-ma-distance" data-semantic="{{ report.performance.kline_summary.ma20_distance_tone }}">{{ report.performance.kline_summary.ma20_distance }}</strong></div>
+            </div>
+          </div>
+
+          <div id="relative-panel" hidden>
+            <div class="chart-body">
+              <svg id="performance-chart" viewBox="0 0 720 272" role="img" aria-labelledby="chart-title chart-desc">
+                <title id="chart-title">{{ report.meta.sector_name }}板块与{{ report.performance.benchmark_name }}累计收益对比</title>
+                <desc id="chart-desc">展示所选交易日区间的累计收益，红线代表{{ report.meta.sector_name }}板块，蓝线代表{{ report.performance.benchmark_name }}。</desc>
+                <g id="chart-grid-lines"></g>
+                <polyline id="sector-line" class="sector-line" points=""></polyline>
+                <polyline id="benchmark-line" class="benchmark-line" points=""></polyline>
+                <g id="chart-axis-labels"></g>
+              </svg>
+            </div>
+            <div class="chart-legend">
+              <span class="legend-item"><i class="legend-line" aria-hidden="true"></i>{{ report.meta.sector_name }}板块</span>
+              <span class="legend-item"><i class="legend-line benchmark" aria-hidden="true"></i>{{ report.performance.benchmark_name }}</span>
+              <span id="window-result">区间收益：<b data-semantic="{{ report.performance.initial_result.sector_tone }}">{{ report.performance.initial_result.sector }}</b> / <b data-semantic="{{ report.performance.initial_result.benchmark_tone }}">{{ report.performance.initial_result.benchmark }}</b></span>
+            </div>
+          </div>
+        </article>
+
+        <aside class="surface">
+          <div class="surface-head">
+            <div>
+              <h3>市场广度</h3>
+              <p>成分股参与程度和收益集中度</p>
+            </div>
+          </div>
+          <div class="breadth-body">
+            <div class="breadth-number" data-semantic="{{ report.structure.breadth.ratio_tone }}">{{ report.structure.breadth.up_ratio }}</div>
+            <div class="breadth-caption">{{ report.structure.breadth.caption }}</div>
+            <div class="breadth-bar" aria-label="{{ report.structure.breadth.aria_label }}">
+              <span class="up" style="width: {{ report.structure.breadth.up_width_pct }}%"></span><span class="flat" style="width: {{ report.structure.breadth.flat_width_pct }}%"></span><span class="down" style="width: {{ report.structure.breadth.down_width_pct }}%"></span>
+            </div>
+            <div class="breadth-legend">
+              <span data-semantic="up">上涨 {{ report.structure.breadth.up_count }}</span>
+              <span data-semantic="neutral">平盘 {{ report.structure.breadth.flat_count }}</span>
+              <span data-semantic="down">下跌 {{ report.structure.breadth.down_count }}</span>
+            </div>
+            <div class="breadth-stats">
+              <div class="breadth-stat"><span>涨停 / 跌停</span><strong><i data-semantic="up">{{ report.structure.breadth.limit_up_count }}</i> / <i data-semantic="down">{{ report.structure.breadth.limit_down_count }}</i></strong></div>
+              {% for stat in report.structure.breadth.stats %}
+              <div class="breadth-stat"><span>{{ stat.label }}</span><strong data-semantic="{{ stat.tone }}">{{ stat.value }}</strong></div>
+              {% endfor %}
+            </div>
+            <div class="judgement"><strong>结构判断：</strong>{{ report.structure.breadth.judgement }}</div>
+          </div>
+        </aside>
+      </div>
+
+    <details class="nova-detail"><summary>行情阶段与量化依据</summary><aside class="surface">
+          <div class="surface-head">
+            <div>
+              <h3>行情阶段</h3>
+              <p>由趋势、广度、成交和龙头结构综合判断</p>
+            </div>
+          </div>
+          <div class="phase-body">
+            <div class="phase-current">
+              <span>当前判断</span>
+              <strong>{{ report.performance.phase.current }}</strong>
+              <p>{{ report.performance.phase.description }}</p>
+            </div>
+            <div class="phase-track" aria-label="行情判断依据">
+              {% for step in report.performance.phase.steps %}
+              <div class="phase-step{% if step.is_current %} is-current{% endif %}">
+                <span>{{ step.label }}</span>
+                <strong data-semantic="{{ step.tone }}">{{ step.value }}</strong>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </aside></details><div class="nova-ai"><span class="nova-ai-icon">✦</span><strong>AI 解读</strong><p>{{ report.section_analysis.market }}</p></div></section>
+<section class="report-section" id="capital-flow">
+      <div class="section-head"><span class="section-number">03</span><div><h2>资金快照 & 订单结构</h2><p>主力资金流向、订单规模与持续性</p></div><time>{{ report.meta.analysis_date }}</time></div>
+
+      <article class="surface">
+        <div class="surface-head">
+          <div>
+            <h3>{{ report.capital_flow.snapshot.title }}</h3>
+            <p>{{ report.capital_flow.snapshot.subtitle }}</p>
+          </div>
+          <span class="chip {{ report.capital_flow.snapshot.tag.class_name }}">{{ report.capital_flow.snapshot.tag.text }}</span>
+        </div>
+        <div class="capital-today-grid" aria-label="板块资金核心指标">
+          {% for metric in report.capital_flow.snapshot.metrics %}
+          <div class="capital-today-item">
+            <span>{{ metric.label }}</span>
+            <strong data-semantic="{{ metric.tone }}">{{ metric.value }}</strong>
+            <small>{{ metric.note }}</small>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="capital-reading"><strong>{{ report.capital_flow.snapshot.conclusion_label }}：</strong>{{ report.capital_flow.snapshot.conclusion }}</div>
+      </article>
+
+      <details class="capital-details" id="capital-order-structure" open>
+        <summary>订单结构与市场占比</summary>
+        <div class="capital-classification-grid">
+        <article class="surface">
+          <div class="surface-head">
+            <div>
+              <h3>{{ report.capital_flow.order_structure.title }}</h3>
+              <p>{{ report.capital_flow.order_structure.subtitle }}</p>
+            </div>
+            <span class="chip {{ report.capital_flow.order_structure.tag.class_name }}">{{ report.capital_flow.order_structure.tag.text }}</span>
+          </div>
+          <div class="order-flow-list" aria-label="按订单规模拆分的最新主动资金">
+            <div class="order-flow-axis" aria-hidden="true">
+              <span>订单类型</span>
+              <div class="order-flow-axis-scale"><span>← {% if report.capital_flow.order_structure.has_gross %}主动卖出{% else %}净流出{% endif %}</span><span>{% if report.capital_flow.order_structure.has_gross %}主动买入{% else %}净流入{% endif %} →</span></div>
+              <span style="text-align: right">净额</span>
+            </div>
+            {% for item in report.capital_flow.order_structure.items %}
+            <div class="order-flow-row">
+              <div class="order-flow-label"><strong>{{ item.label }}</strong><span>{{ item.threshold_note }}</span></div>
+              <div class="order-flow-bar-cell">
+                {% if report.capital_flow.order_structure.has_gross %}<div class="order-flow-values"><span>卖 {{ item.sell }}</span><span>买 {{ item.buy }}</span></div>{% endif %}
+                <div class="order-flow-track" role="img" aria-label="{{ item.aria_label }}"><span class="is-sell" style="width: {{ item.sell_width_pct }}%"></span><span class="is-buy" style="width: {{ item.buy_width_pct }}%"></span></div>
+              </div>
+              <strong class="order-flow-net" data-semantic="{{ item.net_tone }}">{{ item.net }}</strong>
+            </div>
+            {% endfor %}
+          </div>
+          <div class="flow-analysis"><strong>AI 解读 · {{ report.capital_flow.order_structure.analysis.title }}：</strong>{{ report.capital_flow.order_structure.analysis.body }}</div>
+        </article>
+
+        <article class="surface">
+          <div class="surface-head">
+            <div>
+              <h3>板块资金市场占比</h3>
+              <p>同时衡量交易关注度与净流入吸引力</p>
+            </div>
+          </div>
+          <div class="market-share-list">
+            {% for item in report.capital_flow.market_shares.items %}
+            <div class="market-share-item">
+              <div class="market-share-head"><strong>{{ item.label }}</strong><b data-semantic="{{ item.tone }}">{{ item.value }}</b></div>
+              <div class="market-share-track {{ item.class_name }}" role="img" aria-label="{{ item.aria_label }}"><span style="width: {{ item.width_pct }}%"></span><i style="left: {{ item.reference_pct }}%" aria-hidden="true"></i></div>
+              <div class="market-share-meta"><span>{{ item.reference_text }}</span><span data-semantic="{{ item.comparison_tone }}">{{ item.comparison_text }}</span></div>
+            </div>
+            {% endfor %}
+          </div>
+          <div class="flow-analysis"><strong>AI 解读 · {{ report.capital_flow.market_shares.analysis.title }}：</strong>{{ report.capital_flow.market_shares.analysis.body }}</div>
+        </article>
+        <details class="flow-methodology-details">
+          <summary>数据口径与边界</summary>
+          <div class="flow-methodology-list">
+            <p><strong>数值口径：</strong>资金与成交量沿用各数据源口径，未作跨来源换算。</p>
+            <p><strong>订单结构：</strong>{{ report.capital_flow.order_structure.methodology }}</p>
+            <p><strong>市场占比：</strong>{{ report.capital_flow.market_shares.methodology }}</p>
+          </div>
+        </details>
+        </div>
+      </details>
+
+      <details class="nova-detail nova-history"><summary>资金趋势与渠道明细</summary><div class="chart-grid capital-trend-grid">
+        <article class="surface">
+          <div class="surface-head">
+            <div>
+              <h3>资金净流入趋势</h3>
+              <p>{{ report.capital_flow.trend.subtitle }}</p>
+            </div>
+            <span class="chip {{ report.capital_flow.trend.tag.class_name }}">{{ report.capital_flow.trend.tag.text }}</span>
+          </div>
+          <div class="flow-visual-grid">
+            <div class="flow-chart-column">
+              <div class="flow-chart-body">
+                <svg id="fund-flow-chart" viewBox="0 0 720 284" role="img" aria-labelledby="fund-flow-title fund-flow-desc">
+                  <title id="fund-flow-title">{{ report.meta.sector_name }}板块资金净流入趋势</title>
+                  <desc id="fund-flow-desc">红色柱代表每日资金净流入，绿色柱代表每日主动净流出，蓝线代表5日滚动日均净流入。</desc>
+                  <g id="flow-grid-lines"></g>
+                  <g id="flow-bars"></g>
+                  <polyline id="flow-rolling-line" class="flow-rolling-line" points=""></polyline>
+                  <g id="flow-axis-labels"></g>
+                </svg>
+              </div>
+              <div class="chart-legend">
+                <span class="legend-item"><i class="legend-line" aria-hidden="true"></i>每日资金净流入</span>
+                <span class="legend-item"><i class="legend-line benchmark" aria-hidden="true"></i>5日滚动日均净流入</span>
+                <span>流入为红，流出为绿</span>
+              </div>
+            </div>
+            <div class="flow-sync" aria-label="资金净流入趋势统计摘要">
+              {% for metric in report.capital_flow.trend.summary_metrics %}
+              <div class="flow-sync-item"><span>{{ metric.label }}</span><strong data-semantic="{{ metric.tone }}">{{ metric.value }}</strong></div>
+              {% endfor %}
+            </div>
+          </div>
+        </article>
+
+        <aside class="surface">
+          <div class="surface-head">
+            <div>
+              <h3>资金联合判读</h3>
+              <p>资金不是趋势本身，而是趋势的验证变量</p>
+            </div>
+          </div>
+          <div class="phase-body">
+            <div class="phase-current">
+              <span>当前判断</span>
+              <strong>{{ report.capital_flow.joint_reading.title }}</strong>
+              <p>{{ report.capital_flow.joint_reading.description }}</p>
+            </div>
+            <div class="flow-horizons" aria-label="不同周期主动净流入">
+              {% for item in report.capital_flow.joint_reading.horizons %}
+              <div class="flow-horizon"><span>{{ item.label }}</span><strong data-semantic="{{ item.tone }}">{{ item.value }}</strong></div>
+              {% endfor %}
+            </div>
+            <details class="flow-verdict-details" open>
+              <summary class="flow-verdict-summary" aria-label="展开或收起资金联合判读依据">
+                <span class="flow-verdict-toggle" data-count="{{ report.capital_flow.joint_reading.verdicts | length }}" aria-hidden="true"></span>
+              </summary>
+              <div class="flow-verdict-list">
+                {% for item in report.capital_flow.joint_reading.verdicts %}
+                <div class="flow-verdict-row"><strong>{{ item.label }}</strong>{{ item.text }}</div>
+                {% endfor %}
+              </div>
+            </details>
+          </div>
+        </aside>
+      </div>
+
+      <details class="capital-details" id="capital-channels" open>
+        <summary>资金渠道与细分流向</summary>
+        <div class="two-column">
+        <article class="surface">
+          <div class="surface-head">
+            <div>
+              <h3>资金渠道观察</h3>
+              <p>主动交易、ETF与杠杆渠道独立观察，不直接相加</p>
+            </div>
+          </div>
+          <div class="flow-source-list">
+            {% for item in report.capital_flow.sources.items %}
+            <div class="flow-source-item">
+              <div class="flow-source-head"><strong>{{ item.label }}</strong><b data-semantic="{{ item.tone }}">{{ item.value }}</b></div>
+              <p>{{ item.description }}</p>
+            </div>
+            {% endfor %}
+          </div>
+          <div class="flow-methodology"><strong>口径说明：</strong>{{ report.capital_flow.sources.methodology }}</div>
+        </article>
+
+        <article class="surface">
+          <div class="surface-head">
+            <div>
+              <h3>资金流向哪里</h3>
+              <p>{{ report.capital_flow.directions.subtitle }}</p>
+            </div>
+            <span class="chip {{ report.capital_flow.directions.tag.class_name }}">{{ report.capital_flow.directions.tag.text }}</span>
+          </div>
+          <div class="flow-direction-list">
+            {% for item in report.capital_flow.directions.items %}
+            <div class="flow-direction-item">
+              <div class="flow-direction-head"><strong>{{ item.label }}</strong><b data-semantic="{{ item.tone }}">{{ item.value }}</b></div>
+              <div class="flow-direction-track {{ item.class_name }}"><span style="width: {{ item.width_pct }}%"></span></div>
+            </div>
+            {% endfor %}
+          </div>
+          <div class="flow-methodology"><strong>结构结论：</strong>{{ report.capital_flow.directions.conclusion }}</div>
+        </article>
+        </div>
+      </details>
+    </details><div class="nova-ai"><span class="nova-ai-icon">✦</span><strong>AI 解读</strong><p>{{ report.section_analysis.flows }}</p></div></section>
+<section class="report-section" id="structure">
+      <div class="section-head"><span class="section-number">04</span><div><h2>子方向表现</h2><p>细分领域涨跌幅与成交结构</p></div><time>{{ report.meta.analysis_date }}</time></div>
+
+      <div class="structure-grid">
+        <article class="surface">
+          <div class="surface-head">
+            <div>
+              <h3>子方向表现</h3>
+              <p>{{ report.structure.subsector_subtitle }}</p>
+            </div>
+          </div>
+          <div data-scroll="horizontal" aria-label="子方向表现表格">
+            <table>
+              <thead>
+                <tr>
+                  <th>子方向</th>
+                  <th>{{ report.structure.latest_return_label }}</th>
+                  <th>近20日均值</th>
+                  <th>20日中位数</th>
+                  <th>成交量</th>
+                  <th>涨幅贡献</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in report.structure.subsectors %}
+                <tr>
+                  <td><span class="row-title">{{ item.name }}</span><span class="row-subtitle">{{ item.role }}</span></td>
+                  <td data-semantic="{{ item.return_1d_tone }}">{{ item.return_1d }}</td>
+                  <td data-semantic="{{ item.return_tone }}">{{ item.return_20d }}</td>
+                  <td data-semantic="{{ item.median_tone }}">{{ item.median_return }}</td>
+                  <td data-semantic="neutral">{{ item.turnover }}</td>
+                  <td data-semantic="neutral">{{ item.contribution }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+
+      </div>
+
+    <div class="nova-ai"><span class="nova-ai-icon">✦</span><strong>AI 解读</strong><p>{{ report.section_analysis.subsectors }}</p></div></section>
+<section class="report-section" id="leaders">
+      <div class="section-head"><span class="section-number">05</span><div><h2>关键样本（核心股票）</h2><p>重点公司表现与板块贡献</p></div><time>{{ report.meta.analysis_date }}</time></div>
+
+      <article class="surface">
+        <div class="surface-head">
+          <div><h3>关键样本</h3><p>{{ report.leaders.subtitle }}</p></div>
+        </div>
+        <div data-scroll="horizontal" aria-label="关键公司观察表格">
+          <table class="leader-table">
+            <thead>
+              <tr>
+                <th>公司</th>
+                <th>板块角色</th>
+                <th>{{ report.leaders.latest_return_label }}</th>
+                <th>近20日</th>
+                <th>板块贡献</th>
+                <th>关键观察</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in report.leaders.items %}
+              <tr>
+                <td><span class="row-title">{{ item.name }}</span><span class="row-subtitle">{{ item.subsector }}</span></td>
+                <td><span class="role-tag">{{ item.role }}</span></td>
+                <td data-semantic="{{ item.return_1d_tone }}">{{ item.return_1d }}</td>
+                <td data-semantic="{{ item.return_tone }}">{{ item.return_20d }}</td>
+                <td>{{ item.contribution }}</td>
+                <td>{{ item.observation }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </article>
+    <div class="nova-ai"><span class="nova-ai-icon">✦</span><strong>AI 解读</strong><p>{{ report.section_analysis.leaders }}</p></div></section>
+<section class="report-section" id="events">
+      <div class="section-head"><span class="section-number">06</span><div><h2>板块新闻与公告</h2><p>跟踪行业事件、公司动态与风险信号</p></div><time>{{ report.meta.analysis_date }}</time></div>
+
+      <div class="two-column">
+        <article class="surface">
+          <div class="surface-head"><div><h3>催化剂雷达</h3><p>关注可能改变板块预期的事件</p></div></div>
+          <div class="event-list">
+            {% for item in report.events.catalysts %}
+            <details class="event-item" open>
+              <summary class="event-summary">
+                <div class="event-head"><h4>{{ item.title }}</h4><span class="event-time">{{ item.timeline }}</span></div>
+                <span class="event-toggle" aria-hidden="true"></span>
+              </summary>
+              <div class="event-detail"><p>{{ item.description }}</p></div>
+            </details>
+            {% endfor %}
+          </div>
+        </article>
+
+        <article class="surface">
+          <div class="surface-head"><div><h3>风险与失效条件</h3><p>只有可观察、可验证的风险才进入主清单</p></div></div>
+          <div class="risk-list">
+            {% for item in report.events.risks %}
+            <details class="risk-item" open>
+              <summary class="risk-summary">
+                <div class="risk-head"><h4>{{ item.title }}</h4><span class="risk-level {{ item.class_name }}" data-level="{{ item.level }}">{% if item.level == "high" %}高{% elif item.level == "medium" %}中{% elif item.level == "low" %}低{% else %}{{ item.level }}{% endif %}</span></div>
+                <span class="event-toggle" aria-hidden="true"></span>
+              </summary>
+              <div class="event-detail"><p>{{ item.description }}</p></div>
+            </details>
+            {% endfor %}
+          </div>
+        </article>
+      <div class="nova-ai"><span class="nova-ai-icon">✦</span><strong>AI 解读</strong><p>{{ report.section_analysis.events }}</p></div></div></section>
+<section class="report-section" id="industry-chain" data-integration="industry">
+      <div class="section-head"><span class="section-number">07</span><div><h2>产业链与供需</h2><p>产业链结构、关键环节与景气传导</p></div><time>{{ report.meta.analysis_date }}</time></div>
+
+      <article class="surface chain-overview">
+        <div class="chain-overview-grid">
+          <div class="chain-thesis">
+            <span class="chain-kicker">产业链主线</span>
+            <h3>{{ report.industry_chain.title }}</h3>
+            <p>{{ report.industry_chain.thesis }}</p>
+          </div>
+          <div class="chain-coverage" aria-label="产业链分析覆盖情况">
+            {% for item in report.industry_chain.coverage %}
+            <div><span>{{ item.label }}</span><strong>{{ item.value }}</strong></div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="chain-path" style="--chain-stage-count: {{ report.industry_chain.stages | length }}" aria-label="产业链景气传导路径">
+          {% for stage in report.industry_chain.stages %}
+          <div class="chain-stage"><span>0{{ loop.index }} {{ stage.label }}</span><strong>{{ stage.description }}</strong></div>
+          {% endfor %}
+        </div>
+      </article>
+
+      <h3 class="industry-subhead">关键环节：景气强度与 A 股观察</h3>
+      <div class="industry-chain-grid">
+        {% for card in report.industry_chain.cards %}
+        <article class="industry-chain-card" data-chain-status="{{ card.status_class }}">
+          <div class="chain-card-head">
+            <span class="chain-role">{{ card.role }}</span>
+            <span class="chain-status">{{ card.status }}</span>
+          </div>
+          <h3>{{ card.title }}</h3>
+          <p>{{ card.thesis }}</p>
+          <div class="chain-metrics">
+            {% for metric in card.metrics %}
+            <div class="chain-metric"><span>{{ metric.label }}</span><strong data-semantic="{{ metric.tone }}">{{ metric.value }}</strong></div>
+            {% endfor %}
+          </div>
+          <div class="chain-evidence">
+            <div><strong>板块范围</strong><span>{{ card.sector_scope }}</span></div>
+            <div><strong>观察样本</strong><span>{{ card.sample_names }}</span></div>
+            <div><strong>相关产业方向</strong><span>{{ card.related_directions }}</span></div>
+            <div><strong>观察重点</strong><span>{{ card.verification }}</span></div>
+          </div>
+          <p class="chain-risk"><strong>关键风险</strong><span>{{ card.risk }}</span></p>
+        </article>
+        {% endfor %}
+      </div>
+
+      {% if report.industry_chain.boundary is not containing("未覆盖") and report.industry_chain.boundary is not containing("当前模块尚无可核验事实") %}
+      <p class="industry-chain-boundary"><strong>数据说明：</strong>{{ report.industry_chain.boundary }}</p>
+      {% endif %}
+    <div class="nova-ai"><span class="nova-ai-icon">✦</span><strong>AI 解读</strong><p>{{ report.section_analysis.industry_chain }}</p></div></section>
+<section class="report-section" id="valuation">
+      <div class="section-head"><span class="section-number">08</span><div><h2>价格体系 / 盈利与财务 / 估值与预期</h2><p>多维度分析板块估值与交易结构</p></div><time>{{ report.meta.analysis_date }}</time></div>
+
+      <div class="two-column">
+        {% for panel in report.valuation.panels %}
+        <article class="surface{% if loop.first %} valuation-fundamentals{% endif %}">
+          <div class="surface-head">
+            <div><h3>{{ panel.title }}</h3><p>{{ panel.subtitle }}</p></div>
+            <span class="chip {{ panel.tag.class_name }}">{{ panel.tag.text }}</span>
+          </div>
+          <div class="panel-body">
+            {% for metric in panel.metrics %}
+            <div class="score-row"><span>{{ metric.label }}</span><div class="score-track {{ metric.class_name }}"><span style="width: {{ metric.width_pct }}%"></span></div><strong class="score-value">{{ metric.value }}</strong></div>
+            {% endfor %}
+            <div class="panel-conclusion">{{ panel.conclusion }}</div>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+    <details class="nova-detail"><summary>板块逻辑与验证情况</summary><section class="report-section" id="validation">
+      <div class="section-head">
+        <span class="section-number">06</span>
+        <div>
+          <h2>板块逻辑与验证情况</h2>
+          <p>统一兼容行业与概念板块：行业侧重景气，概念侧重叙事兑现。</p>
+        </div>
+      </div>
+
+      <div class="surface logic-surface">
+        <p class="logic-summary">{{ report.validation.summary }}</p>
+        <div class="logic-grid">
+          {% for item in report.validation.items %}
+          <article class="logic-item">
+            <h3>{{ item.title }}</h3>
+            <span class="logic-status">{{ item.status }}</span>
+            <p>{{ item.description }}</p>
+          </article>
+          {% endfor %}
+        </div>
+      </div>
+    </section></details><div class="nova-ai"><span class="nova-ai-icon">✦</span><strong>AI 解读</strong><p>{{ report.section_analysis.valuation }}</p></div></section>
+<details class="nova-detail nova-directory"><summary>报告目录与数据说明</summary>    <div class="report-toolbar">
+      <div class="report-toolbar-head"><strong>报告目录</strong><span>按研究主线快速跳转</span></div>
+      <nav aria-label="报告章节导航">
+        <a href="#performance">行情与结构</a>
+        <a href="#industry-chain">产业链图谱</a>
+        <a href="#drivers">核心驱动</a>
+        <a href="#capital-flow">资金趋势</a>
+        <a href="#valuation">估值与公司</a>
+        <a href="#events">催化与风险</a>
+        <a href="#conclusion">综合结论</a>
+      </nav>
+    </div>
+
+    <div class="context-strip">
+      {% for tag in report.meta.freshness_tags %}
+      <span class="chip {{ tag.class_name }}">{{ tag.text }}</span>
+      {% endfor %}
+      <nav class="section-nav" aria-label="报告章节导航">
+        <a href="#performance">行情</a>
+        <a href="#structure">结构</a>
+        <a href="#industry-chain">产业链</a>
+        <a href="#drivers">驱动</a>
+        <a href="#capital-flow">资金</a>
+        <a href="#validation">验证</a>
+        <a href="#valuation">估值</a>
+        <a href="#leaders">公司</a>
+        <a href="#events">催化与风险</a>
+        <a href="#conclusion">结论</a>
+      </nav>
+    </div>
+
+
+
+</details>
+    <footer class="footer">
+      <p>{{ report.footer.disclaimer }}</p>
+    </footer>
+  </main>
+
+  <script id="sector-local-navigation">
+    (() => {
+      // srcdoc links resolve against the embedding page; keep chapter navigation
+      // inside the report rather than requesting the authenticated host URL.
+      document.querySelectorAll('a[href^="#"]').forEach(link => {
+        link.addEventListener('click', event => {
+          const section = document.getElementById(link.getAttribute('href').slice(1));
+          if (!section) return;
+          event.preventDefault();
+          for (let parent = section.parentElement; parent; parent = parent.parentElement) { if (parent.tagName === 'DETAILS') parent.open = true; }
+          section.scrollIntoView({ behavior: 'instant', block: 'start' });
+        });
+      });
+    })();
+  </script>
+
+  <div id="report-data" hidden>{{ report | json_encode | escape | safe }}</div>
+
+  <script>
+    (() => {
+      const reportNode = document.getElementById("report-data");
+      const report = reportNode ? JSON.parse(reportNode.textContent || "{}") : {};
+      const performanceData = report.performance || {};
+      const capitalFlowData = report.capital_flow || {};
+      const sectorKline = performanceData.sector_kline || {};
+      const benchmarkData = performanceData.benchmark || {};
+      const fundFlowHistory = performanceData.fund_flow_history || {};
+      const breadthHistory = performanceData.breadth_history || {};
+
+      const shortDate = (date) => {
+        const text = String(date ?? "").padStart(8, "0");
+        return `${text.slice(4, 6)}-${text.slice(6, 8)}`;
+      };
+
+      const fullDate = (date) => {
+        const text = String(date ?? "").padStart(8, "0");
+        return `${text.slice(0, 4)}-${text.slice(4, 6)}-${text.slice(6, 8)}`;
+      };
+
+      const buildDatedValueMap = (dates, values) => {
+        const output = new Map();
+        if (!Array.isArray(dates) || !Array.isArray(values)) return output;
+        const length = Math.min(dates.length, values.length);
+        for (let index = 0; index < length; index += 1) {
+          const date = Number(dates[index]);
+          const value = Number(values[index]);
+          if (Number.isInteger(date) && Number.isFinite(value)) output.set(date, value);
+        }
+        return output;
+      };
+
+      const fundFlowByDate = buildDatedValueMap(fundFlowHistory.dates, fundFlowHistory.values);
+      const breadthByDate = buildDatedValueMap(breadthHistory.dates, breadthHistory.values);
+      const klineData = (() => {
+        const dates = Array.isArray(sectorKline.trade_date) ? sectorKline.trade_date : [];
+        const ohlc = Array.isArray(sectorKline.ohlc) ? sectorKline.ohlc : [];
+        const amounts = Array.isArray(sectorKline.amount) ? sectorKline.amount : [];
+        const length = Math.min(dates.length, ohlc.length, amounts.length);
+        const output = [];
+        for (let index = 0; index < length; index += 1) {
+          const date = Number(dates[index]);
+          const price = Array.isArray(ohlc[index]) ? ohlc[index].map(Number) : [];
+          const amount = Number(amounts[index]) / 100_000_000;
+          if (!Number.isInteger(date) || price.length !== 4 || !price.every(Number.isFinite) || !Number.isFinite(amount)) continue;
+          output.push({
+            date,
+            label: shortDate(date),
+            open: price[0],
+            high: price[1],
+            low: price[2],
+            close: price[3],
+            amount,
+            fundFlow: fundFlowByDate.get(date),
+            breadth: breadthByDate.get(date)
+          });
+        }
+        return output;
+      })();
+
+      const benchmarkByDate = buildDatedValueMap(benchmarkData.trade_dates, benchmarkData.closes);
+      const movingAverage = (items, period, field) => items.map((_, index) => {
+        if (index < period - 1) return null;
+        const values = items.slice(index - period + 1, index + 1).map((item) => Number(item[field]));
+        if (!values.every(Number.isFinite)) return null;
+        return values.reduce((sum, value) => sum + value, 0) / period;
+      });
+
+      const klineAverages = {
+        ma5: movingAverage(klineData, 5, "close"),
+        ma10: movingAverage(klineData, 10, "close"),
+        ma20: movingAverage(klineData, 20, "close"),
+        amountMa20: movingAverage(klineData, 20, "amount")
+      };
+
+      const svgNs = "http://www.w3.org/2000/svg";
+      const chart = document.getElementById("performance-chart");
+      const gridGroup = document.getElementById("chart-grid-lines");
+      const labelGroup = document.getElementById("chart-axis-labels");
+      const sectorLine = document.getElementById("sector-line");
+      const benchmarkLine = document.getElementById("benchmark-line");
+      const caption = document.getElementById("performance-caption");
+      const result = document.getElementById("window-result");
+      const viewButtons = Array.from(document.querySelectorAll(".view-btn"));
+      const klinePanel = document.getElementById("kline-panel");
+      const relativePanel = document.getElementById("relative-panel");
+      const klineChartElement = document.getElementById("kline-chart");
+      const klineInspector = document.getElementById("kline-inspector");
+      const klineInspectorDate = document.getElementById("kline-inspector-date");
+      const klineInspectorStatus = document.getElementById("kline-inspector-status");
+      const klineResetButton = document.getElementById("kline-reset");
+      const klineDetailNodes = {
+        open: document.getElementById("kline-detail-open"),
+        high: document.getElementById("kline-detail-high"),
+        low: document.getElementById("kline-detail-low"),
+        close: document.getElementById("kline-detail-close"),
+        change: document.getElementById("kline-detail-change"),
+        amount: document.getElementById("kline-detail-amount"),
+        amountRatio: document.getElementById("kline-detail-amount-ratio"),
+        fundFlow: document.getElementById("kline-detail-fund-flow"),
+        breadth: document.getElementById("kline-detail-breadth"),
+        ma5: document.getElementById("kline-detail-ma5"),
+        ma10: document.getElementById("kline-detail-ma10"),
+        ma20: document.getElementById("kline-detail-ma20")
+      };
+      const klineLegendButtons = Array.from(document.querySelectorAll(".legend-toggle"));
+      const klineSeriesVisibility = { ma5: true, ma10: true, ma20: true };
+      const klineSeriesNames = { ma5: "MA5", ma10: "MA10", ma20: "MA20" };
+      const formatSigned = (value, digits = 1) => (value > 0 ? "+" : "") + value.toFixed(digits);
+      const semanticFromSigned = (value) => value > 0 ? "up" : value < 0 ? "down" : "neutral";
+      const semanticFromPrice = (value, reference) => Number.isFinite(reference)
+        ? value > reference ? "up" : value < reference ? "down" : "neutral"
+        : "neutral";
+      const minimumVisibleCount = Math.min(5, Math.max(1, klineData.length));
+      const preferredVisibleCount = Math.max(minimumVisibleCount, Number(performanceData.default_window || 60));
+      const initialVisibleCount = Math.min(klineData.length, preferredVisibleCount);
+      const klineDateLabels = klineData.map((item) => fullDate(item.date));
+      let visibleRange = {
+        start: Math.max(0, klineData.length - initialVisibleCount),
+        end: klineData.length
+      };
+      let klineChartInstance = null;
+      let lockedKlineIndex = null;
+
+      const appendSvg = (parent, tag, attributes, text) => {
+        const node = document.createElementNS(svgNs, tag);
+        Object.entries(attributes).forEach(([key, value]) => node.setAttribute(key, value));
+        if (text !== undefined) node.textContent = text;
+        parent.appendChild(node);
+        return node;
+      };
+
+      const buildRelativeSeries = () => {
+        const selected = klineData
+          .slice(visibleRange.start, visibleRange.end)
+          .filter((item) => benchmarkByDate.has(item.date))
+          .map((item) => ({ date: item.date, sector: item.close, benchmark: benchmarkByDate.get(item.date) }));
+        if (selected.length < 2) return null;
+        const sectorBase = selected[0].sector;
+        const benchmarkBase = selected[0].benchmark;
+        if (!(sectorBase > 0) || !(benchmarkBase > 0)) return null;
+        const sector = selected.map((item) => (item.sector / sectorBase - 1) * 100);
+        const benchmark = selected.map((item) => (item.benchmark / benchmarkBase - 1) * 100);
+        const sectorResult = sector[sector.length - 1];
+        const benchmarkResult = benchmark[benchmark.length - 1];
+        return {
+          sector,
+          benchmark,
+          labels: selected.map((item) => shortDate(item.date)),
+          caption: fullDate(selected[0].date) + " 至 " + fullDate(selected[selected.length - 1].date)
+            + "，共 " + selected.length + " 个共同交易日的累计收益",
+          result: [formatSigned(sectorResult, 2) + "%", formatSigned(benchmarkResult, 2) + "%"],
+          result_tones: [semanticFromSigned(sectorResult), semanticFromSigned(benchmarkResult)]
+        };
+      };
+
+      const renderChart = () => {
+        const series = buildRelativeSeries();
+        const visibleCount = Math.max(0, visibleRange.end - visibleRange.start);
+        if (!series) {
+          sectorLine.setAttribute("points", "");
+          benchmarkLine.setAttribute("points", "");
+          gridGroup.replaceChildren();
+          labelGroup.replaceChildren();
+          if (!relativePanel.hidden) caption.textContent = "数据已遮罩";
+          result.innerHTML = '区间收益：<b data-semantic="neutral">—</b> / <b data-semantic="neutral">—</b>';
+          chart.setAttribute("aria-label", "暂无可用行情");
+          chart.dataset.rendered = "false";
+          chart.dataset.observationCount = String(visibleCount);
+          return;
+        }
+        const values = [...series.sector, ...series.benchmark];
+        const rawMin = Math.min(...values, 0);
+        const rawMax = Math.max(...values, 0);
+        const pad = Math.max(1, (rawMax - rawMin) * 0.14);
+        const min = Math.floor(rawMin - pad);
+        const max = Math.ceil(rawMax + pad);
+        const compact = window.matchMedia("(max-width: 760px)").matches;
+        const viewWidth = compact ? 360 : 720;
+        const left = compact ? 42 : 54;
+        const right = viewWidth - (compact ? 12 : 16);
+        const top = 18;
+        const bottom = 234;
+        const x = (index, length) => left + (index / Math.max(1, length - 1)) * (right - left);
+        const y = (value) => bottom - ((value - min) / Math.max(1, max - min)) * (bottom - top);
+        const points = (items) => items.map((value, index) =>
+          x(index, items.length).toFixed(1) + "," + y(value).toFixed(1)
+        ).join(" ");
+
+        chart.setAttribute("viewBox", "0 0 " + viewWidth + " 272");
+        sectorLine.setAttribute("points", points(series.sector));
+        benchmarkLine.setAttribute("points", points(series.benchmark));
+        gridGroup.replaceChildren();
+        labelGroup.replaceChildren();
+
+        for (let index = 0; index < 4; index += 1) {
+          const value = max - (index / 3) * (max - min);
+          const yPos = y(value);
+          appendSvg(gridGroup, "line", {
+            x1: left,
+            y1: yPos,
+            x2: right,
+            y2: yPos,
+            class: Math.abs(value) < 0.35 ? "zero-line" : "grid-line"
+          });
+          appendSvg(labelGroup, "text", {
+            x: compact ? 2 : 8,
+            y: yPos + 4,
+            class: "axis-label"
+          }, value.toFixed(1) + "%");
+        }
+
+        [0, Math.floor((series.labels.length - 1) / 2), series.labels.length - 1].forEach((index, position) => {
+          appendSvg(labelGroup, "text", {
+            x: x(index, series.labels.length),
+            y: 260,
+            class: "axis-label",
+            "text-anchor": position === 0 ? "start" : position === 2 ? "end" : "middle"
+          }, series.labels[index]);
+        });
+
+        if (!relativePanel.hidden) caption.textContent = series.caption;
+        result.innerHTML = '区间收益：<b data-semantic="' + series.result_tones[0] + '">' + series.result[0]
+          + '</b> / <b data-semantic="' + series.result_tones[1] + '">' + series.result[1] + "</b>";
+        chart.setAttribute("aria-label", series.caption);
+        chart.dataset.rendered = "true";
+        chart.dataset.observationCount = String(series.labels.length);
+      };
+
+      const setKlineDetail = (key, value, semantic = "neutral") => {
+        const node = klineDetailNodes[key];
+        node.textContent = value;
+        node.dataset.semantic = semantic;
+      };
+
+      const updateKlineInspector = (absoluteIndex, mode) => {
+        const item = klineData[absoluteIndex];
+        if (!item) return;
+        const priorClose = absoluteIndex > 0 ? klineData[absoluteIndex - 1].close : null;
+        const change = Number.isFinite(priorClose) ? (item.close / priorClose - 1) * 100 : 0;
+        const amountAverage = klineAverages.amountMa20[absoluteIndex];
+        const amountRatio = Number.isFinite(amountAverage) && amountAverage !== 0 ? item.amount / amountAverage : null;
+        const fundFlow = item.fundFlow;
+        const breadth = Number.isFinite(item.breadth) ? item.breadth : null;
+        const midpoint = visibleRange.start + (visibleRange.end - visibleRange.start) / 2;
+
+        klineInspector.hidden = false;
+        klineInspector.dataset.side = absoluteIndex < midpoint ? "right" : "left";
+        klineInspectorDate.textContent = fullDate(item.date);
+        klineInspectorStatus.textContent = mode === "locked" ? "已锁定" : mode === "keyboard" ? "键盘查看" : "悬停查看";
+        klineInspector.dataset.mode = mode;
+        klineInspector.dataset.index = String(absoluteIndex);
+        klineInspector.classList.toggle("is-locked", mode === "locked");
+        klineResetButton.hidden = mode !== "locked";
+
+        setKlineDetail("open", item.open.toFixed(2), semanticFromPrice(item.open, priorClose));
+        setKlineDetail("high", item.high.toFixed(2), semanticFromPrice(item.high, priorClose));
+        setKlineDetail("low", item.low.toFixed(2), semanticFromPrice(item.low, priorClose));
+        setKlineDetail("close", item.close.toFixed(2), semanticFromPrice(item.close, priorClose));
+        setKlineDetail("change", formatSigned(change, 2) + "%", semanticFromSigned(change));
+        setKlineDetail("amount", item.amount.toFixed(1) + " " + (performanceData.amount_unit || "亿"), "neutral");
+        setKlineDetail("amountRatio", Number.isFinite(amountRatio) ? amountRatio.toFixed(2) + "×" : "—", "neutral");
+        setKlineDetail("fundFlow", Number.isFinite(fundFlow) ? formatSigned(fundFlow, 1) + " " + (performanceData.fund_flow_unit || "") : "—", Number.isFinite(fundFlow) ? semanticFromSigned(fundFlow) : "neutral");
+        setKlineDetail("breadth", breadth === null ? "—" : breadth.toFixed(1) + "%", breadth === null ? "neutral" : breadth > 50 ? "up" : breadth < 50 ? "down" : "neutral");
+        setKlineDetail("ma5", Number.isFinite(klineAverages.ma5[absoluteIndex]) ? klineAverages.ma5[absoluteIndex].toFixed(2) : "—", "neutral");
+        setKlineDetail("ma10", Number.isFinite(klineAverages.ma10[absoluteIndex]) ? klineAverages.ma10[absoluteIndex].toFixed(2) : "—", "neutral");
+        setKlineDetail("ma20", Number.isFinite(klineAverages.ma20[absoluteIndex]) ? klineAverages.ma20[absoluteIndex].toFixed(2) : "—", "neutral");
+      };
+
+      const hideKlineFocus = () => {
+        klineInspector.hidden = true;
+        klineInspector.classList.remove("is-locked");
+        klineInspector.dataset.mode = "idle";
+        klineInspector.dataset.index = "";
+        klineResetButton.hidden = true;
+        klineChartElement.dataset.locked = "false";
+        klineChartElement.dataset.focusIndex = "";
+        klineChartInstance?.dispatchAction({ type: "hideTip" });
+      };
+
+      const focusKlineIndex = (absoluteIndex, mode) => {
+        if (!Number.isInteger(absoluteIndex)
+          || absoluteIndex < visibleRange.start
+          || absoluteIndex >= visibleRange.end) return;
+        updateKlineInspector(absoluteIndex, mode);
+        klineChartElement.dataset.focusIndex = String(absoluteIndex);
+        klineChartElement.dataset.locked = String(mode === "locked");
+        if (mode !== "hover") {
+          klineChartInstance?.dispatchAction({ type: "showTip", seriesIndex: 0, dataIndex: absoluteIndex });
+        }
+      };
+
+      const resetKlineFocus = () => {
+        lockedKlineIndex = null;
+        hideKlineFocus();
+      };
+
+      const resolveAxisIndex = (value) => {
+        const numeric = Number(value);
+        if (Number.isInteger(numeric) && numeric >= 0 && numeric < klineData.length) return numeric;
+        const byLabel = klineDateLabels.indexOf(String(value));
+        if (byLabel >= 0) return byLabel;
+        return klineData.findIndex((item) => item.date === numeric);
+      };
+
+      const resolveZoomIndex = (value, percent, fallback) => {
+        const numeric = Number(value);
+        if (Number.isInteger(numeric) && numeric >= 0 && numeric < klineData.length) return numeric;
+        const byLabel = klineDateLabels.indexOf(String(value));
+        if (byLabel >= 0) return byLabel;
+        const byDate = klineData.findIndex((item) => item.date === numeric);
+        if (byDate >= 0) return byDate;
+        const maxIndex = Math.max(0, klineData.length - 1);
+        return Number.isFinite(Number(percent))
+          ? Math.round(Number(percent) / 100 * maxIndex)
+          : fallback;
+      };
+
+      const updateVisibleRange = () => {
+        if (!klineChartInstance || !klineData.length) return;
+        const zoom = klineChartInstance.getOption().dataZoom?.[0] || {};
+        let start = resolveZoomIndex(zoom.startValue, zoom.start, visibleRange.start);
+        let endInclusive = resolveZoomIndex(zoom.endValue, zoom.end, visibleRange.end - 1);
+        start = Math.max(0, Math.min(start, klineData.length - 1));
+        endInclusive = Math.max(start, Math.min(endInclusive, klineData.length - 1));
+        if (endInclusive - start + 1 < minimumVisibleCount) {
+          start = Math.max(0, endInclusive - minimumVisibleCount + 1);
+          endInclusive = Math.min(klineData.length - 1, start + minimumVisibleCount - 1);
+        }
+        visibleRange = { start, end: endInclusive + 1 };
+        const first = klineData[visibleRange.start];
+        const last = klineData[visibleRange.end - 1];
+        const visibleCount = visibleRange.end - visibleRange.start;
+        const summary = "展示 " + fullDate(first.date) + " 至 " + fullDate(last.date) + " 共 " + visibleCount
+          + " 个交易日；滚轮或双指缩放，拖动图表或底部时间窗平移";
+        klineChartElement.dataset.visibleStart = String(visibleRange.start);
+        klineChartElement.dataset.visibleEnd = String(visibleRange.end - 1);
+        klineChartElement.dataset.candleCount = String(visibleCount);
+        klineChartElement.dataset.amountBarCount = String(visibleCount);
+        klineChartElement.setAttribute("aria-label", summary);
+        if (!klinePanel.hidden) caption.textContent = summary;
+        if (lockedKlineIndex !== null
+          && (lockedKlineIndex < visibleRange.start || lockedKlineIndex >= visibleRange.end)) {
+          resetKlineFocus();
+        }
+        renderChart();
+      };
+
+      const initKlineChart = () => {
+        if (!klineData.length) {
+          klineChartElement.classList.add("kline-chart-empty");
+          klineChartElement.setAttribute("data-chart-empty", "");
+          klineChartElement.innerHTML = '<span data-chart-empty="true">暂无可用行情</span>';
+          klineChartElement.dataset.rendered = "false";
+          return;
+        }
+        if (typeof echarts === "undefined") {
+          klineChartElement.classList.add("kline-chart-empty");
+          klineChartElement.setAttribute("data-chart-empty", "");
+          klineChartElement.innerHTML = '<span data-chart-empty="true">图表库加载失败，请检查网络后重新打开报告。</span>';
+          klineChartElement.dataset.rendered = "false";
+          return;
+        }
+
+        const candleData = klineData.map((item) => [item.open, item.close, item.low, item.high]);
+        const amountData = klineData.map((item) => ({
+          value: item.amount,
+          itemStyle: { color: item.close >= item.open ? "rgba(245,63,63,0.58)" : "rgba(0,180,42,0.58)" }
+        }));
+        const initialStart = visibleRange.start;
+        const initialEnd = Math.max(initialStart, visibleRange.end - 1);
+
+        klineChartElement.removeAttribute("data-chart-empty");
+        klineChartInstance = echarts.init(klineChartElement, null, { renderer: "canvas" });
+        klineChartInstance.setOption({
+          animation: false,
+          aria: {
+            enabled: true,
+            description: "板块指数K线、移动均线、成交量与可缩放时间窗口。"
+          },
+          tooltip: {
+            trigger: "axis",
+            showContent: false,
+            axisPointer: { type: "cross", snap: true }
+          },
+          axisPointer: {
+            link: [{ xAxisIndex: [0, 1] }],
+            label: { backgroundColor: "#4E5969" }
+          },
+          legend: {
+            show: false,
+            data: ["K线", "MA5", "MA10", "MA20", "成交量", "成交量20日均线"],
+            selected: { MA5: true, MA10: true, MA20: true }
+          },
+          grid: [
+            { left: 52, right: 20, top: 24, height: "50%", containLabel: true },
+            { left: 52, right: 20, top: "65%", height: "17%", containLabel: true }
+          ],
+          xAxis: [
+            {
+              type: "category",
+              data: klineDateLabels,
+              gridIndex: 0,
+              boundaryGap: true,
+              axisLine: { lineStyle: { color: "#C9CDD4" } },
+              axisLabel: { show: false },
+              axisTick: { show: false },
+              splitLine: { show: false }
+            },
+            {
+              type: "category",
+              data: klineDateLabels,
+              gridIndex: 1,
+              boundaryGap: true,
+              axisLine: { lineStyle: { color: "#C9CDD4" } },
+              axisLabel: {
+                color: "#86909C",
+                fontSize: 12,
+                hideOverlap: true,
+                formatter: (value) => String(value).slice(5)
+              },
+              axisTick: { show: false },
+              splitLine: { show: false }
+            }
+          ],
+          yAxis: [
+            {
+              type: "value",
+              gridIndex: 0,
+              scale: true,
+              name: "板块指数",
+              nameTextStyle: { color: "#86909C", fontSize: 12 },
+              axisLabel: { color: "#86909C", fontSize: 12 },
+              splitNumber: 3,
+              splitLine: { lineStyle: { color: "#E7E8EB" } }
+            },
+            {
+              type: "value",
+              gridIndex: 1,
+              scale: false,
+              min: 0,
+              name: "成交量（亿）",
+              nameTextStyle: { color: "#86909C", fontSize: 12 },
+              axisLabel: {
+                color: "#86909C",
+                fontSize: 12,
+                formatter: (value) => Math.round(value) + "亿"
+              },
+              splitNumber: 2,
+              splitLine: { lineStyle: { color: "#E7E8EB" } }
+            }
+          ],
+          dataZoom: [
+            {
+              type: "inside",
+              xAxisIndex: [0, 1],
+              filterMode: "none",
+              startValue: initialStart,
+              endValue: initialEnd,
+              minValueSpan: Math.max(0, minimumVisibleCount - 1),
+              zoomOnMouseWheel: true,
+              moveOnMouseMove: true,
+              moveOnMouseWheel: false,
+              preventDefaultMouseMove: true,
+              throttle: 50
+            },
+            {
+              type: "slider",
+              xAxisIndex: [0, 1],
+              filterMode: "none",
+              startValue: initialStart,
+              endValue: initialEnd,
+              minValueSpan: Math.max(0, minimumVisibleCount - 1),
+              bottom: 4,
+              height: 24,
+              brushSelect: false,
+              showDetail: true,
+              borderColor: "#E7E8EB",
+              backgroundColor: "#F7F8FA",
+              fillerColor: "rgba(35,84,230,0.14)",
+              handleStyle: { color: "#FFFFFF", borderColor: "#2354E6", borderWidth: 1 },
+              moveHandleStyle: { color: "#2354E6", opacity: 0.48 },
+              dataBackground: {
+                lineStyle: { color: "#86909C", opacity: 0.5 },
+                areaStyle: { color: "#D4E4FF", opacity: 0.28 }
+              },
+              selectedDataBackground: {
+                lineStyle: { color: "#2354E6", opacity: 0.8 },
+                areaStyle: { color: "#D4E4FF", opacity: 0.46 }
+              },
+              textStyle: { color: "#4E5969", fontSize: 12 },
+              labelFormatter: (_value, valueString) => String(valueString || "").slice(5)
+            }
+          ],
+          series: [
+            {
+              name: "K线",
+              type: "candlestick",
+              xAxisIndex: 0,
+              yAxisIndex: 0,
+              data: candleData,
+              itemStyle: {
+                color: "#F53F3F",
+                color0: "#00B42A",
+                borderColor: "#F53F3F",
+                borderColor0: "#00B42A"
+              }
+            },
+            {
+              name: "MA5",
+              type: "line",
+              xAxisIndex: 0,
+              yAxisIndex: 0,
+              data: klineAverages.ma5,
+              symbol: "none",
+              connectNulls: false,
+              lineStyle: { width: 2, color: "#D97916" },
+              emphasis: { disabled: true }
+            },
+            {
+              name: "MA10",
+              type: "line",
+              xAxisIndex: 0,
+              yAxisIndex: 0,
+              data: klineAverages.ma10,
+              symbol: "none",
+              connectNulls: false,
+              lineStyle: { width: 2, color: "#2354E6" },
+              emphasis: { disabled: true }
+            },
+            {
+              name: "MA20",
+              type: "line",
+              xAxisIndex: 0,
+              yAxisIndex: 0,
+              data: klineAverages.ma20,
+              symbol: "none",
+              connectNulls: false,
+              lineStyle: { width: 2, color: "#7656E8" },
+              emphasis: { disabled: true }
+            },
+            {
+              name: "成交量",
+              type: "bar",
+              xAxisIndex: 1,
+              yAxisIndex: 1,
+              data: amountData,
+              barMaxWidth: 12,
+              emphasis: { disabled: true }
+            },
+            {
+              name: "成交量20日均线",
+              type: "line",
+              xAxisIndex: 1,
+              yAxisIndex: 1,
+              data: klineAverages.amountMa20,
+              symbol: "none",
+              connectNulls: false,
+              lineStyle: { width: 2, color: "#168AC0" },
+              emphasis: { disabled: true }
+            }
+          ]
+        });
+
+        klineChartInstance.on("datazoom", () => {
+          lockedKlineIndex = null;
+          hideKlineFocus();
+          window.requestAnimationFrame(updateVisibleRange);
+        });
+        klineChartInstance.on("updateAxisPointer", (event) => {
+          if (lockedKlineIndex !== null) return;
+          const axisInfo = Array.isArray(event.axesInfo)
+            ? event.axesInfo.find((item) => Number(item.axisIndex) === 0)
+            : null;
+          const index = axisInfo ? resolveAxisIndex(axisInfo.value) : -1;
+          if (index >= visibleRange.start && index < visibleRange.end) focusKlineIndex(index, "hover");
+        });
+        klineChartInstance.on("click", (params) => {
+          const index = Number(params.dataIndex);
+          if (!Number.isInteger(index)) return;
+          if (lockedKlineIndex === index) {
+            resetKlineFocus();
+            return;
+          }
+          lockedKlineIndex = index;
+          focusKlineIndex(index, "locked");
+        });
+        klineChartInstance.getZr().on("globalout", () => {
+          if (lockedKlineIndex === null) hideKlineFocus();
+        });
+
+        klineChartElement.dataset.rendered = "true";
+        updateVisibleRange();
+      };
+
+      klineChartElement.addEventListener("keydown", (event) => {
+        if (!klineData.length) return;
+        const minIndex = visibleRange.start;
+        const maxIndex = visibleRange.end - 1;
+        const currentIndex = Number(klineChartElement.dataset.focusIndex || maxIndex);
+        let nextIndex = currentIndex;
+        if (event.key === "ArrowLeft") nextIndex = Math.max(minIndex, currentIndex - 1);
+        else if (event.key === "ArrowRight") nextIndex = Math.min(maxIndex, currentIndex + 1);
+        else if (event.key === "Home") nextIndex = minIndex;
+        else if (event.key === "End") nextIndex = maxIndex;
+        else if (event.key === "Escape") {
+          event.preventDefault();
+          resetKlineFocus();
+          return;
+        } else if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          if (lockedKlineIndex === currentIndex) resetKlineFocus();
+          else {
+            lockedKlineIndex = currentIndex;
+            focusKlineIndex(currentIndex, "locked");
+          }
+          return;
+        } else return;
+
+        event.preventDefault();
+        lockedKlineIndex = nextIndex;
+        focusKlineIndex(nextIndex, "keyboard");
+      });
+
+      klineResetButton.addEventListener("click", resetKlineFocus);
+      document.addEventListener("click", (event) => {
+        if (lockedKlineIndex !== null && !event.target.closest(".kline-chart-body")) resetKlineFocus();
+      });
+
+      klineLegendButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          const series = button.dataset.series;
+          klineSeriesVisibility[series] = !klineSeriesVisibility[series];
+          button.setAttribute("aria-pressed", String(klineSeriesVisibility[series]));
+          if (klineChartInstance) {
+            klineChartInstance.dispatchAction({
+              type: klineSeriesVisibility[series] ? "legendSelect" : "legendUnSelect",
+              name: klineSeriesNames[series]
+            });
+          }
+          if (lockedKlineIndex !== null) focusKlineIndex(lockedKlineIndex, "locked");
+        });
+      });
+
+      viewButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          viewButtons.forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
+          const showKline = button.dataset.view === "kline";
+          klinePanel.hidden = !showKline;
+          relativePanel.hidden = showKline;
+          if (showKline) {
+            klineChartInstance?.resize();
+            updateVisibleRange();
+          } else {
+            renderChart();
+          }
+        });
+      });
+      const flowTrendData = capitalFlowData.trend || {};
+      const flowDates = Array.isArray(flowTrendData.dates) ? flowTrendData.dates : [];
+      const flowValues = Array.isArray(flowTrendData.values) ? flowTrendData.values.map(Number) : [];
+      const flowLabels = flowDates.map(shortDate);
+      const rollingFlow = flowValues.map((_, index) => {
+        const start = Math.max(0, index - 4);
+        const windowValues = flowValues.slice(start, index + 1);
+        return windowValues.reduce((sum, value) => sum + value, 0) / windowValues.length;
+      });
+      const flowGridGroup = document.getElementById("flow-grid-lines");
+      const flowBarsGroup = document.getElementById("flow-bars");
+      const flowLabelGroup = document.getElementById("flow-axis-labels");
+      const flowRollingLine = document.getElementById("flow-rolling-line");
+
+      const renderFundFlowChart = () => {
+        if (!flowValues.length || flowValues.length !== flowLabels.length) return;
+        const compact = window.matchMedia("(max-width: 480px)").matches;
+        const viewWidth = compact ? 360 : 720;
+        const left = compact ? 42 : 54;
+        const right = viewWidth - (compact ? 12 : 16);
+        const top = 16;
+        const bottom = 238;
+        const rawMin = Math.min(...flowValues, ...rollingFlow, 0);
+        const rawMax = Math.max(...flowValues, ...rollingFlow, 0);
+        const pad = Math.max(1, (rawMax - rawMin) * 0.12);
+        const min = Math.floor(rawMin - pad);
+        const max = Math.ceil(rawMax + pad);
+        const x = (index) => left + ((index + 0.5) / flowValues.length) * (right - left);
+        const y = (value) => bottom - ((value - min) / (max - min)) * (bottom - top);
+        const zeroY = y(0);
+        const barWidth = ((right - left) / flowValues.length) * 0.56;
+
+        document.getElementById("fund-flow-chart").setAttribute("viewBox", `0 0 ${viewWidth} 284`);
+        flowGridGroup.replaceChildren();
+        flowBarsGroup.replaceChildren();
+        flowLabelGroup.replaceChildren();
+
+        Array.from({ length: 4 }, (_, index) => max - (index / 3) * (max - min)).forEach((value) => {
+          const yPos = y(value);
+          appendSvg(flowGridGroup, "line", {
+            x1: left,
+            y1: yPos,
+            x2: right,
+            y2: yPos,
+            class: Math.abs(value) < 0.001 ? "zero-line" : "grid-line"
+          });
+          appendSvg(flowLabelGroup, "text", { x: compact ? 2 : 8, y: yPos + 4, class: "axis-label" }, `${value > 0 ? "+" : ""}${value.toFixed(1)}`);
+        });
+
+        flowValues.forEach((value, index) => {
+          const valueY = y(value);
+          appendSvg(flowBarsGroup, "rect", {
+            x: (x(index) - barWidth / 2).toFixed(1),
+            y: Math.min(valueY, zeroY).toFixed(1),
+            width: barWidth.toFixed(1),
+            height: Math.max(1, Math.abs(valueY - zeroY)).toFixed(1),
+            rx: 2,
+            class: value >= 0 ? "flow-positive" : "flow-negative"
+          });
+        });
+
+        const rollingPoints = rollingFlow
+          .map((value, index) => `${x(index).toFixed(1)},${y(value).toFixed(1)}`)
+          .join(" ");
+        flowRollingLine.setAttribute("points", rollingPoints);
+
+        const flowLabelIndexes = compact
+          ? [0, Math.floor((flowLabels.length - 1) / 2), flowLabels.length - 1]
+          : [
+              0,
+              Math.floor((flowLabels.length - 1) / 4),
+              Math.floor((flowLabels.length - 1) / 2),
+              Math.floor(((flowLabels.length - 1) * 3) / 4),
+              flowLabels.length - 1
+            ];
+        [...new Set(flowLabelIndexes)].forEach((index, position, indexes) => {
+          const anchor = position === 0 ? "start" : position === indexes.length - 1 ? "end" : "middle";
+          appendSvg(flowLabelGroup, "text", {
+            x: x(index),
+            y: 272,
+            class: "axis-label",
+            "text-anchor": anchor
+          }, flowLabels[index]);
+        });
+
+        document.getElementById("fund-flow-chart").dataset.rendered = "true";
+        document.getElementById("fund-flow-chart").dataset.barCount = String(flowValues.length);
+      };
+
+      initKlineChart();
+      renderChart();
+      renderFundFlowChart();
+
+      let resizeTimer;
+      window.addEventListener("resize", () => {
+        window.clearTimeout(resizeTimer);
+        resizeTimer = window.setTimeout(() => {
+          klineChartInstance?.resize();
+          renderChart();
+          renderFundFlowChart();
+        }, 120);
+      });
+    })();
+  </script>
+<script id="nova-report-controls">
+(() => {
+ document.getElementById('nova-print').addEventListener('click', () => {
+  if(window.parent !== window){window.parent.postMessage({type:'ftai-report-export',format:'pdf'},'*');return;}
+  window.print();
+ });
+ document.getElementById('nova-share').addEventListener('click', () => {
+  if(window.parent !== window){window.parent.postMessage({type:'ftai-report-export',format:'html'},'*');return;}
+  const html='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
+  const url=URL.createObjectURL(new Blob([html],{type:'text/html;charset=utf-8'}));
+  const a=document.createElement('a');a.href=url;a.download=document.title+'.html';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  document.getElementById('nova-action-status').textContent='已导出可分享的 HTML 报告';
+ });
+ document.getElementById('nova-search').addEventListener('keydown', event => {
+  if(event.key!=='Enter')return;
+  const query=event.target.value.trim();if(!query)return;
+  const hits=[...document.querySelectorAll('main h2,main h3,main td,main p')].filter(e=>e.textContent.includes(query));
+  const target=hits[0];
+  if(target){let parent=target.parentElement;while(parent){if(parent.tagName==='DETAILS')parent.open=true;parent=parent.parentElement;}target.scrollIntoView({behavior:'smooth',block:'center'});target.classList.add('nova-found');setTimeout(()=>target.classList.remove('nova-found'),2400);}
+  document.getElementById('nova-action-status').textContent=target?'已定位：'+query:'没有找到相关内容';
+ });
+ document.querySelectorAll('.nova-detail').forEach(e=>e.addEventListener('toggle',()=>window.dispatchEvent(new Event('resize'))));
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,73 @@
+{
+  "name": "ft-research-cockpit",
+  "version": "0.1.1",
+  "description": "FT 投研舱：FTShare-only investment research tools for DeepSeek Harness",
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "default": "./lib/client.js"
+    }
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "resources"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/build-client.mjs",
+    "prepare": "pnpm build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:llm": "pnpm build && node scripts/test-llm-contracts.mjs",
+    "test:completeness": "pnpm build && node scripts/test-report-completeness.mjs",
+    "test:report-facts": "pnpm build && node scripts/test-report-facts.mjs",
+    "test:ftshare": "pnpm build && node scripts/test-ftshare.mjs",
+    "test:missing-data": "pnpm build && node scripts/test-missing-data.mjs",
+    "test:market-commentary": "pnpm build && node scripts/test-market-commentary.mjs",
+    "test:permissions:browser": "pnpm build && node scripts/test-permission-rendering.mjs",
+    "test:indicators": "pnpm build && node scripts/test-indicators.mjs"
+  },
+  "license": "MIT",
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "4.0.2",
+    "@deepseek-ai/dsh-fs": "0.1.2-alpha.4",
+    "@deepseek-ai/dsh-llm": "0.1.2-alpha.4",
+    "@deepseek-ai/dsh-tools": "0.1.2-alpha.4",
+    "dsh-better-sidebar": "^0.18.0"
+  },
+  "dependencies": {
+    "@ft/dsh-ftshare-settings": "file:../dsh-ftshare-settings",
+    "@deepseek-ai/dsh-brand": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-invariants": "0.1.2-rc.1",
+    "@deepseek-ai/schemastery": "3.18.2",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "nunjucks": "3.2.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "@types/nunjucks": "3.2.6",
+    "typescript": "^5.8.3"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-tool",
+        "@deepseek-ai/dsh-client-ui-chat",
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-layout",
+        "dsh-better-sidebar"
+      ]
+    }
+  },
+  "packageManager": "pnpm@11.25.0+sha512.5cde925b4f075f725eb71fbae18a42ffe784524789f19b61c731cb8721ec28aaee160e01a8d5af4fedb2a42cdbf300efe23db356b0d4a17b4d63e11f8ab7c956"
+}

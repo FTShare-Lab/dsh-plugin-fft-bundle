@@ -1,0 +1,2141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ base_data.stock.name | safe }} · 深度研读报告</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.ft.tech/npm/echarts@5/dist/echarts.min.js"></script>
+    <script>
+        if (typeof echarts === 'undefined') {
+            document.write('<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"><\/script>');
+        }
+    </script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'Roboto', 'system-ui', 'sans-serif'] },
+                    colors: {
+                        navy: '#2354E6',
+                        'navy-light': '#1A3D7A',
+                        'navy-dark': '#091D3E',
+                        gold: '#7656E8',
+                        'gold-light': '#D4B978',
+                        'gold-dark': '#9A7F45',
+                        up: '#F53F3F',
+                        down: '#00B42A'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        * { box-sizing: border-box; }
+        body { background: #FFFFFF; }
+        .text-flow {
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+        .gs-gradient {
+            background: #FFFFFF;
+            border-bottom: 3px solid #2354E6;
+            box-shadow: 0 2px 8px rgba(15,43,92,0.04);
+        }
+        .gs-card {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(15,43,92,0.06);
+            border: 1px solid rgba(15,43,92,0.06);
+        }
+        .gs-card,
+        .metric-card,
+        .thesis-card {
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+        .gs-section-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #2354E6;
+            border-left: 4px solid #7656E8;
+            padding-left: 12px;
+        }
+        .rating-badge {
+            background: #F2F0FF;
+            color: #fff;
+            font-weight: 700;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            letter-spacing: 0.5px;
+        }
+        .risk-item { background: #F1F5F9; color: #475569; border-left: 4px solid #94A3B8; }
+        .risk-high { background: #FEE2E2; color: #DC2626; border-left-color: #DC2626; }
+        .risk-medium { background: #FEF3C7; color: #D97706; border-left-color: #D97706; }
+        .risk-low { background: #ECFDF5; color: #059669; border-left-color: #059669; }
+        .timeline-dot {
+            width: 12px; height: 12px;
+            background: #7656E8;
+            border-radius: 50%;
+            border: 3px solid #F0E6D0;
+        }
+        .timeline-line {
+            width: 2px;
+            background: #7656E8;
+        }
+        .metric-card {
+            background: #F7F8FA;
+            border: 1px solid rgba(184,155,91,0.2);
+            border-radius: 8px;
+            padding: 16px;
+        }
+        .metric-card .text-sm {
+            font-variant-numeric: tabular-nums;
+        }
+        .analysis-panel {
+            background: #FFFFFF;
+            border: 1px solid #E5EAF0;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        .analysis-item {
+            border-left: 3px solid rgba(184,155,91,0.55);
+            padding-left: 16px;
+        }
+        .analysis-item-title {
+            color: #2354E6;
+            font-size: 0.95rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .article-text {
+            color: #374151;
+            font-size: 0.95rem;
+            line-height: 1.9;
+        }
+        .article-text-sm {
+            color: #4B5563;
+            font-size: 0.9rem;
+            line-height: 1.85;
+        }
+        .summary-callout {
+            background: #F8FAFC;
+            border-left: 4px solid #7656E8;
+            border-radius: 8px;
+            color: #26384F;
+            line-height: 1.8;
+        }
+        .section-kicker {
+            color: rgba(15,43,92,0.62);
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+        .thesis-card {
+            background: #FFFFFF;
+            border: 1px solid rgba(15,43,92,0.08);
+            border-bottom: 3px solid #7656E8;
+            box-shadow: 0 2px 12px rgba(15,43,92,0.06);
+            border-radius: 16px;
+            color: #2D4059;
+            position: relative;
+            overflow: hidden;
+        }
+        .thesis-card::before {
+            content: '';
+            position: absolute;
+            top: -50%; right: -20%;
+            width: 300px; height: 300px;
+            background: transparent;
+            border-radius: 50%;
+        }
+        .quant-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .quant-table th,
+        .quant-table td {
+            padding: 12px 12px;
+            border-bottom: 1px solid #EEF2F7;
+            text-align: left;
+            vertical-align: top;
+        }
+        .quant-table th {
+            color: rgba(15,43,92,0.66);
+            font-size: 0.75rem;
+            font-weight: 700;
+            background: #F8FAFC;
+            white-space: nowrap;
+        }
+        .quant-table td {
+            color: #374151;
+            font-size: 0.86rem;
+        }
+        .quant-value {
+            color: #2354E6;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+        .quant-subtle {
+            color: #64748B;
+            font-size: 0.78rem;
+            line-height: 1.6;
+        }
+        .value-positive { color: #DC2626; }
+        .value-negative { color: #059669; }
+        .chart-empty {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 140px;
+            padding: 24px;
+            color: #64748B;
+            background: #F8FAFC;
+            border: 1px dashed #CBD5E1;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+        .report-chart {
+            width: 100%;
+            height: 600px;
+        }
+        .report-chart-sm {
+            width: 100%;
+            height: 320px;
+        }
+        .beta-mini-chart {
+            width: 100%;
+            height: 140px;
+        }
+        .beta-tech-chart {
+            width: 100%;
+            height: 150px;
+        }
+        .beta-chart-panel {
+            background: #FFFFFF;
+            border: 1px solid #E5EAF0;
+            border-radius: 8px;
+            padding: 12px;
+        }
+        .fallback-chart-svg {
+            width: 100%;
+            height: 100%;
+            min-height: inherit;
+            display: block;
+            background: #fff;
+            border: 1px solid #E5EAF0;
+            border-radius: 8px;
+        }
+        .kline-chart-tooltip {
+            max-width: min(360px, calc(100vw - 32px)) !important;
+            white-space: normal !important;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            line-height: 1.65;
+        }
+        .kline-controls {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: -8px 0 16px;
+            padding: 12px;
+            border: 1px solid #E5EAF0;
+            border-radius: 10px;
+            background: #F8FAFC;
+        }
+        .kline-controls-label {
+            margin-right: 2px;
+            color: #475569;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .kline-control {
+            min-height: 32px;
+            padding: 8px 12px;
+            border: 1px solid #CBD5E1;
+            border-radius: 7px;
+            background: #FFFFFF;
+            color: #334155;
+            font-size: 12px;
+            font-weight: 600;
+            line-height: 1.2;
+            cursor: pointer;
+            transition: border-color .15s ease, background-color .15s ease, color .15s ease, box-shadow .15s ease;
+        }
+        .kline-control:hover {
+            border-color: #2354E6;
+            color: #2354E6;
+        }
+        .kline-control:focus-visible {
+            outline: 2px solid rgba(35, 84, 230, .35);
+            outline-offset: 1px;
+        }
+        .kline-control.is-active {
+            border-color: #2354E6;
+            background: #E8F2FF;
+            color: #2354E6;
+        }
+        .kline-controls-hint {
+            margin-left: auto;
+            color: #86909C;
+            font-size: 12px;
+        }
+        @media (max-width: 900px) {
+            .report-chart { height: 520px; }
+        }
+        @media (max-width: 640px) {
+            .report-chart { height: 500px; }
+            .kline-controls-hint { width: 100%; margin-left: 0; }
+        }
+        @media (max-width: 480px) {
+            .report-chart { height: 460px; }
+        }
+        .kline-tooltip-title {
+            color: #2354E6;
+            font-weight: 700;
+            margin-bottom: 8px;
+            white-space: nowrap;
+        }
+        .kline-tooltip-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            color: #475569;
+        }
+        .kline-tooltip-row + .kline-tooltip-row {
+            margin-top: 3px;
+        }
+        .kline-tooltip-row > span:last-child {
+            min-width: 0;
+            overflow-wrap: anywhere;
+        }
+        @media (max-width: 640px) {
+            .report-shell {
+                padding: 16px;
+            }
+            .report-header {
+                padding: 24px;
+                border-radius: 12px;
+            }
+            .report-header-main {
+                align-items: flex-start;
+            }
+            .report-price {
+                width: 100%;
+                text-align: left;
+            }
+            .stock-meta {
+                gap: 8px;
+            }
+            .thesis-card {
+                padding: 24px;
+                border-radius: 12px;
+            }
+            .gs-card {
+                border-radius: 10px;
+            }
+            .report-chart {
+                height: 500px;
+            }
+            .kline-chart-tooltip {
+                max-width: calc(100vw - 28px) !important;
+                font-size: 12px !important;
+            }
+            .report-chart-sm {
+                height: 280px;
+            }
+        }
+        /* Empty risk charts add no information; subscription notices remain visible. */
+        .beta-chart-panel:has(#quant-risk-chart [data-chart-empty]):not(:has(.ftshare-module-mask, .ftshare-mask-host, [data-ftshare-mask])) {
+            display: none;
+        }
+    </style>
+    <style id="ftai-report-ui">
+        :root {
+            --page: #FFFFFF;
+            --surface: #FFFFFF;
+            --fill-1: #F7F8FA;
+            --fill-2: #F2F3F5;
+            --primary-1: #E8F2FF;
+            --primary-6: #2354E6;
+            --gray-3: #E7E8EB;
+            --font-1: #1D2129;
+            --font-2: #4E5969;
+            --font-3: #86909C;
+            --red-1: #FFF1F0;
+            --red-6: #F53F3F;
+            --green-1: #E8F8ED;
+            --green-6: #00B42A;
+        }
+
+        html { background: var(--page); }
+
+        body {
+            position: relative;
+            isolation: isolate;
+            min-width: 320px;
+            background: var(--page);
+            color: var(--font-2);
+            font-size: 14px;
+            line-height: 1.7;
+        }
+
+        body::before {
+            content: none;
+            display: none;
+            position: fixed;
+            inset: 0 0 auto;
+            z-index: -1;
+            height: 440px;
+            background-color: var(--page);
+            background-image: url("data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAkACQAAD/4QCSRXhpZgAATU0AKgAAAAgABQEaAAUAAAABAAAASgEbAAUAAAABAAAAUgEoAAMAAAABAAIAAAExAAIAAAAGAAAAWodpAAQAAAABAAAAYAAAAAAAAACQAAAAAQAAAJAAAAABRmlnbWEAAAOgAQADAAAAAQABAACgAgAEAAAAAQAAB4CgAwAEAAAAAQAABDgAAAAA/+0AOFBob3Rvc2hvcCAzLjAAOEJJTQQEAAAAAAAAOEJJTQQlAAAAAAAQ1B2M2Y8AsgTpgAmY7PhCfv/AABEIBDgHgAMBIgACEQEDEQH/xAAfAAABBQEBAQEBAQAAAAAAAAAAAQIDBAUGBwgJCgv/xAC1EAACAQMDAgQDBQUEBAAAAX0BAgMABBEFEiExQQYTUWEHInEUMoGRoQgjQrHBFVLR8CQzYnKCCQoWFxgZGiUmJygpKjQ1Njc4OTpDREVGR0hJSlNUVVZXWFlaY2RlZmdoaWpzdHV2d3h5eoOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4eLj5OXm5+jp6vHy8/T19vf4+fr/xAAfAQADAQEBAQEBAQEBAAAAAAAAAQIDBAUGBwgJCgv/xAC1EQACAQIEBAMEBwUEBAABAncAAQIDEQQFITEGEkFRB2FxEyIygQgUQpGhscEJIzNS8BVictEKFiQ04SXxFxgZGiYnKCkqNTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqCg4SFhoeIiYqSk5SVlpeYmZqio6Slpqeoqaqys7S1tre4ubrCw8TFxsfIycrS09TV1tfY2dri4+Tl5ufo6ery8/T19vf4+fr/2wBDAAICAgICAgMCAgMEAwMDBAYEBAQEBgcGBgYGBgcJBwcHBwcHCQkJCQkJCQkKCgoKCgoMDAwMDA4ODg4ODg4ODg7/2wBDAQICAgMDAwYDAwYOCggKDg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg7/3QAEAHj/2gAMAwEAAhEDEQA/AP3coooroOcKKU9aSgAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKU9aSgAopaSgAooooAKKKKACiiigAooooAKKKKACiiigAopT1pKACilpKACiiigAooooAKKKKACiiloASiiigAooooAKKU9aSgAooooAKKKKACiiigAooooAKKKWgBKKKKACiiigAopTSUAFFFFABRRRQAUUUUAFFFFABRRS0AJRRRQAUUUUAFFLSUAFFFFABRRRQAUUUUAFFFFABRRS0AJRRRQAUUUtACUUvekoAKKKKACiiigAooooAKKKKACiiloASlpKKACiil70AJRS0lABRRS0AJRRRQAUUUUAFFFFABS0lLQAlFFFABRRRQAtJS0lABRRRQAUUUUAFFFFABRRRQAUUd6KACiiigAooooAWkpaSgAooooAKKKKACiiigAooooAKKUdaSgANMJzTj0plVEAoooqgFpKWkoAKKKKACiiigAooooAKKKKACilHWigh7iUUUUCCiilHWgApKWkoAKKKaT2q9EWkJSUUVPMQFFFFFwCiiikAUUUtaAJTDT6YcUAJRRSjrQAUlLSUAFFFFABSE4paa1ADepooorQzCiiigAoopTQAlFFFABRRSjrQAUlFFABRRRQAUUUUAFFFFABRRRQAUUUpoASiiigAoopR1oASo6eaZQXEKKKKBSCiiigkKKKKaAKKKKsAoopTQVEa3SmU89KZQEj//Q/dyiil5roOcSiiloAO9JS0lABRS0dqAEoopaAEpaSigAooooAKKKKACiil5oASiiloATvS0UlABRS0dqAEoopaAEpaSigAooooAKKKKACiil5oASiiloAO9FFJQAUUtHagBKKKWgBKWkooAKKKKACiiigAooooAKKKWgA70UUlABRS0UAJRRS0AJS0lFABRRRQAUUUUAFFFFABRRS0AHeiikoAKKWjtQAlHtRS0AJS0lFABRRRQAUUUUAFFFFABRRS0AJ3paKSgAopaO1ACUe1FLQAlLSUUAFFFFABRRRQAUUUUAFFFLQAlLRSUAFFFL2oASj2opaAEpfakooAKKKKACiiigAoopaAE5oopaAE70tFJQAUUUtACUUUtACUtJRQAUUUUAFFFFABRRRQAUUUtAB35pKKKACilo5oASiiloASlpKKACiiigAooooAKKKKACiiloAO/NJRRQAUUtHNACUUUtACUtJRQAUUUUANam0rdaSrQBRRRTAKKKWgBKKWkoAKKKWgBKKKWgBKWkooAKKKKCZBRRRQSFFFGfWgAJxTc0ZJFJQWkH1pKWkoB7BRRS0ECUUUtACUtJRTSAKKKO1WAh6UylPWkoAKKKKAFpKKWgBKKWkoAKa1ONMqoiYlFFLVECUUUUAFFFFABRRRQAUUUUAFFFFABRS0lABRRS0AJRRS0AJRRRQAUUUUAFFFFABRRSE0AkI3pSUlFBogopaSgmQUUUtBIlFFFABS4pKK0GlcKKKKCxpHem05vSm0EM/9H93KXikoroOcKKKKAClpKKAFopKKAClFJRQAUUUUAFFFLQAlFFFABS8UlFABRRRQAUtJRQAUtJRQAUopKKACiiigAooooAKKKKACl4pKKACiiigApaSigBaKSigApaSigAooooAKKKKACiiigApaSigAooooAKKKWgAopKKAClpKKACiiigAooooAKKKKAClpKKACiiigAoopaACikooAKWkooAWkoooAKKKKACiiigApaSigAooooAKKKWgAopKKAClpKKAFpKXmkoAKKKKACiiigApaSigAooooAKKKKAFpKKKAClFJRQAtJS80lABRRRQAUUUUAFL9KSigApetJRQAUUUtABRSUUAFLSUUAFFLSUAFFFFABRRRQAUtJRQAUtJRQAUUUtACUtJRQAUtJRQAUUtJQAUUUUAFFFFABS0lFABRRRQAUUUtABRSUUAFLRSUAFFLSUAFFFFADW602lPWkrRAFLSUUAFFFFABRRS0AFFJRQAUtJRQAtJS0lABRRRQTIKKKKCRCabQaSgtBS0lFAwoopaCGFFJRQIKWkooAWkpaSrSAKDRTWpgNooooAKWkooAKWkooAKKKWgBpPFMp7dKZVomQUopKKZIUUvNFACUUUUAFFFFABS0lFABS0lFABRRRQAtJRRQAUopKKACil5ooASiiigAo4oppORQNIXPpTaSigpIKWkooGwooooMxaSiigApRSUUDSCil5pK0RYUUUhNADDRRRQZn/9L93KKKK6DnCiiigAooooAKOlFFAC0lFFABRRRQAUtJRQAUUtJQAUUUUAFFFFABRRRQAUdKKKAFpKKKACiiigApaSigAopaSgAooooAKKKKACiiigAooooAWkoooAKKKKAClpKKACilpKACiiigAooooAKKKKACiiigBaSiigAooooAKWkooAKKWkoAKKKKACiiigAooooAKKKKAFpKKKACiiigApaSigAopaSgAooooAKKKKACiiigAooooAWkoooAKKKKAFopKKACilpKACiiigAooooAKKKKACiiigBaSiigBaSiigBaKSigAopaSgAooooAKKKKACiiigAooooAWkFFFABS0lFABS0lFABRS0lABRRRQAUUUUAFFFFABRRRQAUUUUAFLSUUAFLSUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFLSUUAFL0pKKAGmm0402tEAUUUUAFFFFABRRRQAUUUUAFAoooAKWkooAKXpSUUGYUhOKQmm0FKIUUUUFBRRRQJ7BRRRQQFFFFABRRRVRAWikoqgAnFMJ5zQTmkoAWkoooAKKKKACiiigApCcUtMPWmkJsMk0lFFWQFFFFAC0UlFABS9KSigBaSiigAooooAKKKKACiiigAooooAKKKKAFopKKACl6UlFADTmm0p55pKDRBRRRQJsKKKKCWwooooEFFFFABRRRTRoFFFFWAhOKaTzRSUENhRRRQI//0/3copaSug5wopaSgAopaSgAooooAKKWkoAKKKKACiiigAooooAKKXmkoAKKKKACilpKACiiigAopaSgAooooAKKKKACiiigAopaSgAooooAKKWkoAKKKKACil7UlABRS0lABRRRQAv1pKKKACilpKACilpKAFpKWkoAKKKKACil7UlABRS0lABRRRQAv1pKKKACilpKACilpKAFpKWkoAKKKKACil7UlABRS0lABRRRQAv1pKKKACilpKACilpKAFpKWkoAKKKKACil7UlABRS0lABRRRQAtJRRQAUUtJQAUUtJQAtJS0lABRRRQAUUvakoAKKWkoAKKKKAFpKWkoAKKWkoAKKWkoAWkpaSgAooooAKKWkoAKKWkoAWkoooAX60lLSUAFFLSUAFFFFABRS0lABRRRQAUUtJQAUUtJQAUUUUAL9aSlpKACilpKACilpKACilpKACiiigAopaSgAopaSgBaaaWmE00gD60lLSVYBRS0lABRS0lABRS0lABRRRQAUUtJQAUUtJQS2LSGm5ptAKIv1pKWkoKCilpKACilpKCGwopaSgQUUUUJAFFBOBTNxrRAPyKbupKSgBaSiigBfrSUtJQAUUvNJQAUUtNPSgAyKZ1paSqiTIKKKKokKKWkoAKKWkoAKKKKAFpKWkoAKKWkoAKKKKACilpKACiiigAopaSgAopaSgApCcUZppOaCkgpKWkoKCilpKDMKKKKACilpKACiiigpIKKWkqolBSE0pOKYTmqE2JRRRQQLSUtJQB//U/dyiiiug5xaSiigBaSloPWgBKKKKACiiigAooooAKKKKAClpKWgApKMUUALSUUUALSUtBoASiiigAooooAKKKKACiiigApaSloAKSjFFAC0lFFAC0lLQaAEooooAKKKKAFpKKKACiiigAoopaACkpcUlAC0lFFAC0lLQaAEooooAKKKKAFpKKKACiiigAoopaACkpcUlAC0lFFAC0lLQaAEooooAKKKKAFFJRRQAUUUUAFFFLQAUlLjNJQAtJRRQAtJS0GgBKKKKACiiigBRSUUUAFFFFABRRS0AFJS0lAC0lFFAC0lLQaAEooooAKKKKAFFJRRQAUUUUAFFFLQAUlLSUALSUUUALSUtBoASiiigAooFFABRRRQAUUUtACUppKWgApKWkoAKKKKAFpKWkoAKKKKACiiigAooooAKKKKACiiigBaSlpKAFpKKKAFpKWkoAKKKKACiiigAooooAD0qOnE02rSAKKKKYC0lLSUALSUUUALSUtJQAUUUUAFFFFAmwoo6Uwmgm1wpKKKCwoopaACkpaSglsKKKKCRaSlpKACiikJxVpAN60lFFMAooooAKKKKACiiloAKSlxSUAFMPWn0xutABSUtJVohhRRRTEFFFFABRRRQAUUUUAFFFLQAUlLSUAFFFFAC0lLSUAFFFFABRRRQAUHijOKYeaBpBSUUUFNhRRS0EthSUtJQIKKKKAFpKXtSUDSCiiigsKKOlNJNNITYE02iirJbCiiigQUUUUAf/9X93aSilroOcSiiigAoopaAEooooAKKKKACiiloASiiigAooooAWkopaAEooooAKKKWgBKKKKACiiigAoopaAEooooAKKKKAFpKKWgBKKKKACiiloASiiigAooooAKKKKACiij2oAKKKKAFFJRS0AJRRRQAUUUUAFFFFABS0lFABRRRQAUUUe1ABRRRQAopKKWgBKKKKACiiigAooooAKWkooAKKKKACiiloASiiigBRSUUtABSUUUALSUUUAFFFFABS0lFABRRRQAUUUtACUUUUAKKSiigBaSiigBaSiigAooooAKKKKACiiigAoopfagBKKKKAFFJRS0AFJRRQAooNJRQAUUUUAFLSUtACUUUUAFFFLQAlL2pKKAFpKKWgBKKKKACiiloASlpKKAClpKWgBKKKKACiiigApe1JRQAtJRSmgBKKKKACiiloASlpKKAClpKCcUAFNJOaQnNJVJAFFFLVAJS9qSigBaSilNACUUUUAFFFLQAlLSUUAFBopD0oIe409aSiigsKKKWgBKXtSUUCbFpKKDQQFFFFABRRSMe1VFAITSGkoqgCiiloASiiigAoopaAEpe1JRQAtJRQaADNMPWn9qZTQmJRRS1ZAlFFFABRRS0AJRRRQAUUUtACUdqKKACiiigAooooAKKKWgBKKKKACgmkPSm0DSDOaSiigpuwUUUtBAlHaiigAooooAKKKKC0goopaBiUUUmaAEam0pOaK0RDEooooEFFFLQAlHaiigD/9b93KKKK6DnClpKKACl7UlFABRRRQAUvtSUUAFFFFABRRRQAUUUUAFFFFABS0lFABS9qSigAooooAKX2pKKACiiigAooooAKKKKACiiigApaSigApe1JRQAUUUUAFL7UlFABRRRQAUUUUAFFFFABRRRQAUtJRQAUUUUAFFFFABS+1JRQAUUUUAFFFFABRRRQAUUUUAFLSUUAFLSUUAFFFFABS+1JRQAUUUUAFFFFABRRRQAUUUUAFLSUUAFLSUUAFFFFABS0lFABRRRQAUUUUAFFFFABRRRQAUUUUAFLSUUAFFFFABS0lFABRRRQAUUUUAFFFFABRRRQAUUUUAFLSUUAFFFFABS0lFABS0lFABRRRQAUUUUAFFFFABS0lFABRRRQAUUUUAFL7UlFABRRRQAUUUUAFFFFABRRRQAUtJRQAUUUUAFBIFFMNNK4C7qT2pKKuwBRRS0AJRRRQAUUUUAFFFFABS0lFABS0lFABRRRQS30ENN5oJzSUDSClpKWgYlFFFABRRRQQwooooEFLSUds00AUzOaUnIptWAUUUUAFLSUUAFLSUtFgEoooppCbCiiiqaEmFFFFQUBplPqOqiKWwUtJRVEBRRRQAUtJRQAUUUtACUUUUAFFFFABRRRQAUUUUAFLSUUAFGQKaTSZ9aClECc0UlFBQUUUtBDYlFFFAgooooAKKKKC0gooooGFLSUUAFM60pNNq0iGwpaSimIKKKWgBKKKKACiiigD//1/3coooroOcKKU9aSgAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKU9aSgAopaSgAooooAKKKKACiiigAooooAKKKKACiiigAopT1pKACilpKACiiigAooooAKKKKACiiigAooooAKKKKACilPWkoAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACilNJQAUUUUAFFFFAB1ooooAKKKKACiiigAooooAKKKKACilNJQAUtJRQAUUUUAFFFFABRRRQAUUUtACUUUUAFFFL3oASilPWkoAKKKKACiiigAooooAKKKKACiiloASlpKKACiil70AJRS0lABS0lLQAlFFFABRS0lABRRRQAUUUtACUUUUAFFLSUAFFLSUAFFFFABRRRQAUUUUAFFFFABRR3ooAKKKKACilpKAFpKWkoAKKKKADpUdOam1aAKKKKYBRRRQAUUo60lABRRRQAUUtJQAtJS0lABRRRQAUhOKWmGghasSiiigsKKKKACilHWigmTEooooJCiloHWhAJSHinVGTk1okAlFFFABRRRQAUUUUAFFFFWiHYKKKWhgkJRRRU3KsFFFM70JDFJ7U2lpKpIhsKKKKYgooooAKKKKACiiigAoopTQAlFFFABRS0DrQAlFLxSUAFMzmg9aSgtIKKKKBhRRRQQ2FFFFAgoopTQAlFFFBaQUUtA60DEopeKSgAphNPplVEmQlFFFUSFFFFABRRRQAUUUpoASiiigD//Q/dyiil5roOcSiiloAO9JS0lABRS0UAJRRRQAUtJRQAUtJRQAUUUUAFFFLzQAlFFLQAnelopKACloo+tACUUUUAFLSUUAFLSUUAFFFFABRRS80AJRRS0AHeiikoAKWiigBKKKKAClpKKACiiigAooooAKKKKAFpKKWgA70UUlABS0UUAJRRS0AJS0lFABRRRQAUUUUAFFFFAC0lFLQAd6KKSgApaKKAEpaSloASlpKKACiiigAooooAKKKKACiiloATvS0UlABRS0UAJS0lLQAlLSUUAFFFFABRRRQAUUUUAFFFLQAlLRSUAFFFLQAlLSUtACUtJRQAUvtSUUAFFFFABRRS80AJzRRS0AJ3paKSgAoopaAEpaSloASlpKKACiiigAooooAKKWkoAKKKWgA780lFFABRS0c0AJRRS0AJS0lFABRRRQAUUUUAFFFFAC0lFLQAd+aSiigBrdqbTiaTmrQCUUUtMBKWkooAKKKKACiiigAoopaACkopaAEopaaTiglu+wE4pnvS5ooGkJRRS0DEpcUlFAmwooooICiiigAoooqkgA9KZSkk0lUAlFLSUAFFFLQAlFFLV3JsJS0lFDkCiFFFFS2VYKKKCcUgEamUuc0VaRDYUUlLTEJRS0lABRRS0AJRRS0AJS0lFABRRRQAUUUUAFFFFABRRTSaBpXENJS0lBYUUUtBDYlFFLQISlpKKACiiigqKCiiigoKKM9qbuNOwrjs0hOKbyaKfKJyDJ70lLSVRIUUUtACUUUUAFLSUUAFFFFABRRRQB/9H93KXikoroOcKKKKAClpKKAFopKKAClFJRQAUUUUAFFFLQAlFFFABS8UlFABRRRQAUtJRQAUtJRQAUopKKACiiigAooooAKKKKACl4pKKACiiigApaSigBaKSigApaSigAopaSgAooooAKKKKAClpKKACiiigAoopaACikooAKWkooAKKWkoAKKKKACiiigApaSigAooooAKKKWgAopKKAClpKKAFpKWkoAKKKKACiiigApaSigAooooAKKKWgAopKKAClpKKAFpKWkoAKKKKACiiigApaSigAooooAKKKKAFpKKKAClFJRQAtJS0lABRRRQAUUUUAFL9KSigApetJRQAUUUtABRSUUAFLSUUAFFLSUAFFFFABRRRQAUtJRQAUtJRQAUUUtACUtJRQAUtJRQAUUtJQAUUUUAFFFFABS0lFABRRRQAUUUhPpQA31opKK0AKWikoAKKXmkoAKKKKACiiigApaSigApaSiglvoITim9aDRQNIKKSigYUtJRQAtJS80lBDYUUUUCCiiimlcApTSU0mrAbRRRQAUUUtNK4m7BRSUVVibsKWkop2C7FpKXmkqGUrhRRRSGFNJFKTxTKaQmwpaSirICiiigAoopaACkoooAKUUlFABRS80UAJRRRQAUUUUAFLSUGgBCeKbQTmkoLWiCiiiglsWkoooEFKKSigAopeaKBpCUUUmaCxSQKbu9KbRVpENhS0lFMQUUUUAFFFFAC0lFFABSikooAKKXmkoAKKKKACiiigD//S/dyiiiug5wooooAKKKKACjpRRQAtJRRQAUUUUAFLSUUAFFLSUAFFFFABRRRQAUUUUAFHSiigBaSiigAooooAKWkooAKKWkoAKKKKACiiigAooooAKKKKAFpKKKACiiigApaSigAopaSgAooooAKKKKACiiigAooooAWkoooAKKKKAClpKKACilpKACiiigAooooAKKKKACiiigBaSiigAooooAKWkooAKKX3pKACiiigAooooAKKKKACiiigBaSiigAooooAWikooAKKX3pKACiiigAooooAKKKKACiiigBaSiigBaSiigBaKSigAopfekoAKKKKACiiigAooooAKKKKAFpBRRQAUtJRQAUtJRQAtJS0lABRRRQAUUUUAFFFFABRRRQAUCiigApaSigApaSigAooooAKKKKACiiigANR089KZVRAKKKKoAoFFFABS0lFABS9KSigBaSiigAoopCcUCuLTSeKTOaSgSQUUUUFBRRRQAUopKKCGwpaSigQUvSkooAWkoorQAJxTCc0rU2gAooooAKKKKtEMKKKKLhYKBRRUFi0UlITigBaQnFNpKtIlyF5pKKKZIUUUUAFFFFABRRRQAUUUUAFFFFAC0UlFABS9KSigBaSiigAprU6o6BpBRRRQOTCiiigkKKKKACiiigaVxaKSkJxQWBOKb0o60lWkQ2LSUUUxBRRRQAUUUUAFFFFA+UKKKKB8oUUUUD5UB4o+lNJptBLJKXpUYpwINAhaKKKAP/T/dyilpK6DnCilpKACilpKACiiigAopaSgAooooAKKKKAFpKWkoAKKXmkoAKKKKACilpKACiiigAopaSgAooooAKKKKAFpKWkoAKKWkoAKKKKACilpKACiiigAope1JQAUUtJQAtJRRQAv1pKWkoAKKWkoAKKWkoAWkpaSgAooooAKKXtSUAFFLSUALSUUUAL9aSlpKACilpKACilpKAFpKWkoAKKKKACil7UlABRS0lAC0lFFAC/WkpaSgAopaSgAopaSgBaSlpKACiiigAope1JQAtJS0lAC0lFFAC0lLSUAFFLSUAFFLSUALSUtJQAUUUUAFFL2pKAFpKWkoAWkoooAWkpaSgAopaSgAopaSgBaSlpKACiiigAopaSgAopaSgBaSiigBfrSUtJQAUUtJQAUUUUAFFLSUAFFFFABRS0lABRS0lAC0lFFAC/WkpaSgAopaSgAopaQ0AMJzSUtJWgBRRRQAUUtJQAUUtJQAtJRRQAv1pKUUh4oE2NJ9KbS0lAJBRS0lAwopaSgAooooJkFFL2pKCQopaSgBaSiiqiAv1pKWmEnpVABOabS0lABRS0lNeYmFFLSVZLYUUUUWBMKKXtSVmWLUZqSojTQmLSUUVZAv1pKWkoAKKXmkoAKKWkoAKKWkoAKKKKACil7UlABRS0lABRRRQAtJS0wk9KBpCHrSUtJQVsgooooICilpKACiiigaQUUv40lBYVGeacabVpEyYUUUUyRaSlpKB2CilpKBqIUUUUFBRS0lABRRRQAUHpSZ96bmgVwpKWkoICiiigCQH1opoOKXIoA//U/dyiiiug5xaSiigBaSlpDQAUUUUAFFFFABRRRQAUUUUAFLSUtABSUtJQAtJRRQAtJS0hoAKKKKACiiigAooooAKKKKAClpKWgApKWkoAWkoooAWkpaQ0AFFFFABRRRQAtJRRQAUUUUAFFFLQAUlLikoAWkoooAWkpaDQAlFFFABRQKKAFpKKKACiiigAoopaACkpcUlAC0lFFAC0lLQaAEooooAKKBRQAopKKKACiiigAoopaACkpaSgBaSiigBaSloNACUUUUAFFFFACikoooAKKKKACiiloAKSlpKAFpKKKAFpKWg0AJRRRQAUUUUAKKSiigAooooAKKKWgApKWkoAWkoooAWkpaDQAlFFFABRRS0AJRRRQAUUUtACUppKWgApKWkoAWkoooAWkpaSgAooooAKKKKACiiigAooooAKKKKAFpKWkoAWmE9qdTD1poApKWkqwCiiigAooooAKKKKACiiigAppOaCeabQIWkpaSgYtJRRQAtJS0lABRRRQQ2FFFFAgooooAKKKaT6VaVgAn0ptFLTAKSl60lAC0lFFAC0lLSU0xWCiiii7HYKKKKQBUZp5plVEmQUUUVRIUUUtABSUvWkoAWkoooAWkpaSgAooooAKKKKACiiigAooooAQnFMNKetFBaQUlLSUCkFFFFBItJS9qSgaQUUUUFhRRRQA09abSnrSVoiGFFFFA0goopaCgpKWkoAKKKKAFpKXtTSRmgBc0zJozmkoIbCiiigQUUUUAFFFFABRRS0Af/V/dyiiiug5wooooAKKKKACiiigAooooAKKKWgBKKKKACiiigBaSiloASiiigAooooAKKKKACiiigAoopaAEooooAKKKKAFpKKWgBKKKKACiiigAooooAKKKKACiiigApaSloASiiigBRSUUtACUUUUAFFFFABRRRQAUtJRQAUUUUAFLSUtACUUUUAKKSiloASiiigAooooAKKKKACiiigAooooAKWkpaAEooooAUUlFLQAUlFFAC0lFFABRRRQAUUUUAFFFLQAlLSUtACUUUUAKKSiloAKSiigBaSiigAooooAKKKKACiiloASlpKWgBKKKKAFFJRS0AFJRRQAooNJRQAUUUUAFLSUtACUUUUAFFFLQAlL2pKKAFpKKKACiiigAoopaAEpaSigApaSloASiiigAooooAKXtSUUALSUUpoATNR08nFMq4gFFFLTASlpKWgBKKKWgBKKKKACiig0AMPWjtSdaKAFpKKU0AJRRRQAUUUtAmxKU0lLQQJRRS0AJRSE4pp55NNIBc02ilqwEpe1JRQAtJRRQAUUUUAFFFLQAlKaSloASkJxS0wnNNK4mwJzSUUtWQJRRS0AJS9qSigBaSiigAooooAKKKWgBKU0lFABRRS0AJRRRQAUUUHpQAw9aTtRRQaBRRRQQwooooEFFFLQVESlNJRQUFNJpScU0knrVJEtiUUUVQkFFFLQWJR2oooAKKKQmgBaQnFJuptBLkOz6U2iloJuJSmkooAKKKWgBKKKKACiiloASjtRRQB/9b93KKKK6DnClpKKAClpKKACiiigApR6UlFABRRRQAUUUUAFFFFABRRRQAUtJRQAUtJRQAUUUUAFKPSkooAKKKKACiiigAooooAKKKKAClpKKAClpKKACiiigApfakooAKKKKACiiigAooooAKWkooAKWkooAKKKKACiiigApfakooAKKKKACiiigAooooAKWkooAKWkooAKWkooAKKKKAClHpSUUAFFFFABRRRQAUUUUAFLSUUAFLSUUAFLSUUAFFFFABSikooAKKKKACiiigAooooAKWkooAKKKKAClpKKACiiigApRSUUAFFFFABRRRQAUUUUAFLSUUAFFFFABS0lFABRRRQAUtJS0AJRRRQAUUUUAFFFFABRRRQAUtJRQAUUUtACUUUUAFL7UlFABRRRQAUUUUAFFFFABRRQelADCcmikorQAooooAKKKKACl9qSloASiiigApuadTKAEooooAKKKKAClpKKACiiighsKKKKBBRntTSfSkqlEq3cSiiiqE2FFFLQISiiigAooooAKWkooAKWkooAKKKZk0AKT2pKSitEiGwooooEFFFLQAlFFFABRRRQAUtJRQAUtJRQAUUUUAFLSUUAFFFFABQelFNJ7UDSG0UUUFNhRRRQQFFFFABRRRQWkFMzTsimVSQmwpaSiqJCiiigqIUUUhagoU8U3caQmkoJbCiiigkKKKKACiiigAooooAKWkooAKKKKACiiigAooooJ5j/9f93KKKK6DnCilpKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAopaSgAopaSgAooooAKKKKACiiigAooooAKKKKACiiigAopaSgAopaSgAopaSgAooooAKKKKACiiigAooooAKKKKACilpKACiiigAopaSgAooooAKKKKACiiigAooooAKKKKACilpKAClpKKACiiigA60UUUAFFFFABRRRQAUUUUAFFFFABRS0lABS0lFABRS0lABRRRQAUUUUAFFFLQAlFFFABRRRQAUUtJQAUtJRQAUUtJQAUUUUAFFFFABRRS0AJS0lFABRRS0AJRS0lABS0lLQAlFLSUAFFLSUAFFFFABRRS0AJRRRQAUUtJQAUUtJQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAE4phOacTnimVaQC0lLSUwCiiigAooooAKKKKACiiigBDxTKXvSUAFFFFABRS0lAC0lLSUCYUUUUEBSE4oJpv1qkikg6mkooqgkFFFFBIUUUtACUUUUAFFLQOtACUUtJQAUUUUAFR1JUdNbiewUUUVZAUUUUAFFFLQAlFFFABRS0DrQAlFLSUAFFFFABRRRQAUUUUAFFFFAAeKjpxOTSGgtaCUUUUEBRS0DrQAlFLSUDSCmk0E9qbVJDbCiiiqJCiiigaQUhOKaTzSUDbHE+lNopTQJsSiiigQUUtA60AJRRRQAUUUcUAFFGabup2AdRSbhSbqLMB1FN3Ume9HKLUfRTMmg0+UVh26jcKZRT5UFkf/0P3coopea6DnEoopaAEopaSgAopaKAEoopaAEpaSigApaSigAooooAKKKKAFpKKWgBKWikoAKWiigBKWkpaAEpaSigApaSigAooooAKKKKAFpKKWgBKWikoAKWiigBKWkpaAEpaSigApaSigAooooAKKKKAFpKKWgBKWikoAKWiigBKWkpaAEpaSigApaSigAooooAKKKKAFpKKWgBKWikoAKWiigBKX2pKWgBKWkooAKWkooAKKKKACiiigAoopaAEpaKSgAopaKAEpfakpaAEpaSigApaSigAooooAKKKKACiiloASlopKACiiloASl9qSloASlpKKACl9qSigAooooAKKKXmgBKKKWgBKWikoAKKKWgBKWkpaAEpaSloASiiigAooooAKKKKAFpKOaWgA+tJRRQAUUtFACUUUtACUtJRQAUUUUAFIelLTDyaaASiiirAWkopaAD60lFFABRS0UAJRRRkUAFNajdSUAJRRRQAUUUUAFFFFAC0lFLQQw+tJRTTk/jTSBIQ0UZxzSntVljaKKWgmQlLikooJCiiigAooooAKKKKAFopKWgBKKWkoAKjqSmU47iewlFFLVkCUtJRQAUUUUAFFFFABRRRQAtFJS0AJRS0lABRS0UAJRRS0AJQaKQ9KBoZRRRQDYUUUUCCiiigAoPFBNMJppFXsg+tJS0lWSFFFLQAlIT2zQTTaB30EpaSloEJRRRQAUUUUAFFFISaAAnFJmm0tWkAZPekpaSmAUUUtACUUUUAFLSUUCcgooooJ5gooooEf/9H93KKKK6DnCiiigApaSigBaKSigApaSigAopaSgAoopaAEooooAKKKKACiiigApaSigApaSigApaSigAopaSgAooooAKKKKACiiigAooooAKWkooAWikooAKWkooAKKWkoAKKKKACiiigApaSigAooooAKKKWgAopKKAClpKKACilpKACiiigAooooAKWkooAKKKKACiiloAKKSigApaSigAopaSgAooooAKKKKAClpKKACiiigAoopaACikooAKWkooAKKXmkoAKKKKACiiigApaSigAooooAKWkooAWkoooAKWkpaAEopeaSgAooooAKKKKAClpKKACl60lFABS0lLQAUUlFABS0lFABRS/WkoAKKKKACiiigApaSigApaSigApaSigApaSigApaSigAopfrSUAFBOKQmm1SQASelJRRVAFLSUUAFFFFABS0lFAC0lFM5oAUn0pKKSgAope9JQAUUUUAFFFFABS0lFBLfQKTdSE+lNoBIUk0UlFO5Qo6GikpapMBKWkopkMKKXvSUCCiiigAooooAKWkooAKKKKAClpKKADNMpx6UymhMKWkoqyAope9JQAUUUUAFFFFABS0lFABRRRQAUtJRQAtJRRQAUtJRQAUwnNKSc0lAxKKKKBBRRRQAUtJTS3pTSGhCc0lFFWIKWkooAWkJAFFNNACHmikooAKKXnNFACUUUUAFFFJkUWAWmnmgn0ptWkAUUUUwClpKKAFpKKKCXIKWkpaBNiUUvNJkDrQIKKTcKbmgB2QKMimUU0gP//S/dyiiiug5wooooAKKKKACiiigBaSiigAooooAKWkooAKKX3pKACiiigAooooAKKKKACiiigBaSiigAooooAKWkooAKKX3pKACiiigAooooAKKKKACiiigBaSiigAooooAKWkooAKKWkoAKKKKACiiigAooooAKKKKAFpKKKACiiigApaSigAopaSgAooooAKKKKACiiigAooooAWkoooAKKKKAClpKKACil96SgAooooAKKKKACiiigAooooAWkoooAKKKKAFopKKACil96SgAooooAKKKKACiiigAooooAWkoooAWkoooAWikooAKKX3pKACiiigAooooAKKKKAClpKKAFpBRRQAUtJRQAUtJRQAtJS0lABRRRQAUUUUAFFFFABRRRQAtIKKKACgnFFNY9qaQCZopKKsBaSiigAooooAKKKKACiiigBpPpTaKKAFpBRRQAUtJRQAUvSkooAWkpaSgApDSk4phOaCEhKKKKCwooooAKKKKaE2LQKSirIClpKKACl6UlFAC0lLSUAFFFFABRRRQAUUUUAFMIwafTWoASkFFFaGYtFJRQAUvSkooAWkpaSgAooooAKKKKACiiigAooooAKKKaTQAh60UlFABS9KSigBaSiigBDTKUnNJVpAFFFFMAoopCcUABNMoooAKKKKAFopKKACkJx9aCab1qkgDmkooqgCiiigTYUUUUC5goopCcUEi0U3dQTQApIFJnJptFAC5NFJRTSAKXpSUVSiAUUUmaYH//T/dyilpK6DnCilpKACilpKACiiigAope1JQAUUUUAFFFFABRS0lABRS80lABRS0lABRS0lABRRRQAUUvakoAKKKKACiiigAopaSgAopaSgAopaSgAopaSgAooooAKKXtSUAFFLSUALSUUUAL9aSlpKACilpKACilpKAFpKWkoAKKKKACil7UlABRS0lAC0lFFAC/WkpaSgAopaSgAopaSgBaSlpKACiiigAope1JQAUUtJQAtJRRQAv1pKWkoAKKWkoAKKWkoAWkpaSgAooooAKKXtSUALSUtJQAtJRRQAtJS0lABRS0lABRS0lAC0lLSUAFFFFABRS9qSgBaSlpKAFpKKKAFpKWkoAKKWkoAKKWkoAWkpaSgAooooAKKWkoAKKWkoAWkoooAX60lLSUAFFLSUAFFLSUAFFLSUAFFFFABRS0h4oAQnFNzmikq0gFpKKKYC/WkpaSgAopaSgAopaSgApG6U6mE0ANooooAKKWkoAKKWkoAWkoooAX60lLTT0oJfYaTmkpaSgoKKWkoAKKWkoAKKKKCZBRS9qSrTJCilpKYC0lFFAC/WkpaSgAopaSgAopaSgAopaSgAooooAaR6UbTT+1JTTFYZikqTikxmq5hco2koopki/WkpaSgAopeaSgAopaSgAopaSgAooooADTCc0pOe9NoAKKWkoAKKKKAFpjHtTicdKjqkgCilpKoAoooNACEgU080fWkoAKKKKACil/GkoC4hOKbkmjNJVpAFFFFMBaSlpKCXIKKWkoJEJpCfSkJzSUDCilpKAuFFFFNIQUUv40lUkAtJRxTd1MTY6jIpmSaSgXMKT60lLSUEn//1P3coooroOcWkoooAWkpaQ0AFFFFABRRRQAUUUUAFFFFABS0lLQAUlL1pKAFpKKKAFpKWkNABRRRQAUUUUAFFFFABRRRQAUtJS0AFJS9aSgBaSiigBaSlpDQAUUUUAFFFFAC0lFFABRRRQAUUUtABSUtJQAtJRRQAtJS0GgBKKKKACigUUALSUUUAFFFFABRRS0AFJS0lAC0lFFAC0lLQaAEooooAKKBRQAopKKKACiiigAoopaACkpaSgBaSiigBaSloNACUUUUAFFFFACikoooAKKKKACiiloAKSlpKAFpKKKAFpKWg0AJRRRQAUUUUAKKSiigAooooAKKKWgApKWkoAWkoooAWkpaDQAlFFFABRRS0AJRRRQAUUUtACUppKWgApKWkoAWkoooAWkpaSgAooooAKaT2pScUyqSAKKKKoAooooAKKKKAFpKWkoAWkoooAMjvUdONNoAKKKKACiiigAooooAKKKKACkbpS0w80E7sKSlpKChaSiigBaSlpKACiiigh7hRRRVrYQUUUUwCiiigAoopaACkpaSgBaSiigBaSlpKACiiigAooooAKKKKAExTafTD1qkyWhKKKWqJCkpaSgBaSiigBaSlpKACmmnZxTCc0AJ1ooooAKKKKACiimk00rgITk5pKKWrAKSlpKAA9KZk0pPam0ALSUvakoAKKKQnFArhkU0k9KSirSGFFFFMTYUUUUEBSZFBOKbQA4nuKbk0UlABRRRTSAWkpe1JVJAFFFJuFMBaTNITSUEuQZpKKKCQooooAKKKWgD/9X93KKKK6DmTCiiigYUUUUAFL1pKKACiiigAoopaAEooooAKKKKAFpKKWgBKKKKACiiloASl60lFABRRRQAUUUtACUUUUAFFFFAC0lFLQAlFFFABRRS0AJS9aSigApaSigAooooAKWkpaAEooooAUUlFLQAlFFFABRRRQAUUUUAFLSUUAFFFFABS0lLQAlFFFACikopaAEooooAKKKKACiiigApaSigAooooAKWkpaAEooooAUUlFLQAmaKKKAFpKKKACiiigApaSigAooooAKWkpaAEooooAUUlFLQAmaKKKAFpKKKACiiigAooooAKKKKAClpKWgBKKKKAFFJRS0AJmiiigBRQaSigAooooAKWkpaAEooooAKKKWgBKXtSUUALSUUtACUUUUAFFFLQAlBooPSgCOlpKWtAEooooAKKKKACl7UlFAC0lFKaAEpCcGlph60AFJRS0AJS0lLQAlFFLQAlFFFABRRQelAMQ9Kb2pKKBJC0lFKaBiUUUUAFFFLQAlKaSloIe4lFFLWiEJRRRQAUUUtACUvakooAWkoooAKKKKaQmwoopaqxNxKU0lLTFcSiilosO4lFFFJoaYUw0+mdaSQN6CUvakoqiRaSiigAooooAKQkClPFMNABmg0lFABRRS0AJRRTc00gEJpKKWrASjtRRQAU0ntQTTaACiiigAooppNNIQpOKaaSiqSDYKKKWmJyEoooPHWgkKZkmgnNFACUdqKKLAFFFFUkAUUUVQBRSE4ppoE2KTSGkooICiiloASiiigAoopaAEo7UUmf0oA/9b93KKKK6DliFLSUUFBS9qSigAooooAKWkooAKKKKACiiigAooooAKKKKAClpKKACiiigAooooAKWkooAKKKKACiiigAooooAKKKKAClpKKACiiigAooooAKX2pKKACiiigAooooAKUUlFABS0lFABS0lFABRRRQAUUUUAFL7UlFABRRRQAUUUUAFKKSigApaSigApaSigAooooAKKKKACl9qSigAooooAKKKKAClFJRQAUtJRQAUtJRQAUtJRQAUUUUAFKKSigAooooAKKKKACiiigApaSigAooooAKWkooAKKKKAClFJRQAUUUUAFFFFABRRRQAUtJRQAUtJRQAUtJRQAUUUUAFLSUtACUUUUAFFFFABRRRQAUUUUAFLSUUAFFFLQAlIaWmE00gEpfakoqwCiiigAooooAKKKKACiijOBQAhNNoNJQAUUUtACUUUUAFL7UlLQAlFFFABTM5608nFMoEhKKKKBhRRRQAUUUUAFLSUtAMSiiigzClpKK0AKKKKACiiloASiiigAooooAKWkorQzClpKWgBKKKKAClpKKACiiigAqOnsabQMSiiigQUUUUAFLSUUAIelNoPWigBKKKKAClpKOlADTTaU9aSrQBRRRTAKQ0tMJoASiiigAooooJbENMpSc0VaQ1oJRRRTJbClpKKBBTCc0E5pKACiiimkAUUUVSQBRRSE+lMBTxTSTSE5pKCGwoopaBCUUUUAFLSUUAFFFFABRmkyKbmgTYZpKKKtIF5n/9f93KKKK6DkQUUtJQWFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRS0lABRS0lABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRS0lABRS0lABRS0lABRRRQAUUUUAFFFLQAlFFFABRRRQAUUtJQAUUUUAFFLSUAFFFFABRRRQAUUUtACUUUUAFFFFABRS0lABRRRQAUUtJQAdaKKKACiiigAoopaAEooooAKKKKACilpKAClpKKACilpKACiiigAooooAKKKWgBKKKKACiiigAopaSgApaSigAopaSgAooooAKKKKACiiloASlpKKACiiigAopaSgApaSloASilpKACilpKACiiigAoopTQAlFFFABRS0lABRRRQAUUUUAFR08kimVUQCiiiqAKKKKACiilNACUUUUAFNbpT6YaAG0UtJQAUUUUAFFFFABRRRQAUUUhoAGplFKaAQlFFFABRS0lABRS0lABRRRQS30CiiiqSJCiiiqAKKKKACiilNACUUUUAFFLSVSRLYUUUVRIUUUUAFFFFABRRRQAUGimHrQAGkopTQAlFFFABRS0lABQaKYTmgBKKKKACiiigApD0pc4phOaaQCUUUVYBRRQTigBGPamUUUAFFLSUEthSGkJ9KbVJAl3CiiiqE2FFFITigQtMJopKACiiimkAUUUpqwEoJwKKYTmgTYZNJS0DrQRcSiiigAooooAKKKKACiiigApGyKUnFMPNAmJRRSmtBiUtJRQB/9D93KKKXmug4xKKKWg0EopaSgApaKKAEpaSigApaSigApaSigAooooAKKKKAFpKKWgBKWikoAKX3oooASlpKKAClpKKAClpKKACiiigAooooAWkopaAEpaKSgApfeiigBKX2pKKAClpKKAClpKKACiiigAooooAKKKWgBKWikoAKX3oooASl9qSloASlpKKAClpKKACiiigAooooAKKKWgBKWikoAKX3oooASl9qSloASlpKKAClpKKACiiigAooooAKWkpaAEpaKSgAopaKAEpfakooAKWkooAKWkooAKKKKACiiigApaSloASlopKACiiloASl9qSigApaSigApaSigAooooAKKKWgBKWkpaAEpaKSgAoopaAEpaSloASlpKWgBKKKKACiiigAooooAKKOaWgA+tJRSE44ppAI1NpaKsBKKKWgBKWkpaAEooooAKKKKAEJxTaO/NJQAUUUtAB9aSiigAopaKAEoopaAEprU6mHNAhKKKKBhRRRQAUUUUAFFFLQAfWkpaSgzCiloq0AlFFFMApcUlFABRRRQAUUUUAFFFFaIhhS0lLQISilpKACilooASiimk0AKTim0lLQNiUUUUCCiiigAoJxRTCc0AKTSUlLQAlFLSUAFITignFNqkgDJNJ7UUVQBRRTST0oAC1J1pKKACiiiglsKQmkJ7U2qSBLqFLSUtUJsSilppOKBASBTT60e9FACUUUVSQBS0lLVAJQaQnFNznmgTYE5pKKKCAooooAKWkpaAEopaSgAoopaAEoJwKKYTkUCbAnNFJS1SEmJRRRVXKuFFFFAH/0f3coooroOMKKKKC0FLSUUDFopKKAClpKKACilpKACiiigAooooAKKKKACiiigApaSigApaSigApaSigAopaSgAooooAKKKKACiiigAooooAKWkooAWikooAKKKKACilpKACiiigAooooAKWkooAKKKKAClpKKAFopKKACiiigAopaSgAooooAKKKKAClpKKACiiigApaSigBaKSigApaSigAopaKAEooooAKKKKAClpKKACiiigApaSigBaKSigApaSigAopeaKAEooooAKKKKAClpKKACiiigApaSigBaKSigApaSigTYUUvNFAuYSiiigOZhRRRQHMwpaSigOYKOtFFA0wpaSigYtFJRQAUUUUAFFL9aSgAooooAKKKKAClpKKACiiigAphpx6UyqiAUtJRVAFFFFABRS96SgAooooAKQ8ClprHtQA2iiigAooooAKWkooAWikooAKWikoAKYetSd6j9aBLcSiiigYUUUUAFLSUUAFFFFAnsFLSUUEC0UlFaAFLSUUAFFL3pKACiiigAooooAKWkorQzYUUUUAFLSUUALRSUhNAATim0GkoAKKXvSUAFFFFABRRSE0AIT2pKSigAooooAKCeOKKaTk4ppAJSUUVYBS0lFACH0plOPWkoASiiigTdgpCcUtNPWmiUNpaSirBu4UUUUCEPAptOJ7UygBaSiiqSAKWkoqgCgnFLnHU1HnNAm7ATmkoooICiiigApaSigAooooAKWkooAWkoooAKTbxS0UBYZg0YNSc0lAuVEdFSUmBQLlGUU/aKNoppBys//0v3coooroOMKKKKC1sFFFFAwooooAWkoooAKKKKAClpKKACil96SgAooooAKKKKACiiigAooooAWkoooAKKKKAClpKKACil96SgAooooAKKKKACiiigAooooAWkoooAKKKKAClpKKACilpKACiiigAooooAKKKKACiiigBaSiigAooooAKWkooAKKWkoAKKKKACiiigAooooAKKKKAFpKKKACiiigApaSigAopfekoAKKKKACiiigAooooAKKKKAFpKKKACiiigBaO9JRQAUUvvSUAFFFFABRRRQAUUUUAFFFFBLkLSUUUEhRRRQAtFJRQAUUvvSUAFFFFABRRRQAUUUUGgUtJRQAtIKKKAClpKKAClpKKAFpKWkoAKKKKACiikPFACHNNoorQAooooAWkoooAKWkooAKWkooAQmmU49abQAUUUUAFFFFABRRRQAUUUUALSUUUAxCcU2g0lAkFL0pKKBi0lLSUAFFFFABRRRQTJhRRRVRJCiiiqAWkFFFABS0lFABS9KSigBaSlpKaAKKKKszCiiigAooooAKaTmkNJQN6C0lFFAgpaSigApelJRQAHgUwnNBOaSgAooooAKKKQ0ABNMooq0rAFFFFMAo6UdKYTmgQHrSUUUA9ApelJRQSBzjio6Wkq0gfYKKKKYgooprdcUAIetJRRTSAKKKKsAooppNACHrSUUUGYUvSkooAWkoooAKKKKACiiigAooooAKKKKACiiigAooooAKXpSUVaQBRRRTA//0/3copaSug4wopaSgtbBRS0lAwooooAKKXtSUAFFFFABRRRQAUUtJQAUUvNJQAUUtFACUUtJQAUUUUAFFL2pKACiiigAooooAKKWkoAKKWkoAKKWigBKKWkoAKKKKACil7UlABRS0lABRRRQAUUtJQAUUtJQAUUtJQAUUtJQAUUUUAFFL2pKACilpKACiiigAopaSgAopaSgAopaSgAopaSgAooooAKKXtSUAFFLSUAFFFFABRS0lABRS0lABRS0lABRS0lABRRRQAUUvakoAWkpaSgAooooAKKWkoAKKWkoAKKWkoAKKWkoIbCiiigQUUvakoAWkpaSgAooooAKKWkoAKKWkoAKKWkoAWkpaSgqIUUUUFBRS0lABRS0lAC0lFFAC/WkpaSgAopaSgAprU48CmGqigEopaSqAKKKKACilpKACilpKACjNHaozQAppKWkoAKKWkoAKKWkoAKKWkoAKKKKACilpKCGMNJS8UlNlhRRRSAWkpaSgAopaSgTYUUtJQQFFLSVaQBRRRTAKKXtSUAFFLSUALSUUUALSUtJQAUUtJVpkNBRS0lMQUhOKdTCc0DQ33ooooEFFL2pKAFpKWkoAKDRTCc0AFJS0lABRS80lABTSe1OPAqOqSAKKWkqgCiig0ANJ9KbS9qSgBaSlpKCGFMJzTs9qZVJALSUtJVCCilpKAEJplOPXim0AFFLSVogCiiigAph604/WmUEti0lLSUEhRRRQAtJS0lABRS0lABRRRQAUUtJQAUUUUAFFL+NJTSAWkpaSqSsAUUUuDTAKSloA5oA/9T93KKKK6DjFpKKKC1sLSUtJQMKKKKACiiigAooooAKKKKAClpKKAF96SiigBaSiigBaSlpDQAUUUUAFFFFABRRRQAUUUUAFLSUUALSUUUALSUUUALSUtIaACiiigAooooAWkoooAKKKKACiiigBaSlpKAFpKKKAFpKWg0AJRRRQAUUCigBaSiigAooooAKKKKAFpKWkoAWkoooAWkpaDQAlFFFABRQKKAFFJRRQAUUUUAFFFFAC0lLSUALSUUUALSUtBoASiiigAoopaAAUlFFABRRRQAUUUtABSUtJQAtJRRQS2LSUtBoJEooooAKKKWgAFJRRQAUUUUAFFFLQAUlLSUALSUUUALSUtBoGhKKKKCwooFLQAlFFFABRRRQAUUUtABzSE0tMamgEzmkooqwFpKWkoAKKKKACiiigAooooAQkdKZS96SgAooooAXmkpaSgBaSiigBaSlpKACiiigApD0pc45phNNIhISiiikywooooAKKKKAFpKWkppEMWkooqkhC0lLSUwCiiigAooooAKKKKACiiigAoopaACkpaSgBaSimZNNMTQ4kcUylpKtEsKKKKBBRRRQAUUU0mgAJ7U2iigAoopaACkpaaTigBpOaSiitAFpKWkoAKYTT6joEtQooooE2FFFITigkbSUUVoAUUUtABSUtJQAykpTSVaQC0lLSUwCiiigBrdabTj1ptBD3CiiigQUUUUAFFFLQAUlLSUAFFFFAC+lJS0oFACCjBp9FNMBmDRg0+inzAMwaMU+ijmATbS0UVNwCiiloA//1f3coooroOMKKKKDRBRRRQAUvWkooAKKKKACiiigAooooAKKKKACiiloASiiigAoopaAEpetJRQAUUUUAFFFFABRRRQAUUUUAFFFLQAlFFFABRRS0AJS9aSigAooooAKKKKAClpKWgBKKKKACiiloASiiigAooooAKKKKAClpKKACiiigApaSloASiiigAoopaAEooooAKKKKACiiigAooooAKKKKAClpKWgBKKKKACiiloASiiigBaSiigAooooAKKKKACiiigAoopaAEooooAKKKWgmQlFFFBItJRRQAUUUUAFFFFABRRRQAUtJS0AJRRRQAUUUtACUUUUAKKDSUUAFFFFBUQpaSloKEooooAKKKWgBKXtSUUABOKjPWnt0ptWgEooopgFFFLQAlLSUtACUUUtACUjUtI1ADKKKKACl7UlFABRRS0AJRRRQAUUUtACUppKWgmQ0000ppOcVa2GthKKKWk4jEoopetLlASl7UlFPlAKKKWqSMxKKKKACiiloASlNJS0AJRRS0AJRRRQAUUUtACUvakooAKKKQkigAJ7UyiirRMgoopaZIlKaSloASiikJoACcUylJzSUAFFFLQAlL2pKKACmE0pNNq0gCiiimAUUU0mgTAmkNJRQMKKKWgzEphz3pTTapIAoopaoBKO1FFABSEil6Uw0AJRRRVrYAoopaYCUppKKAGtTakphoJaEooooJCiiloASjtRRQAUUUtACUopQKd0oAQLS0UtACUppKKACiiloASiiigAoopaAEo7UUUAf//W/dyiiiug4wpaSig0ClpKKAClpKKACl9qSigAooooAKKKKACiiigAooooAKWkooAKKKKAClpKKACl9qSigAooooAKKKKACiiigAooooAKWkooAKKKKAClpKKACl9qSigAooooAKKKKAClFJRQAUUUUAFLSUUAFFFFABRRRQAUvtSUUAFFFFABRRRQAUopKKACiiigApaSigAooooAKKKKACl9qSigAooooAKKKKAClFJRQAUtJRQAUtJRQAUUUUAFFFFABSikooAKKKKACiiigAooooJcgpaSigkKKKKACiiigAooooAKUUlFABRRRQAUUUUAFLSUUAFLSUUAFLSUUAFLSUUAFFFFA0wpfakpfegsSiiigAooooAKOOlITg033qlEAJpKKKoApaSigAoopaAEooooAKX2pKWgBKQ0tR0AFFFFABRRRQAUUUUAFFFFABRRS0AJS0lNJppEbg1Ht0ptLjjNWi0JRRS0AJS0hpaAEpaD1pKBNhRRRQQFFFFABRRS0AJS0lFABS+1JRQAUUUUAFFFFABRRRQAUwnNPplNbiewlLSUVZAUUUtACUtJRQAU09cU6mHk0AJRRRQAUUUUAFIelLTSeaaAbS0lFWAUtJRQAGo6e3Sm0CQlLSUUCb6BS0lB6UEjD1pKKK0AKKKKACig0UAI3Sm0402gBKWkoq0AUUUtMBKKKKAClpKKAE2ik206igVkMwaMGn0UC5SPFLTzRQHKR08ClooEwpaSigQUUUtACUUUUAFLSUtACUUUUAFFFFABRRRQB//X/dyilpK6DkQUUtJQWFFLSUAFFFFABRRRQAUUtJQAUUUUAFFFFABRRRQAUUtJQAUUtJQAUUtJQAUUUUAFFLSUAFFFFABRRRQAUUUUAFFLSUAFFLSUAFFLSUAFFFFABRS0lABRRS0AJRRRQAUUUUAFFLSUAFFLSUAFFLSUAFFFFABRS0lABRRS0AJRRRQAUUUUAFFLSUAFFLSUAFFLSUAHWiiigAooooAKWkpaAEooooAKKKKACilpKAClopKACilpKACiiigAooooAKWkpaCW+glLSUUEhRRRQAUUtJQAUtJRQAUUtJQAUUUUAFFFFABS0lLQAUUlFABRRS0AHekpaSgApaSloASilpKCkgopaSgoKKKKAClxSUGgBrelNpTzSVogCilpKACilpKACilpKACilpKACiiigBCcU004nAplABRRSmgBKKKKACilFJQAtJS0lABRS0lAMQ5FMp5PemVa2Etg70UUVN2MKKM0UrgFL3pKU1aYAfakoopkyCilFJQSLSUtJQAUUtJQAUUtJQAUUUUAFFFFABRRSmmkJsSlpKKfKLmEJplOPU0lNIHsFJRRTJCiiigAopaQ0AISKZRRQDCiiigAoopTQA0mmmlPWm1aQBRS0UwCkopD0oExp5NJRRQMKKWkoIYUhPalph600ISiiirAKKKU0AJS0lFABTSO4p9A60AR0lSYFMPFUmAlFFFVdBdBRRRSuhXQUUUUr9hcwUUUUxXCiilNAXYlLSUUxBRS0DrQAlFFFABRRRQAUUUUAFFFFABRRRQAUUUpoASlpKKAP//Q/dyiil5roORBSUdaWgsSlopKACloooASlpKKAClpKKAClpKKACiiigAooooAWko60tACUuaKSgApfeiigBKWkooAKWkooAKWkooAKKKKACiiigBaSjrS0AJS5opKACl96KKAEpfakooAKWkooAKWkooAKKKKACiiigBaSjrS0AJS5opKACl96KKAEpfakooAKWkooAKWkooAKKKKACiiigBaSjrS0AJS5opKACl96KKAEpfakooAKWkooAKWkooAKKKKACiiigApaSloASlzRSUAFFLRQAlL7UlFABS0lFABS0lFBD3CiiigQUUUUAFLSUtACUtFJQAUUtFACUvtSUUAFLSUUAFLSUUAFFFFABRRS80AFJRS0AJS0UUDQlFLRQXYSlpKKAClpKXtQAlIelLTM00id2JRRRVlBRRRQAtJRzS0AFJRRQAUUtFACUUUHpmgBh60Uh5pe1ACUUUUAFFFFABRRRQAtJRS0AFJRRQKQ1qQ+tLmkq9hoSiilqAEpaSl7UAJS9sd6SirQBRRRTIbCiiigQtJRS0AJRRS0AJRS0UAJRRRQAUuKSjtVITYUUUVRAUZxRTWPagaEPWkoooBsWikpaBCUtJS0AJSE4p1MJzQA2iiimAUtJR2oAKO1FITiiwDSc0lFFWAUUUUALSGig9KCXuR0UUtMbEopaKRAlNPpTqMA1aQEdLTsCmnIpgJRRRQAUUUU7AFFFFFmAUhGaWloswIyCKSpaSjlZPKR0VJRT5Q5RmKSpKQgGqDlGUtOwKMUByjKKfgUuKA5SOipMCkwKA5RtJT9tJtoFZjaWl20uKAsxlFP20baAsxlFP202gLCUUUUCClpKXtQAlFFFABRRS0Af/R/dyiiiug5EFFFFBYUtJRQAtFJRQAUtJRQAUUUUAFFFLQAlFFFABRRRQAUUUUAFLSUUAFLSUUAFLSUUAFFFHSgAoopaAEooooAKKKKACiiigApaSigApaSigApaSigAopeaTpQAUUUtACUUUUAFLSUUAFFFFABRRS0AJS0lFAC0UlFABRS80nSgAoopaAEooooAKWkooAKKKKACiiloAKKSigBaKSigBaSlo6UAJRRS0AJRRRQAUtJRQAUUUUAFFFLQAUlFFAC0UlFAC0lLR0oASiiloMxKKKKAClpKKACiiigAooooAWkoooAKWkpaACkpaOlACUUUtACUUUUAFL9KSigAooooAKKKWg0CkoooAKWikoAWkoo6UCYhOKZTmpKtbAthKKKKYwpaSigApaSigAoopaAEpaSigAoPSlprdKAG96SiigAooooAKKKKAClpKKACiiigAppp1MPWhC6hRSUUDClopKAFpKWkoAKKKK0RMgooooJClpKKACiiigAoopaACikooAWiikoAXvSUUVaRDCiiimIDTKUntTaBhS0lFAgooooAKKKWgBCeKZQTSUALRSUUAL3pKKKACmnrTjUdUkAUUUVQBS0lFABQTxRSHpQiOo2kopauxT2CkooosQLRSUUwCkIzTqKAIyMUlPIzTKACiiihMApaSitACiiigAooooAWkoooAWikooAKKWilcVxKKKKOZBzIKKKKOZBzIKWkoo5kHMgooopcwuYKKKKOYOYKZ160+jGKOYTYzBoAp9LRzCI8GjFPoo5gG4owKWkyM80XYCgYpabkUZBoswP//S/dyikzmlroOMKKKKDQKKKKACiiigBaSiigAooooAKWkooAWkpaSgAooooAKKKKACiiigAooooAWkoooAKKKKAClpKKAFpKWkoAKKKKACiiigAooooAKWkooAWkoooAKKKKAClpKKAFpKWkoAKKKKACiiigAooooAKWkooAWkoooAKKKKAClpKKAFpKWkoAKKKKACiiigAooooAKWkooAWkoooAKKKKAClpKKAFpKWkoAKKKKACiiigAooooAKWkooAWkoooAKKKKAYUvvSUUGYtJS0lABRRRQAUUUUAFFFFABS0lFAC0lFFAC0lFFABS0lFAC0lLSUAFFFFABRRRQNIKKKKCwpaSigBe9JRR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AKSiigBaSiigAooooAKWkooAKWkooAKKKWgBKO1FFACikopaACkoooAWkoooAKKKKAClpKKAClpKX3oASiiloASiiigBRSUUtABSUUUCsLSUUUByoKKKKAsFLSUUDClpKX3oASiiloASiiigBRSUUtABSUUUAKKSiigAoopD0oExCeaSkpa0GJRRRQAUUUtACUvakooAWkopTQAUlFFABRRQSKBNhTWNBNJQAlLSUUDCiiigAooooAKXtSUUCuLSUUGglsM4ph5oJpKCkgooooGFLSUUAFLSUtAmxKKKK0ICiiloASl7UlFACikopaAAUlFFABRRS0AJS0lFABSMaWmGmhSEoopasgSiiloASl7UlFACikopaACmnpS0EZoAjopSMUUAJS0lFABS0lLQAlFFLTTASiilqwEo7UUUEMaRim1JSEelA0xtJS0lA2FFFFBAUtJRQA0jvSU89KZVoBKKKWmAlFFLQAlL2pKKACiiloASiiigAppbmlJxTTQJsSlpKKCApaSigAooo7ZNABRSZFJup2YCk4pCeKTrSVSQCikoopiuFFFGaBOQUU0n0pDTSJHE4pCxptFVyhcKKKQmmTzC0Zpu6mk+tArjycUmaYWppOaBD6QtTKM07Cuf/9b9zQaeGqAGpAe9em0cCZKG9aeCRUVOB9azaLJQc07tUVPBqB+aFpQaSigpO44H1pwNR0oOKlxCw+lpuc8UtSFwooooGB6VHTmPam1aAKKKKYBS0lFABS9qSigAooooAKWkooAKWkooAKKKKACiiigAooooAKWkooAcDinZFR0UmgJKKZk04GpaAWlpKKQBS0lFABRRRQAUUUUAFFFFABS0lFABRRRQAUUUUAFLSUUAFLSUUAFFFFABRRRQAUUUUAFLSUUAFLSUUAFFFFABS0lFABS0lFABRRRQAUUUUAFFFFABS0lFABS0lFABRRRQAUtJRQAUtJRQAUUUUAFFFFABRRRQAUUUUAFLSUUAFFFFABS0lFABS0lFABRRRQAUUUUAFFFFABS0lFABS0lNyc00rgKSOlNpKKpIApaSimAUUUUAFFFFABRRRQAUUUUAFFFNNArik02kooBIKKKKBhS0lFABRRRQAUUUUCbCiijpQQGaYTmkooLSClpKKBhRRRQAUUUUEthS0lFBIUtJS1aASiiimAUUUUAFFFFABS0lFABRRRQAUEgUU00ABNJSUVaRDYUtJS0xCUUUUAFFFFABRRRQAUtJRQA0mkoPWkoAKKKKAClpKKAClpKWgBKKKK0AKKKKCZIKKKKCQphFPo7UDTI6WgjvSUAwooooEFIRS0HpTQEdFFFWAUUUUAFFFFABRRRQAUE4pCcU3OaBNhmkoooICiiigApabuFNzmmkA7IpCc02iqsAUUUUxNhRQaaT6UE3HUmRTcmkquUQuTSUUcYp2E2FFJnim7jTJbHZApN1MyKbk0CHk+tISKZ1oyBQK4uSaTPNNJ9KSnYLjsikJptFPlJuLuNHWm7hSbvSnYR//9f9xQakBqqrHNSg9xXryieamWAaeDmoQafnvWbRaZMD607NRg5pwPrWbRdyUHNLUdPBqB+gtFFFBSYU8HtTKKTQNElFMyaUk0uUSTFNNozSU0hpBRRRTGFFKaSgAopaSgAooooAKKKKACiiigAoopaAEooooAKKKKACilNJQAUUtJQAUUUUAOB9acDmo6Wk0A+imhqUHNTYBaKKWkAlFFFABRRRQAUUppKACilpKACiiigAooooAKKKKACiiloASiiigAooooAKKU0lAB7UUtJQAUUUUAFFFFABRRRQAUUUtACUUUUAFFFFABRSmkoAPalopKACiiigAooooAKKKKACiiloASiiigAooooAKKU0lAB7UUUUAFFFFABRRRQAUUUUAFFFKaAEpaSigAooooAWkpTSUABplOJ7UyrQBRRRTAO9FFFABRRRQAtJRSmgBKKKKACilpKBNhUdOam0AkFFFFAwooooAO9FFFABRRRQAUUUGghgaaT2oPpSVaRSQlFLSVLGLSUtJSAKKKKACiiigzDvRRRQAUUUVUQCiilqgEooooAKKWkoAWkpaSgAooooATNMpe9JTQmHeiiirICiiigAoopTQAlFFFABRS0lAC0lLSUAIRmmVJSEA0AMopaSgA70UUUAFFFFCAKKKU1ogEooooEwopaSggWkpaSgBD0plPPSmUAFFFFAB3pD0pc4phNNIBKKKKsAoopTQAlFFFABSE0hPakoJbDmkpaSgkKTIpuc0lVygOLelJk0lFVYA70UUUCugopN1N96diWx24U0nJpKU1SRNwJJpKKbupi5h1JuFNLU0NQSOJNIW7U0mmk0AKSTxRnNM3UmadhXHZ5pCfSm0hOKfKK47JpKTdTSaqxI4nFBamUhOKBXHZNGaYG9aRjT5Rcw8mk3VFupCc1XKTc//9D9uVbNTK1Ulc9asK3Fe9KJ5Sdy2G9KkBqqrVMDWDiWmT1IDmoAaeD6Vm0WnYmBp/vUQOaeD61m0WSA0tR04HFQNDqWkooKTCiiigYUUUUAFFFLzQAlLSUtACUuaKSgApaKKAEoopaAEpaSigAooooAKKKKACiil5oASlpKWgA70ZopKACloooASiiloASlpKKAHbqM9qbRSsBJRTQccUu4VNgFooyKM0gDvS0nWloASlzRSUAFLRRQAlFFLQAlLSUUAFFFFABRRRQAUUUUAHelpOtLQAlLmikoAKWiigBKKKWgBKWkooAKKKKACiiigAoopeaAE70tJS0AJS5opKACloooASiiloASlpKKACiiigAooooAKKKXmgBKWkpaAEpaKSgApaKKAEoopaAEpaSigAooooAKKKKACiil5oASg0UjU0JjKWiirGJRS0UAJS0lLQAlLSUtACUUUUAFFFBNBLdwoz70mab1oBIDRSc0tBQfWkoooAKU0UUAJRRS0CbEpaSloJbEpnXinE4plVEcQoooqihfrRR7UVLQCUtJS1INh9aSiighsKU0UUCEoopaAEpcUlLTTASiiirAKKKKAClpKKAFopKWgA+tNPSlpDQAyl96KKaYmhKKKWrIsJS0lLQAlFFFABRRRQAUtJRQAtFJS0AJRS0UAJimsKfRQBFRTyKbQAlLSUdqACiiirQBRRRTEwpaSiggWikpaAGMexptOPWkoASilpCe1ADSabRS1okAlLSUtAmJRRQTgUAITim5oJzSUEthR9TSE+lNJJppCHE44ptJS1SQCUUZFJmmJsWkJ9KbminyslsMmkopMiqSELSn3pm40hb1pktjifSk3UwnFMLA0EjycUm6o91ITmgB5NN3U2jIquUnmFJpOntTdxpCadhXHE96TcabkUhNVYVxxNJxTM8UmRT5Sbj93pSbqj3GkqlEVx+e9ISajyKQtiq5RNjyc0me1M3Uwn0p2RPMSk03d61GT2pM0xcx/9H9qVarCtWerZqwrV9JKJ4sXYvg9xUyvVJWqcH0rnlE1TLgapA3pVVWqVW5xWTRomWVNSA5quD6VIDmoaKTJt1OBz0qIHNOFZNFkgz2pwOaYOaUcVLQx9FIDmnUh3sJRRRQUFFFFABRRRQAUtJRQAUtJRQAUtJRQAtJRRQAUUUtACUUUUAFFFFABRRRQAUtJRQAtFJRQAUtJRQAtJRRQAUUUtACUUUUAFLSUUALuNPzmo6XNJoB9FNB9adUtALRSUUgClpKKAFpKKKACiiloASiiigApaSigAooooAKKKWgApKKKAClpKKAFpKKWgBKKKWgBKKKKAClpKKACiiigApaSloAKSiigApaSigBaSiloASiiloASiiigAooooAKKKKAClpKKAFpKKKAClpKKAFpKKWgBKKKWgBKKKKBN2ClppIpuTTsxajicU2koqkrDQUtJS0xhSUUUAFLSUUALSUUdKBXQUUUtBLYlNPWlJplA4oKWkooKCiiigAooooFcKWkooE5BS0lFBIUUUUANam04nJ4pKtbFrYD1opKKYw+lLx2pKKCWwooopNE3CiiilygFLSUUrAFLSUUgCiiiqSAKKKWqASiiigApaSigAooooAKKKKAE202n0hFADKWlwaTFABSUtJTTE0FFFLVkCUUUUAFLSUUAFFFFABS0lFAC0lFFABRiiigBNvPFMqSmd+aAEopaKtAJRRRTEwpaSiggKQmgnFMoAWikoJoAM0zOetGc0lWkAUtJRTF6BRRnFMzQF7Ck+lJSUmaLEtgSBTSaSirSEFLSE4ppb0pibHU0t6UmTSU7Eti0hNNJpMk015CHZFJmm0maolsdkmkzUZb1pC1ArjyeaZuFNyaTOKaRLYu40lJupueapITkOJAoLelMzSbhTSJHZpDTMmkJ9arlE2P3CkLVHupMmmoktjtwpC3pTMgUhbjirURXH5zTcimbqYTTsiXIlLe9JuqLPHNJuFOxLY/JzxTSaaT6UmarlFzDtwo3CmE4pu70p2RPMPyaM5qPJo3etMls//S/ZlW5qwrVQV/WrAevrJRPAjK5fVvWrCtVBXzUytiueUTVSsaAPpUqtVJHqcN6VhKJsn2LYapQaqhqlU5rFopMtA04N61AG/On7qhoq5PTs1EDTqzaLTJKeDUYNLUNFElFNBxTqQXCiiigakFFFFBQUUUUAFFFFAC0lFFABRRRQAUtJRQAtJS0lABRRRQAUUUUAFFFFABRRRQAtJRRQAUUUUAFLSUUALSUtJQAUUUUAFFFFABRRRQAuafmo6KTVwJaSkDUtQ0K4UUUUDClpKKAFpKWkoAKKKKACiiigAooooAKKKKAFpKKKACiiigApaSigBaSlpKACiiigAooooAKKKKACiiigBaSiigAooooAKWkooAWkpaSgAooooAKKKKACiiigAooooAWkoooAWkoooAKWkooE2LSHpxS0xj2pondjaKKKssKKKKACiiigApaSigBaSiighsKKKKBBS0lBxQCQ002lpKDQKKKKAuFFFFBLYUUUUEhRRRQAUUUUAFFFIxpoENNHeikqymxaSiigkKKKKACiiigAooooAKKKKACiiigAooooAKXpRSUALSUUUAFFFFABRRRQAUUUUAFFFFABRRRQAECkwKWigBuKTpUlR4ppiaCkooqyAooooAKKKKACiiigAooooAKKKKAFqM9acTimnmgTEpelFJVrYYtJRRTIbCikJxTSc0CEoopCe1CAQmm0UVaQBRRSE4piFppPYUhOaSgV+wtISBTSc02qUSRc0dKTNNzVCuOPFNJ9KTrzSZoE2FFNJpuaqxI7dTaKbmnYlyHUm6oy1NJzTJuPLU0mm03dVcomx1JntTKQnFUkS2PJpKZuppNVyibHk4o3VGTSZpqJPMPJpm4U2kLVXKS2OJzSZphambjVJCuSbqaW5qOkJxTsS2P3U3NNzkU3NUok8w/dSE0wmk3VSiS2PzTc9qZSE4qrdyWyQtTSaZuprNRbsLmJKTdUW6m0cpNyUmm7qZxRmqSFc//9P9iVerKtWcjZqwjV9rOJ82mX1arKuDVBWqdWxXPKJtGVy+rVMrEVSRwevFTq1c0omiZdVs1MrYqkrYqdWzWMomqZcDVLuqopxUoNYOJaZaBx9KcDUAOKkBqCkycHNOBqEGn5FS0WmS0ucVGDin1m4jJAc0UylB9akB1FLSUDTCilpKCkwooooGFFFFABRRRQAUUtJQAv1pKWkoAWkpaSgAopaSgAopaSgAooooAKKXtSUAFFLSUAFFLSUAL9aSlpKAFpKWkoAKKWkoAWkpaSgAooooAKWjtSUAOzTsimUlJoCSimgmgH1qbMWo/wCtJQCKMilYLi0lFFAwopaSgBaSlpKACiiigAope1JQAUUtJQAUUtJQAv1pKWkoAWkpaSgAopaSgBaSlpKACiiigAope1JQAtJS0lABRS0lAC0lLSUAL9KSlpKACilpKAFpKWkoAKKKKACil7UlBPMLSUtJQK7CilpKBATjio6cetNq0i0hfpSU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");
+            background-position: center top;
+            background-repeat: no-repeat;
+            background-size: 1920px auto;
+            opacity: 0.28;
+            -webkit-mask-image: linear-gradient(180deg, #000 0, rgba(0, 0, 0, 0.82) 58%, transparent 100%);
+            mask-image: linear-gradient(180deg, #000 0, rgba(0, 0, 0, 0.82) 58%, transparent 100%);
+            pointer-events: none;
+        }
+
+        .report-shell {
+            width: min(100%, 1200px);
+            max-width: 1200px;
+            padding: 32px 24px 48px !important;
+            counter-reset: report-section;
+        }
+
+        .report-header {
+            position: relative;
+            margin-bottom: 16px !important;
+            padding: 24px !important;
+            overflow: visible !important;
+            color: var(--font-2);
+            background: rgba(255, 255, 255, 0.94);
+            border: 1px solid var(--gray-3);
+            border-radius: 12px !important;
+            box-shadow: 0 8px 24px rgba(29, 33, 41, 0.05);
+        }
+
+        .report-brand {
+            width: 100%;
+            margin: 0 auto 12px;
+            padding: 0 0 4px;
+            color: var(--primary-6);
+            font-size: 16px;
+            font-weight: 700;
+            line-height: 24px;
+            text-align: center;
+        }
+
+        /* Keep the paged PDF visually consistent with the continuous PNG export. */
+        @page {
+            size: A4 portrait;
+            margin: 12mm 10mm 14mm;
+        }
+        @media print {
+            html, body { background: #fff !important; }
+            body { min-width: 0; font-size: 12px; line-height: 1.6; }
+            body::before { display: none !important; }
+            .report-shell {
+                width: auto !important;
+                max-width: none !important;
+                padding: 0 !important;
+            }
+            .report-brand { margin: 0 0 8px; padding: 0 0 2px; font-size: 14px; }
+            .report-header,
+            .report-summary,
+            .report-shell > section.gs-card {
+                break-inside: auto;
+                page-break-inside: auto;
+                box-shadow: none !important;
+            }
+            .report-header { margin-bottom: 8px !important; padding: 16px !important; }
+            .report-shell > section.gs-card { margin-bottom: 12px !important; padding: 16px !important; }
+            .thesis-card { padding: 16px !important; }
+            .business-overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+            .business-moat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+            .quant-insight-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+            .business-overview-item,
+            .analysis-panel,
+            .metric-card,
+            .beta-chart-panel,
+            .risk-card,
+            .watch-item,
+            .catalyst-card {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+            h1, h2, h3 { break-after: avoid; page-break-after: avoid; }
+            .report-chart, .report-chart-sm, .beta-mini-chart, .beta-tech-chart { break-inside: avoid; }
+        }
+
+        .report-header > .absolute { display: none; }
+        #report-quote-access:empty { display: none; }
+        #report-quote-access:not(:empty) { margin-top: 16px; }
+
+        .report-header-main {
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 16px;
+            align-items: start !important;
+        }
+
+        .report-header h1,
+        .report-price > div:first-child {
+            color: var(--font-1);
+            font-size: 24px !important;
+            line-height: 1.4;
+        }
+
+        .report-price > .up { color: var(--red-6) !important; }
+        .report-price > .down { color: var(--green-6) !important; }
+        .report-price > .neutral { color: var(--font-2) !important; }
+
+        .stock-meta,
+        .report-price .text-gray-500,
+        .report-header .text-gray-500 {
+            color: var(--font-3) !important;
+            font-size: 12px !important;
+        }
+
+        .rating-badge {
+            color: var(--primary-6);
+            background: var(--primary-1);
+            border: 1px solid rgba(35, 84, 230, 0.18);
+            border-radius: 999px;
+            box-shadow: none;
+        }
+
+        .report-shell > section {
+            margin-bottom: 32px !important;
+            counter-increment: report-section;
+        }
+
+        .report-shell > section.gs-card {
+            padding: 24px !important;
+            background: rgba(255, 255, 255, 0.96);
+            border: 1px solid var(--gray-3);
+            border-radius: 12px;
+            box-shadow: 0 8px 28px rgba(74, 95, 128, 0.045);
+        }
+
+        .thesis-card {
+            position: relative;
+            padding: 52px 24px 24px !important;
+            overflow: hidden;
+            background: rgba(255, 255, 255, 0.96);
+            border: 1px solid var(--gray-3);
+            border-radius: 12px;
+            box-shadow: 0 8px 28px rgba(74, 95, 128, 0.045);
+        }
+
+        .thesis-card::before {
+            content: "AI 摘要";
+            position: absolute;
+            top: 16px;
+            left: 20px;
+            color: var(--primary-6);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .thesis-card .w-1 { display: none; }
+
+        .thesis-card h2 {
+            color: var(--font-1) !important;
+            font-size: 18px !important;
+            line-height: 1.5;
+        }
+
+        .thesis-card p {
+            color: var(--font-2) !important;
+            font-size: 14px !important;
+            line-height: 1.7;
+        }
+
+        .gs-section-title {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            margin-bottom: 16px !important;
+            padding: 0;
+            color: var(--font-1);
+            font-size: 18px;
+            border: 0;
+        }
+
+        .report-shell .optional-analysis-grid > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+        .gs-section-title::before {
+            content: counter(report-section, decimal-leading-zero);
+            color: var(--primary-6);
+            font-size: 12px;
+        }
+
+        .section-kicker,
+        .analysis-item-title {
+            color: var(--font-1);
+            font-size: 14px;
+        }
+
+        .article-text,
+        .article-text-sm,
+        .quant-subtle {
+            color: var(--font-2);
+            font-size: 14px;
+            line-height: 1.7;
+            overflow-wrap: anywhere;
+        }
+
+        .analysis-panel,
+        .metric-card,
+        .beta-chart-panel,
+        .risk-card {
+            min-width: 0;
+            background: rgba(255, 255, 255, 0.96);
+            border: 1px solid var(--gray-3);
+            border-radius: 8px;
+            box-shadow: none;
+        }
+
+        .analysis-panel,
+        .metric-card,
+        .beta-chart-panel {
+            padding: 16px;
+        }
+
+        .report-shell > section.gs-card .analysis-panel,
+        .report-shell > section.gs-card .metric-card,
+        .report-shell > section.gs-card .beta-chart-panel {
+            background: var(--fill-1);
+            box-shadow: none;
+        }
+
+        .business-overview-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1px;
+            margin-bottom: 20px;
+            overflow: hidden;
+            background: var(--gray-3);
+            border: 1px solid var(--gray-3);
+            border-radius: 8px;
+        }
+
+        .business-overview-item {
+            min-width: 0;
+            padding: 16px;
+            background: var(--fill-1);
+        }
+
+        .business-moat-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .summary-callout {
+            color: var(--font-2);
+            background: var(--fill-1);
+            border: 1px solid var(--gray-3);
+            border-left: 3px solid var(--primary-6);
+            border-radius: 0 8px 8px 0;
+        }
+
+        .overflow-x-auto {
+            max-width: 100%;
+            overflow-x: auto;
+            overscroll-behavior-inline: contain;
+        }
+
+        .quant-table {
+            min-width: 560px;
+            background: var(--surface);
+            border-color: var(--gray-3);
+        }
+
+        .quant-table th {
+            padding: 12px;
+            color: var(--font-3);
+            background: var(--fill-1);
+            border-color: var(--gray-3);
+        }
+
+        .quant-table td {
+            padding: 12px;
+            color: var(--font-2);
+            border-color: var(--gray-3);
+        }
+
+        .quant-value,
+        .report-price,
+        .metric-card {
+            font-variant-numeric: tabular-nums;
+        }
+
+        .beta-mini-chart,
+        .beta-tech-chart,
+        .report-chart,
+        .report-chart-sm {
+            width: 100%;
+            min-height: 260px;
+            background: var(--surface);
+            border: 1px solid var(--gray-3);
+            border-radius: 8px;
+        }
+
+        .report-chart { height: 600px; }
+        .report-chart-sm { height: 280px; }
+
+        .timeline-line {
+            background: var(--gray-3);
+        }
+
+        .timeline-dot {
+            background: var(--primary-6);
+            border-color: var(--primary-1);
+        }
+
+        .risk-card {
+            border-top: 1px solid var(--gray-3);
+            border-left: 3px solid var(--green-6);
+        }
+
+        .text-red-600,
+        .text-up,
+        .positive { color: var(--red-6) !important; }
+
+        .text-green-600,
+        .text-down,
+        .negative { color: var(--green-6) !important; }
+
+        .footer-note,
+        .data-boundary,
+        footer {
+            color: var(--font-3);
+            border-color: var(--gray-3);
+        }
+
+        a:focus-visible,
+        button:focus-visible,
+        summary:focus-visible {
+            outline: 2px solid var(--primary-6);
+            outline-offset: 2px;
+        }
+
+        @media (max-width: 768px) {
+            .report-shell { padding: 24px 12px 40px !important; }
+            .report-header { padding: 64px 20px 20px !important; }
+            .report-header-main { grid-template-columns: minmax(0, 1fr); }
+            .report-price { text-align: left !important; }
+            .report-shell > section { margin-bottom: 24px !important; }
+            .report-shell > section.gs-card { padding: 16px !important; }
+            .thesis-card { padding: 48px 16px 16px !important; }
+            .business-overview-grid,
+            .business-moat-grid { grid-template-columns: minmax(0, 1fr); }
+            .report-chart,
+            .report-chart-sm,
+            .beta-mini-chart,
+            .beta-tech-chart { height: 360px; min-height: 360px; }
+        }
+
+        #kline-chart { min-height: 520px; }
+
+        @media (max-width: 375px) {
+            .report-header h1,
+            .report-price > div:first-child { font-size: 20px !important; }
+            .report-chart,
+            .report-chart-sm,
+            .beta-mini-chart,
+            .beta-tech-chart { height: 320px; min-height: 320px; }
+        }
+    </style>
+</head>
+
+<body class="font-sans text-gray-800 antialiased">
+    <div class="report-shell max-w-[1200px] mx-auto px-4 py-8">
+
+        <div class="report-brand" aria-label="报告品牌">FtAi：股票投研报告</div>
+
+        <!-- Header -->
+        <header class="report-header report-hero gs-gradient rounded-2xl p-8 mb-8 text-navy relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-64 h-64 opacity-5">
+                <svg viewBox="0 0 200 200"><circle cx="150" cy="50" r="120" fill="#7656E8"/></svg>
+            </div>
+            <div class="relative z-10">
+                <div class="report-header-main flex items-center justify-between flex-wrap gap-4">
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-3 mb-2 flex-wrap">
+                            <h1 class="text-3xl font-extrabold tracking-tight text-flow">{{ base_data.stock.name | safe }}</h1>
+                            <span class="rating-badge shrink-0">{{ llm_content.conclusion.rating | safe }}</span>
+                        </div>
+                        <div class="stock-meta flex items-center gap-4 text-navy/65 text-sm flex-wrap">
+                            <span>{{ base_data.stock.symbol_id | safe }}</span>
+                            {% if base_data.stock.industry and base_data.stock.industry != "行业未映射" %}<span>·</span><span>{{ base_data.stock.industry | safe }}</span>{% endif %}
+                        </div>
+                    </div>
+                    <div class="report-price text-right shrink-0">
+                        <div id="report-price-value" class="text-3xl font-bold neutral" data-price="{{ base_data.stock.price | safe }}" data-semantic="neutral">{% if base_data.stock.price is number %}¥{{ base_data.stock.price | safe }}{% else %}暂无报价{% endif %}</div>
+                        <div class="text-gray-500 text-xs mt-1">最近可用报价</div>
+                        <div class="text-gray-500 text-sm mt-1">总市值: <span class="js-format" data-format="yuan-to-yi">{{ base_data.stock.market_cap | safe }}</span></div>
+                    </div>
+                </div>
+                <div class="mt-4 text-gray-500 text-xs">{{ base_data.date | safe }} · 深度研读报告</div>
+                <div id="report-quote-access"></div>
+            </div>
+        </header>
+
+        <!-- Investment Thesis -->
+        <section class="report-summary mb-8">
+            <div class="thesis-card p-8">
+                <div class="relative z-10">
+                    <div class="flex items-center gap-2 mb-4">
+                        <div class="w-1 h-6 bg-gold rounded shrink-0"></div>
+                        <h2 class="text-xl font-bold text-navy text-flow">{{ llm_content.title | safe }}</h2>
+                    </div>
+                    <p class="text-gray-700 leading-relaxed text-base">{{ llm_content.investment_thesis | safe }}</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Business Overview -->
+        <section class="gs-card p-6 mb-8">
+            <h2 class="gs-section-title mb-6">业务概览</h2>
+            <div class="business-overview-grid">
+                <div class="business-overview-item">
+                    <h3 class="section-kicker mb-2">主营业务</h3>
+                    <p class="article-text">{{ llm_content.business_overview.main_business | safe }}</p>
+                </div>
+                <div class="business-overview-item">
+                    <h3 class="section-kicker mb-2">收入结构</h3>
+                    <p class="article-text">{{ llm_content.business_overview.revenue_structure | safe }}</p>
+                </div>
+            </div>
+            <div>
+                <h3 class="section-kicker mb-3">核心护城河</h3>
+                <div class="business-moat-grid">
+                    {% for moat in llm_content.business_overview.moat %}
+                    <div class="analysis-panel">
+                        <div class="analysis-item-title">{{ moat.title | safe }}</div>
+                        <div class="article-text-sm">{{ moat.description | safe }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <!-- Quant Snapshot -->
+        <section class="gs-card p-6 mb-8">
+            <h2 class="gs-section-title mb-6">量化底稿</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+                <div class="analysis-panel">
+                    <div class="analysis-item-title">财务质量</div>
+                    <div class="article-text-sm">{{ llm_content.fundamental_analysis.financial_health.summary | safe }}</div>
+                </div>
+                <div class="analysis-panel">
+                    <div class="analysis-item-title">成长与盈利</div>
+                    <div class="article-text-sm">{{ llm_content.fundamental_analysis.growth.summary | safe }}</div>
+                    <div class="article-text-sm mt-2">{{ llm_content.fundamental_analysis.profitability.summary | safe }}</div>
+                </div>
+                <div class="analysis-panel">
+                    <div class="analysis-item-title">估值判断</div>
+                    <div class="article-text-sm">{{ llm_content.valuation.conclusion | safe }}</div>
+                </div>
+                <div class="analysis-panel">
+                    <div class="analysis-item-title">技术判断</div>
+                    <div class="article-text-sm mt-2">{{ llm_content.technical_analysis.conclusion | safe }}</div>
+                </div>
+            </div>
+            <div class="quant-insight-grid grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 mb-5">
+                <div class="beta-chart-panel">
+                    <div class="section-kicker mb-2">财务规模与现金流</div>
+                    <div id="quant-financial-chart" class="beta-mini-chart" data-chart></div>
+                </div>
+                <div class="beta-chart-panel">
+                    <div class="section-kicker mb-2">盈利质量</div>
+                    <div id="quant-profitability-chart" class="beta-mini-chart" data-chart></div>
+                </div>
+                <div class="beta-chart-panel">
+                    <div class="section-kicker mb-2">估值倍数</div>
+                    <div id="quant-valuation-chart" class="beta-mini-chart" data-chart></div>
+                </div>
+                <div class="beta-chart-panel">
+                    <div class="section-kicker mb-2">资金流向</div>
+                    <div id="quant-flow-chart" class="beta-mini-chart" data-chart></div>
+                </div>
+                <div class="beta-chart-panel">
+                    <div class="section-kicker mb-2">风险暴露</div>
+                    <div id="quant-risk-chart" class="beta-mini-chart" data-chart></div>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                <div id="quant-financial-table" class="overflow-x-auto" data-scroll="horizontal">
+                    <table class="quant-table">
+                        <thead>
+                            <tr>
+                                <th colspan="2">财务指标（最新披露期）{% if quant_data.financial_indicator.ann_date %} · {{ quant_data.financial_indicator.ann_date | safe }}{% endif %}{% if quant_data.financial_indicator.report_period %} / {{ quant_data.financial_indicator.report_period | safe }}{% endif %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>营业收入</td><td class="quant-value js-format" data-format="yuan-to-yi">{{ quant_data.financial_indicator.oper_revenue_ttm | safe }}</td></tr>
+                            <tr><td>归母净利润</td><td class="quant-value js-format" data-format="yuan-to-yi">{{ quant_data.financial_indicator.net_profit_ttm | safe }}</td></tr>
+                            <tr><td>经营现金流</td><td class="quant-value js-format" data-format="yuan-to-yi">{{ quant_data.financial_indicator.cfo_ttm | safe }}</td></tr>
+                            <tr><td>{{ quant_data.financial_indicator.roe_label | default("ROE", true) }}</td><td class="quant-value js-format" data-format="percent">{{ quant_data.financial_indicator.roe_ttm | safe }}</td></tr>
+                            <tr>
+                                <td>毛利率 / 净利率</td>
+                                <td class="quant-value">
+                                    <span class="js-format" data-format="percent">{{ quant_data.financial_indicator.gross_profit_margin_ttm | safe }}</span>
+                                    /
+                                    <span class="js-format" data-format="percent">{{ quant_data.financial_indicator.net_profit_margin_ttm | safe }}</span>
+                                </td>
+                            </tr>
+                            <tr><td>归母净利润同比</td><td class="quant-value js-format" data-format="percent">{{ quant_data.financial_indicator.yoy_net_profit | safe }}</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div id="quant-valuation-table" class="overflow-x-auto" data-scroll="horizontal">
+                    <table class="quant-table">
+                        <thead>
+                            <tr>
+                                <th colspan="2">估值与流动性{% if quant_data.valuation.trade_date %} · {{ quant_data.valuation.trade_date | safe }}{% endif %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>总市值 / 流通市值</td>
+                                <td class="quant-value">
+                                    <span class="js-format" data-format="wan-to-yi">{{ quant_data.valuation.total_mv | safe }}</span>
+                                    /
+                                    <span class="js-format" data-format="wan-to-yi">{{ quant_data.valuation.float_mv | safe }}</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>PE TTM / PB</td>
+                                <td class="quant-value">
+                                    {% if quant_data.valuation.pe_ttm %}
+                                    <span class="js-format" data-format="multiple">{{ quant_data.valuation.pe_ttm | safe }}</span>
+                                    {% else %}
+                                    <span>{{ quant_data.valuation.pe_ttm_note | default("—", true) | safe }}</span>
+                                    {% endif %}
+                                    /
+                                    <span class="js-format" data-format="multiple">{{ quant_data.valuation.pb | safe }}</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>PS TTM / PCF TTM</td>
+                                <td class="quant-value">
+                                    <span class="js-format" data-format="multiple">{{ quant_data.valuation.ps_ttm | safe }}</span>
+                                    /
+                                    <span class="js-format" data-format="multiple">{{ quant_data.valuation.pcf_ttm | safe }}</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>FY1 PE / PEG</td>
+                                <td class="quant-value">
+                                    {% if quant_data.valuation.est_pe_fy1 %}
+                                    <span class="js-format" data-format="multiple">{{ quant_data.valuation.est_pe_fy1 | safe }}</span>
+                                    {% else %}
+                                    <span>{{ quant_data.valuation.est_pe_fy1_note | default("—", true) | safe }}</span>
+                                    {% endif %}
+                                    /
+                                    {% if quant_data.valuation.est_peg_fy1 %}
+                                    <span class="js-format" data-format="ratio">{{ quant_data.valuation.est_peg_fy1 | safe }}</span>
+                                    {% else %}
+                                    <span>{{ quant_data.valuation.est_peg_fy1_note | default("—", true) | safe }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>换手率 / 自由流通换手率</td>
+                                <td class="quant-value">
+                                    <span class="js-format" data-format="percent">{{ quant_data.valuation.turnover | safe }}</span>
+                                    /
+                                    {% if quant_data.valuation.free_turnover is number %}<span class="js-format" data-format="percent">{{ quant_data.valuation.free_turnover | safe }}</span>{% else %}<span>缺少自由流通股本</span>{% endif %}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div id="quant-flow-table" class="overflow-x-auto" data-scroll="horizontal">
+                    <table class="quant-table">
+                        <thead>
+                            <tr>
+                                <th colspan="2">资金流与两融{% if quant_data.capital_flow %} · {{ quant_data.capital_flow.trade_date | safe }}{% endif %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if quant_data.capital_flow %}
+                            <tr><td>主力净流入</td><td class="quant-value js-format" data-format="yuan-to-yi-signed">{{ quant_data.capital_flow.main_net_val | safe }}</td></tr>
+                            <tr>
+                                <td>超大单 / 大单净流入</td>
+                                <td class="quant-value">
+                                    <span class="js-format" data-format="yuan-to-yi-signed">{{ quant_data.capital_flow.huge_net_val | safe }}</span>
+                                    /
+                                    <span class="js-format" data-format="yuan-to-yi-signed">{{ quant_data.capital_flow.large_net_val | safe }}</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>中单 / 小单净流入</td>
+                                <td class="quant-value">
+                                    <span class="js-format" data-format="yuan-to-yi-signed">{{ quant_data.capital_flow.medium_net_val | safe }}</span>
+                                    /
+                                    <span class="js-format" data-format="yuan-to-yi-signed">{{ quant_data.capital_flow.small_net_val | safe }}</span>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr><td>资金流</td><td class="quant-value">暂无数据</td></tr>
+                            {% endif %}
+                            {% if quant_data.margin_detail %}
+                            <tr>
+                                <td>融资余额 / 融资买入额</td>
+                                <td class="quant-value">
+                                    <span class="js-format" data-format="yuan-to-yi">{{ quant_data.margin_detail.fin_bal | safe }}</span>
+                                    /
+                                    <span class="js-format" data-format="yuan-to-yi">{{ quant_data.margin_detail.fin_buy_bal | safe }}</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>融券余额 / 融券卖出量</td>
+                                <td class="quant-value">
+                                    <span class="js-format" data-format="yuan-to-yi">{{ quant_data.margin_detail.sloan_bal | safe }}</span>
+                                    /
+                                    <span class="js-format" data-format="volume">{{ quant_data.margin_detail.sloan_sell_vol | safe }}</span>
+                                </td>
+                            </tr>
+                            <tr><td>融资融券余额</td><td class="quant-value js-format" data-format="yuan-to-yi">{{ quant_data.margin_detail.mtss_bal | safe }}</td></tr>
+                            {% else %}
+                            <tr><td>两融</td><td class="quant-value">暂无数据</td></tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <p class="mt-4 quant-subtle">单位说明：财务金额、流通市值、资金流与两融余额统一折算为亿元；估值倍数保留为“倍”；Beta、PEG 与技术指标统一保留三位小数；比例类指标统一展示为百分比。毛利率=(营业收入−营业成本)/营业收入；净利率=合并净利润/营业收入；总权益简算收益率=本期合并净利润/期初期末平均总权益（未年化，非加权归母ROE）；换手率=同日成交股数/流通A股股本。财报指标按披露期展示，行情按标注交易日展示。</p>
+        </section>
+
+        <!-- Fundamental Analysis -->
+        <section class="mb-8">
+            <h2 class="gs-section-title mb-6">基本面分析</h2>
+            <div class="grid grid-cols-1 gap-5">
+                <!-- Financial Health -->
+                <div class="gs-card p-6">
+                    <h3 class="font-bold text-navy mb-4 flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-gold"></span>财务健康
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {% for item in llm_content.fundamental_analysis.financial_health.items %}
+                    <div class="analysis-item">
+                        <div class="analysis-item-title">{{ item.title | safe }}</div>
+                        <div class="article-text-sm">{{ item.description | safe }}</div>
+                    </div>
+                    {% endfor %}
+                    </div>
+                    <div class="summary-callout mt-5 p-4 text-sm">{{ llm_content.fundamental_analysis.financial_health.summary | safe }}</div>
+                </div>
+                <!-- Growth -->
+                <div class="gs-card p-6">
+                    <h3 class="font-bold text-navy mb-4 flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-gold"></span>成长性
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {% for item in llm_content.fundamental_analysis.growth.items %}
+                    <div class="analysis-item">
+                        <div class="analysis-item-title">{{ item.title | safe }}</div>
+                        <div class="article-text-sm">{{ item.description | safe }}</div>
+                    </div>
+                    {% endfor %}
+                    </div>
+                    <div class="summary-callout mt-5 p-4 text-sm">{{ llm_content.fundamental_analysis.growth.summary | safe }}</div>
+                </div>
+                <!-- Profitability -->
+                <div class="gs-card p-6">
+                    <h3 class="font-bold text-navy mb-4 flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-gold"></span>盈利能力
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {% for item in llm_content.fundamental_analysis.profitability.items %}
+                    <div class="analysis-item">
+                        <div class="analysis-item-title">{{ item.title | safe }}</div>
+                        <div class="article-text-sm">{{ item.description | safe }}</div>
+                    </div>
+                    {% endfor %}
+                    </div>
+                    <div class="summary-callout mt-5 p-4 text-sm">{{ llm_content.fundamental_analysis.profitability.summary | safe }}</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Technical Analysis + K-line Chart -->
+        {% if kline_data.trade_dates | length > 0 %}
+        <section class="gs-card p-6 mb-8">
+            <h2 class="gs-section-title mb-6">技术分析</h2>
+            <div id="technical-metrics" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                <div class="metric-card">
+                    <div class="section-kicker mb-1">均线结构</div>
+                    <div class="text-sm text-navy font-semibold">
+                        EMA5 <span class="js-format" data-format="price">{{ kline_indicator_data.latest.ema5 | safe }}</span>
+                    </div>
+                    <div class="quant-subtle">
+                        EMA10 <span class="js-format" data-format="price">{{ kline_indicator_data.latest.ema10 | safe }}</span> ·
+                        EMA20 <span class="js-format" data-format="price">{{ kline_indicator_data.latest.ema20 | safe }}</span>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="section-kicker mb-1">布林位置</div>
+                    <div class="text-sm text-navy font-semibold">{{ kline_indicator_data.latest.boll_position | default("—", true) | safe }}</div>
+                    <div class="quant-subtle">
+                        中轨 <span class="js-format" data-format="price">{{ kline_indicator_data.latest.boll_middle | safe }}</span>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="section-kicker mb-1">MACD 动能</div>
+                    <div class="text-sm text-navy font-semibold">
+                        柱 <span class="js-format" data-format="indicator">{{ kline_indicator_data.latest.macd_histogram | safe }}</span>
+                    </div>
+                    <div class="quant-subtle">
+                        DIF <span class="js-format" data-format="indicator">{{ kline_indicator_data.latest.macd_dif | safe }}</span> ·
+                        DEA <span class="js-format" data-format="indicator">{{ kline_indicator_data.latest.macd_dea | safe }}</span>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="section-kicker mb-1">摆动指标</div>
+                    <div class="text-sm text-navy font-semibold">
+                        RSI14 <span class="js-format" data-format="indicator">{{ kline_indicator_data.latest.rsi14 | safe }}</span>
+                    </div>
+                    <div class="quant-subtle">
+                        K/D/J
+                        <span class="js-format" data-format="indicator">{{ kline_indicator_data.latest.stoch_k | safe }}</span> /
+                        <span class="js-format" data-format="indicator">{{ kline_indicator_data.latest.stoch_d | safe }}</span> /
+                        <span class="js-format" data-format="indicator">{{ kline_indicator_data.latest.stoch_j | safe }}</span>
+                    </div>
+                </div>
+            </div>
+            <div id="kline-controls" class="kline-controls" data-kline-controls aria-label="K线图操作">
+                <span class="kline-controls-label">图表操作</span>
+                <button type="button" class="kline-control is-active" aria-pressed="true" data-kline-range="all">全部</button>
+                <button type="button" class="kline-control" aria-pressed="false" data-kline-range="120">近120日</button>
+                <button type="button" class="kline-control" aria-pressed="false" data-kline-range="60">近60日</button>
+                <button type="button" class="kline-control" aria-pressed="false" data-kline-range="30">近30日</button>
+                <button type="button" class="kline-control" data-kline-zoom="in">放大</button>
+                <button type="button" class="kline-control" data-kline-zoom="out">缩小</button>
+                <button type="button" class="kline-control" data-kline-action="restore">复位</button>
+                <span class="kline-controls-hint">滚轮缩放 · 拖拽平移 · 悬停查看明细</span>
+            </div>
+            <div id="kline-chart" class="report-chart mb-6" data-chart></div>
+            <div class="beta-chart-panel mb-6">
+                <div class="section-kicker mb-2">摆动指标图</div>
+                <div id="technical-state-chart" class="beta-tech-chart" data-chart></div>
+            </div>
+            <div id="technical-analysis-data" class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div class="space-y-3">
+                    <div class="analysis-panel"><span class="section-kicker block mb-2">趋势</span><span class="article-text-sm">{{ llm_content.technical_analysis.trend | safe }}</span></div>
+                    <div class="analysis-panel"><span class="section-kicker block mb-2">形态</span><span class="article-text-sm">{{ llm_content.technical_analysis.pattern | safe }}</span></div>
+                    <div class="analysis-panel"><span class="section-kicker block mb-2">关键位</span><span class="article-text-sm">{{ llm_content.technical_analysis.key_levels | safe }}</span></div>
+                </div>
+                <div class="space-y-3">
+                    <div class="analysis-panel"><span class="section-kicker block mb-2">量价关系</span><span class="article-text-sm">{{ llm_content.technical_analysis.volume_price | safe }}</span></div>
+                    <div class="summary-callout p-4"><span class="section-kicker block mb-2">技术结论</span><span class="article-text-sm">{{ llm_content.technical_analysis.conclusion | safe }}</span></div>
+                </div>
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- Industry Position -->
+        {% if llm_content.industry_position.industry_overview | has_analysis or llm_content.industry_position.market_share | has_analysis or (llm_content.industry_position.competitors | available_items | length) > 0 %}
+<section class="gs-card p-6 mb-8">
+            <h2 class="gs-section-title mb-6">行业地位</h2>
+            <div class="optional-analysis-grid grid grid-cols-1 md:grid-cols-2 gap-6 mb-5">
+                {% if llm_content.industry_position.industry_overview | has_analysis %}
+                <div>
+                    <h3 class="section-kicker mb-2">行业概况</h3>
+                    <p class="article-text-sm">{{ llm_content.industry_position.industry_overview | safe }}</p>
+                </div>
+                {% endif %}
+                {% if llm_content.industry_position.market_share | has_analysis and llm_content.industry_position.market_share is not containing("未提供") %}
+                <div>
+                    <h3 class="section-kicker mb-2">市场份额</h3>
+                    <p class="article-text-sm">{{ llm_content.industry_position.market_share | safe }}</p>
+                </div>
+                {% endif %}
+            </div>
+{% if (llm_content.industry_position.competitors | available_items | length) > 0 %}
+            <h3 class="section-kicker mb-3">竞争格局</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {% for comp in llm_content.industry_position.competitors | available_items %}
+                <div class="analysis-panel">
+                    <div class="analysis-item-title">{{ comp.title | safe }}</div>
+                    <div class="article-text-sm">{{ comp.description | safe }}</div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </section>
+{% endif %}
+
+        <!-- Valuation -->
+        {% if llm_content.valuation.current_valuation | has_analysis or llm_content.valuation.conclusion | has_analysis or llm_content.valuation.historical_percentile | has_analysis or llm_content.valuation.peer_comparison | has_analysis %}
+<section class="gs-card p-6 mb-8">
+            <h2 class="gs-section-title mb-6">估值分析</h2>
+            <div class="optional-analysis-grid grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                {% if llm_content.valuation.current_valuation | has_analysis %}
+                <div class="analysis-panel">
+                    <div class="section-kicker mb-2">当前估值</div>
+                    <div class="article-text-sm">{{ llm_content.valuation.current_valuation | safe }}</div>
+                </div>
+                {% endif %}
+                {% if llm_content.valuation.historical_percentile | has_analysis %}
+                <div class="analysis-panel">
+                    <div class="section-kicker mb-2">历史分位</div>
+                    <div class="article-text-sm">{{ llm_content.valuation.historical_percentile | safe }}</div>
+                </div>
+                {% endif %}
+                {% if llm_content.valuation.peer_comparison | has_analysis %}
+                <div class="analysis-panel">
+                    <div class="section-kicker mb-2">同业比较</div>
+                    <div class="article-text-sm">{{ llm_content.valuation.peer_comparison | safe }}</div>
+                </div>
+                {% endif %}
+                {% if llm_content.valuation.conclusion | has_analysis %}
+                <div class="analysis-panel">
+                    <div class="section-kicker mb-2">估值结论</div>
+                    <div class="article-text-sm">{{ llm_content.valuation.conclusion | safe }}</div>
+                </div>
+                {% endif %}
+            </div>
+        </section>
+{% endif %}
+
+        <!-- Catalysts -->
+        <section class="gs-card p-6 mb-8">
+            <h2 class="gs-section-title mb-6">催化剂</h2>
+            <div id="catalyst-data" class="relative pl-6">
+                <div class="absolute left-[5px] top-2 bottom-2 timeline-line"></div>
+                {% for catalyst in llm_content.catalysts %}
+                <div class="relative mb-6 last:mb-0">
+                    <div class="absolute -left-6 top-1 timeline-dot"></div>
+                    <div class="ml-4 analysis-panel">
+                        <div class="flex items-start justify-between gap-3 mb-1 flex-wrap">
+                            <span class="font-semibold text-navy text-sm">{{ catalyst.event | safe }}</span>
+                            <span class="text-xs px-2 py-0.5 bg-navy/10 text-navy rounded-full shrink-0">{{ catalyst.timeline | safe }}</span>
+                        </div>
+                        <div class="article-text-sm">{{ catalyst.impact | safe }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <!-- Risk Matrix -->
+        <section class="gs-card p-6 mb-8">
+            <h2 class="gs-section-title mb-6">风险矩阵</h2>
+            <div class="space-y-3">
+                {% for risk in llm_content.risks %}
+                <div class="risk-item p-4 rounded-lg {% if risk.severity == '高' %}risk-high{% endif %}{% if risk.severity == 'high' %}risk-high{% endif %}{% if risk.severity == '中' %}risk-medium{% endif %}{% if risk.severity == 'medium' %}risk-medium{% endif %}{% if risk.severity == '低' %}risk-low{% endif %}{% if risk.severity == 'low' %}risk-low{% endif %}">
+                    <div class="flex items-center justify-between gap-3 flex-wrap">
+                        <span class="font-semibold text-sm">{{ risk.category | safe }}</span>
+                        <span class="text-xs font-medium uppercase">{{ risk.severity | safe }}</span>
+                    </div>
+                    <p class="text-sm mt-1 opacity-80">{{ risk.description | safe }}</p>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <!-- Observation Framework -->
+        <section class="gs-card p-6 mb-8">
+            <h2 class="gs-section-title mb-6">关键观察清单</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {% for point in llm_content.key_observation_points %}
+                <div class="analysis-panel">
+                    <div class="flex items-start justify-between gap-3 mb-2 flex-wrap">
+                        <div class="analysis-item-title mb-0">{{ point.dimension | safe }}</div>
+                        <span class="text-xs px-2 py-0.5 bg-navy/10 text-navy rounded-full shrink-0">观察信号</span>
+                    </div>
+                    <div class="article-text-sm mb-2"><span class="font-semibold text-navy">信号：</span>{{ point.signal | safe }}</div>
+                    <div class="article-text-sm mb-2"><span class="font-semibold text-navy">意义：</span>{{ point.meaning | safe }}</div>
+                    <div class="quant-subtle"><span class="font-semibold text-navy">失效条件：</span>{{ point.invalidation_condition | safe }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <!-- Validation Framework -->
+        <section class="gs-card p-6 mb-8">
+            <h2 class="gs-section-title mb-6">跟踪验证框架</h2>
+            <div class="summary-callout p-4 mb-4 text-sm">{{ llm_content.validation_framework.description }}</div>
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                {% for item in llm_content.validation_framework.items %}
+                <div class="analysis-panel">
+                    <div class="analysis-item-title">{{ item.dimension }}</div>
+                    <div class="article-text-sm mb-2"><span class="font-semibold text-navy">核心假设：</span>{{ item.hypothesis }}</div>
+                    <div class="article-text-sm mb-2"><span class="font-semibold text-navy">验证证据：</span>{{ item.evidence }}</div>
+                    <div class="quant-subtle"><span class="font-semibold text-navy">失效条件：</span>{{ item.invalidation }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <!-- Investment Conclusion -->
+        <section class="gs-card p-6 mb-8">
+            <h2 class="gs-section-title mb-6">投资结论</h2>
+            <div class="flex items-center gap-4 mb-4">
+                <span class="rating-badge text-lg">{{ llm_content.conclusion.rating | safe }}</span>
+            </div>
+            <div class="mb-4">
+                <h3 class="section-kicker mb-2">投资逻辑</h3>
+                <p class="article-text">{{ llm_content.conclusion.rationale | safe }}</p>
+            </div>
+            <div>
+                <h3 class="section-kicker mb-2">适合投资者</h3>
+                <p class="article-text">{{ llm_content.conclusion.suitable_investors | safe }}</p>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="text-center text-xs text-gray-400 py-6 border-t border-gray-200">
+            &copy; 2026 Ft tech. All rights reserved.
+        </footer>
+    </div>
+
+    <script>
+        (function() {
+            var missingValues = new Set(['', 'null', 'undefined', 'NaN']);
+            document.querySelectorAll('.quant-value').forEach(function(el) {
+                if (missingValues.has(el.textContent.trim())) {
+            el.textContent = '—';
+                }
+            });
+        })();
+
+        (function() {
+            function parseNumber(text) {
+                if (text == null) return null;
+                var normalized = String(text).replace(/,/g, '').trim();
+                if (!normalized || normalized === 'null' || normalized === 'undefined' || normalized === 'NaN') {
+                    return null;
+                }
+                var value = Number(normalized);
+                return Number.isFinite(value) ? value : null;
+            }
+
+            function fixed(value, digits) {
+                return value.toLocaleString('zh-CN', {
+                    minimumFractionDigits: digits,
+                    maximumFractionDigits: digits
+                });
+            }
+
+            function setSignedClass(el, value) {
+                el.classList.remove('value-positive', 'value-negative');
+                if (value > 0) el.classList.add('value-positive');
+                if (value < 0) el.classList.add('value-negative');
+            }
+
+            document.querySelectorAll('.js-format').forEach(function(el) {
+                var value = parseNumber(el.textContent);
+                var format = el.dataset.format;
+                if (value === null) {
+            el.textContent = '—';
+                    return;
+                }
+
+                if (format === 'yuan-to-yi') {
+                    el.textContent = fixed(value / 100000000, 2) + ' 亿元';
+                    return;
+                }
+                if (format === 'yuan-to-yi-signed') {
+                    setSignedClass(el, value);
+                    el.textContent = (value > 0 ? '+' : '') + fixed(value / 100000000, 2) + ' 亿元';
+                    return;
+                }
+                if (format === 'wan-to-yi') {
+                    el.textContent = fixed(value / 10000, 2) + ' 亿元';
+                    return;
+                }
+                if (format === 'percent') {
+                    el.textContent = fixed(value, 2) + '%';
+                    return;
+                }
+                if (format === 'multiple') {
+                    el.textContent = fixed(value, 2) + ' 倍';
+                    return;
+                }
+                if (format === 'price') {
+                    el.textContent = fixed(value, 3);
+                    return;
+                }
+                if (format === 'indicator' || format === 'ratio') {
+                    el.textContent = fixed(value, 3);
+                    return;
+                }
+                if (format === 'volume') {
+                    el.textContent = fixed(value / 10000, 3) + ' 万股';
+                    return;
+                }
+                el.textContent = fixed(value, 3);
+            });
+        })();
+
+        function renderFallbackLineChart(chartDom, dates, series, valueFormatter) {
+            if (!chartDom) return;
+            var width = Math.max(chartDom.clientWidth || 960, 320);
+            var height = Math.max(chartDom.clientHeight || 320, 240);
+            var pad = { left: 54, right: 18, top: 34, bottom: 38 };
+            var plotWidth = width - pad.left - pad.right;
+            var plotHeight = height - pad.top - pad.bottom;
+            var cleanSeries = series.map(function(item) {
+                return {
+                    name: item.name,
+                    color: item.color,
+                    data: Array.isArray(item.data) ? item.data.map(function(v) {
+                        var n = Number(v);
+                        return Number.isFinite(n) ? n : null;
+                    }) : []
+                };
+            });
+            var values = cleanSeries.flatMap(function(item) {
+                return item.data.filter(function(v) { return v !== null; });
+            });
+            if (!values.length || !Array.isArray(dates) || !dates.length) {
+                chartDom.className = 'chart-empty';
+                chartDom.innerHTML = '<span data-chart-empty="true">暂无数据</span>';
+                return;
+            }
+            var min = Math.min.apply(null, values);
+            var max = Math.max.apply(null, values);
+            if (Math.abs(max - min) < 1e-9) {
+                max += 1;
+                min -= 1;
+            }
+            var padding = (max - min) * 0.08;
+            min -= padding;
+            max += padding;
+            function xAt(index) {
+                return pad.left + (dates.length <= 1 ? 0 : plotWidth * index / (dates.length - 1));
+            }
+            function yAt(value) {
+                return pad.top + (max - value) * plotHeight / (max - min);
+            }
+            function esc(text) {
+                return String(text).replace(/[&<>"']/g, function(ch) {
+                    return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch];
+                });
+            }
+            var yTicks = [0, 0.25, 0.5, 0.75, 1].map(function(t) { return min + (max - min) * t; });
+            var grid = yTicks.map(function(v) {
+                var y = yAt(v);
+                var label = valueFormatter ? valueFormatter(v) : v.toFixed(2);
+                return '<line x1="' + pad.left + '" y1="' + y + '" x2="' + (width - pad.right) + '" y2="' + y + '" stroke="#EEF2F7"/>' +
+                    '<text x="' + (pad.left - 8) + '" y="' + (y + 4) + '" text-anchor="end" font-size="10" fill="#64748B">' + esc(label) + '</text>';
+            }).join('');
+            var paths = cleanSeries.map(function(item) {
+                var parts = [];
+                item.data.forEach(function(v, idx) {
+                    if (v === null) return;
+                    parts.push((parts.length ? 'L' : 'M') + xAt(idx).toFixed(1) + ',' + yAt(v).toFixed(1));
+                });
+                return parts.length ? '<path d="' + parts.join(' ') + '" fill="none" stroke="' + item.color + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>' : '';
+            }).join('');
+            var legend = cleanSeries.map(function(item, idx) {
+                var x = pad.left + idx * 96;
+                return '<g transform="translate(' + x + ',16)"><line x1="0" y1="0" x2="16" y2="0" stroke="' + item.color + '" stroke-width="2"/><text x="22" y="4" font-size="11" fill="#334155">' + esc(item.name) + '</text></g>';
+            }).join('');
+            var lastLabel = dates[dates.length - 1] || '';
+            chartDom.innerHTML = '<svg class="fallback-chart-svg" viewBox="0 0 ' + width + ' ' + height + '" role="img" aria-label="fallback chart">' +
+                legend + grid +
+                '<line x1="' + pad.left + '" y1="' + (height - pad.bottom) + '" x2="' + (width - pad.right) + '" y2="' + (height - pad.bottom) + '" stroke="#CBD5E1"/>' +
+                paths +
+                '<text x="' + pad.left + '" y="' + (height - 12) + '" font-size="10" fill="#64748B">' + esc(dates[0] || '') + '</text>' +
+                '<text x="' + (width - pad.right) + '" y="' + (height - 12) + '" text-anchor="end" font-size="10" fill="#64748B">' + esc(lastLabel) + '</text>' +
+                '</svg>';
+        }
+
+        function closeSeriesFromOhlc(ohlcData) {
+            return Array.isArray(ohlcData) ? ohlcData.map(function(d) {
+                return Array.isArray(d) ? d[3] : null;
+            }) : [];
+        }
+
+        function betaNumber(value) {
+            if (value === null || value === undefined || (typeof value === 'string' && value.trim() === '')) return null;
+            var n = Number(value);
+            return Number.isFinite(n) ? n : null;
+        }
+
+        function marketTone(value, baseline) {
+            var current = Number(value);
+            var reference = Number(baseline);
+            if (!Number.isFinite(current) || !Number.isFinite(reference)) return 'neutral';
+            return current > reference ? 'up' : current < reference ? 'down' : 'neutral';
+        }
+
+        function marketToneColor(tone) {
+            return tone === 'up' ? '#F53F3F' : tone === 'down' ? '#00B42A' : '#4E5969';
+        }
+
+        function betaFmt(value, digits, suffix) {
+            if (value === null || value === undefined || !Number.isFinite(Number(value))) return '—';
+            return Number(value).toLocaleString('zh-CN', {
+                minimumFractionDigits: digits,
+                maximumFractionDigits: digits
+            }) + (suffix || '');
+        }
+
+        function betaRenderFallbackBars(chartDom, rows, formatter) {
+            if (!chartDom) return;
+            var cleanRows = rows.filter(function(row) { return row && betaNumber(row.value) !== null; });
+            if (!cleanRows.length) {
+                chartDom.className = 'chart-empty';
+                chartDom.innerHTML = '<span data-chart-empty="true">暂无数据</span>';
+                return;
+            }
+            var width = Math.max(chartDom.clientWidth || 420, 320);
+            var height = Math.max(chartDom.clientHeight || 140, 120);
+            var pad = { left: 82, right: 72, top: 10, bottom: 24 };
+            var plotWidth = width - pad.left - pad.right;
+            var rowHeight = Math.max(24, (height - pad.top - pad.bottom) / cleanRows.length);
+            var maxAbs = Math.max.apply(null, cleanRows.map(function(row) { return Math.abs(Number(row.value)); }));
+            if (maxAbs <= 0) maxAbs = 1;
+            function esc(text) {
+                return String(text).replace(/[&<>"']/g, function(ch) {
+                    return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch];
+                });
+            }
+            var zeroX = pad.left + plotWidth / 2;
+            var bars = cleanRows.map(function(row, idx) {
+                var value = Number(row.value);
+                var barWidth = Math.abs(value) / maxAbs * (plotWidth / 2);
+                var y = pad.top + idx * rowHeight + 5;
+                var x = value >= 0 ? zeroX : zeroX - barWidth;
+                var labelX = value >= 0 ? x + barWidth + 6 : x - 6;
+                var anchor = value >= 0 ? 'start' : 'end';
+                var color = row.color || marketToneColor(marketTone(value, 0));
+                return '<text x="' + (pad.left - 8) + '" y="' + (y + 12) + '" text-anchor="end" font-size="10" fill="#475569">' + esc(row.name) + '</text>' +
+                    '<rect x="' + x + '" y="' + y + '" width="' + Math.max(barWidth, 1) + '" height="12" rx="3" fill="' + color + '"/>' +
+                    '<text x="' + labelX + '" y="' + (y + 10) + '" text-anchor="' + anchor + '" font-size="9" fill="#334155">' + esc(formatter(value, row)) + '</text>';
+            }).join('');
+            chartDom.innerHTML = '<svg class="fallback-chart-svg" viewBox="0 0 ' + width + ' ' + height + '" role="img" aria-label="bar chart">' +
+                '<line x1="' + zeroX + '" y1="' + pad.top + '" x2="' + zeroX + '" y2="' + (height - pad.bottom) + '" stroke="#CBD5E1"/>' +
+                bars +
+                '</svg>';
+        }
+
+        function betaRenderHorizontalBars(chartId, rows, formatter) {
+            var chartDom = document.getElementById(chartId);
+            if (!chartDom) return;
+            var cleanRows = rows.filter(function(row) { return row && betaNumber(row.value) !== null; });
+            if (!cleanRows.length) {
+                chartDom.className = 'chart-empty';
+                chartDom.innerHTML = '<span data-chart-empty="true">暂无数据</span>';
+                return;
+            }
+            if (typeof echarts === 'undefined') {
+                betaRenderFallbackBars(chartDom, cleanRows, formatter);
+                return;
+            }
+            var chart = echarts.init(chartDom);
+            var option = {
+                animation: false,
+                grid: { left: 78, right: 72, top: 4, bottom: 24, containLabel: true },
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: { type: 'shadow' },
+                    formatter: function(params) {
+                        var p = params && params[0];
+                        return p ? p.name + '<br/>' + formatter(p.value, cleanRows[p.dataIndex]) : '';
+                    }
+                },
+                xAxis: {
+                    type: 'value',
+                    axisLabel: { color: '#64748B', fontSize: 9, hideOverlap: true, margin: 6 },
+                    splitLine: { lineStyle: { color: '#EEF2F7' } }
+                },
+                yAxis: {
+                    type: 'category',
+                    data: cleanRows.map(function(row) { return row.name; }),
+                    axisLabel: { color: '#475569', fontSize: 10 }
+                },
+                series: [{
+                    type: 'bar',
+                    data: cleanRows.map(function(row) { return row.value; }),
+                    barWidth: 10,
+                    itemStyle: {
+                        borderRadius: 3,
+                        color: function(params) {
+                            var row = cleanRows[params.dataIndex] || {};
+                            return row.color || marketToneColor(marketTone(params.value, 0));
+                        }
+                    },
+                    label: {
+                        show: true,
+                        position: 'right',
+                        color: '#334155',
+                        fontSize: 9,
+                        formatter: function(params) {
+                            return formatter(params.value, cleanRows[params.dataIndex]);
+                        }
+                    }
+                }]
+            };
+            chart.setOption(option);
+            window.addEventListener('resize', function() { chart.resize(); });
+        }
+
+        function betaRenderRangeBars(chartId, rows, formatter, maxValue, markValues) {
+            var chartDom = document.getElementById(chartId);
+            if (!chartDom) return;
+            var cleanRows = rows.filter(function(row) { return row && betaNumber(row.value) !== null; });
+            if (!cleanRows.length) {
+                chartDom.className = 'chart-empty';
+                chartDom.innerHTML = '<span data-chart-empty="true">暂无数据</span>';
+                return;
+            }
+            if (typeof echarts === 'undefined') {
+                betaRenderFallbackBars(chartDom, cleanRows, formatter);
+                return;
+            }
+            var chart = echarts.init(chartDom);
+            chart.setOption({
+                animation: false,
+                grid: { left: 78, right: 72, top: 4, bottom: 26, containLabel: true },
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: { type: 'shadow' },
+                    formatter: function(params) {
+                        var p = params && params[0];
+                        return p ? p.name + '<br/>' + formatter(p.value, cleanRows[p.dataIndex]) : '';
+                    }
+                },
+                xAxis: {
+                    type: 'value',
+                    min: 0,
+                    max: maxValue,
+                    axisLabel: { color: '#64748B', fontSize: 9, hideOverlap: true, margin: 6 },
+                    splitLine: { lineStyle: { color: '#EEF2F7' } }
+                },
+                yAxis: {
+                    type: 'category',
+                    data: cleanRows.map(function(row) { return row.name; }),
+                    axisLabel: { color: '#475569', fontSize: 10 }
+                },
+                series: [{
+                    type: 'bar',
+                    data: cleanRows.map(function(row) { return row.value; }),
+                    barWidth: 10,
+                    itemStyle: {
+                        borderRadius: 3,
+                        color: function(params) {
+                            var row = cleanRows[params.dataIndex] || {};
+                            return row.color || '#2563EB';
+                        }
+                    },
+                    label: {
+                        show: true,
+                        position: 'right',
+                        color: '#334155',
+                        fontSize: 9,
+                        formatter: function(params) {
+                            return formatter(params.value, cleanRows[params.dataIndex]);
+                        }
+                    },
+                    markLine: {
+                        symbol: 'none',
+                        silent: true,
+                        label: { color: '#64748B', fontSize: 9 },
+                        lineStyle: { color: '#CBD5E1', type: 'dashed' },
+                        data: markValues.map(function(value) { return { xAxis: value, name: String(value) }; })
+                    }
+                }]
+            });
+            window.addEventListener('resize', function() { chart.resize(); });
+        }
+
+        // Report visual panels
+        (function() {
+            var quantData = {{ quant_data | json_encode | safe }};
+            var financial = quantData.financial_indicator || {};
+            var valuation = quantData.valuation || {};
+            var beta = quantData.beta || {};
+            var flow = quantData.capital_flow || {};
+            var revenueTtm = betaNumber(financial.oper_revenue_ttm);
+            var profitTtm = betaNumber(financial.net_profit_ttm);
+            var cfoTtm = betaNumber(financial.cfo_ttm);
+            var mainNetVal = betaNumber(flow.main_net_val);
+
+            betaRenderHorizontalBars('quant-financial-chart', [
+                { name: '最新收入', value: revenueTtm === null ? null : revenueTtm / 100000000, color: '#2354E6' },
+                { name: '最新净利润', value: profitTtm === null ? null : profitTtm / 100000000, color: '#7656E8' },
+                { name: '经营现金流', value: cfoTtm === null ? null : cfoTtm / 100000000, color: '#2563EB' }
+            ], function(v) { return betaFmt(v, 2, ' 亿元'); });
+
+            betaRenderHorizontalBars('quant-profitability-chart', [
+                { name: '最新 ROE', value: betaNumber(financial.roe_ttm), color: '#2354E6' },
+                { name: '最新毛利率', value: betaNumber(financial.gross_profit_margin_ttm), color: '#7656E8' },
+                { name: '最新净利率', value: betaNumber(financial.net_profit_margin_ttm), color: '#64748B' },
+                { name: '净利润同比', value: betaNumber(financial.yoy_net_profit), color: '#2563EB' }
+            ], function(v) { return betaFmt(v, 2, '%'); });
+
+            betaRenderHorizontalBars('quant-valuation-chart', [
+                { name: 'PE TTM', value: betaNumber(valuation.pe_ttm), color: '#7656E8' },
+                { name: 'FY1 PE', value: betaNumber(valuation.est_pe_fy1), color: '#2354E6' },
+                { name: 'PB', value: betaNumber(valuation.pb), color: '#64748B' },
+                { name: 'PEG', value: betaNumber(valuation.est_peg_fy1), color: '#059669' }
+            ], function(v, row) { return row.name === 'PEG' ? betaFmt(v, 3, '') : betaFmt(v, 2, ' 倍'); });
+
+            betaRenderHorizontalBars('quant-flow-chart', [
+                { name: '主力净流入', value: mainNetVal === null ? null : mainNetVal / 100000000 },
+                { name: '超大单', value: betaNumber(flow.huge_net_val) === null ? null : betaNumber(flow.huge_net_val) / 100000000 },
+                { name: '大单', value: betaNumber(flow.large_net_val) === null ? null : betaNumber(flow.large_net_val) / 100000000 },
+                { name: '中单', value: betaNumber(flow.medium_net_val) === null ? null : betaNumber(flow.medium_net_val) / 100000000 },
+                { name: '小单', value: betaNumber(flow.small_net_val) === null ? null : betaNumber(flow.small_net_val) / 100000000 }
+            ], function(v) { return betaFmt(v, 2, ' 亿元'); });
+
+            betaRenderHorizontalBars('quant-risk-chart', [
+                { name: '1Y Beta', value: betaNumber(beta.beta_1y), color: '#E94560' },
+                { name: '2Y Beta', value: betaNumber(beta.beta_2y), color: '#7656E8' },
+                { name: '100W Beta', value: betaNumber(beta.beta_100w), color: '#2354E6' }
+            ], function(v) { return betaFmt(v, 3, ''); });
+        })();
+
+        (function() {
+            var indicatorData = {{ kline_indicator_data | json_encode | safe }};
+            var latest = indicatorData.latest || {};
+            betaRenderRangeBars('technical-state-chart', [
+                { name: 'RSI14', value: betaNumber(latest.rsi14), color: '#2563EB' },
+                { name: 'K', value: betaNumber(latest.stoch_k), color: '#7656E8' },
+                { name: 'D', value: betaNumber(latest.stoch_d), color: '#64748B' },
+                { name: 'J', value: betaNumber(latest.stoch_j), color: '#2354E6' }
+            ], function(v) { return betaFmt(v, 3, ''); }, 100, [20, 50, 80]);
+        })();
+
+        // K-line Chart
+        (function() {
+            var indicatorData = {{ kline_indicator_data | json_encode | safe }};
+            var fallbackTradeDates = {{ kline_data.trade_dates | json_encode | safe }};
+            var fallbackOhlcData = {{ kline_data.ohlc | json_encode | safe }};
+            var fallbackVolumes = {{ kline_data.volumes | json_encode | safe }};
+            var tradeDates = Array.isArray(indicatorData.trade_dates) && indicatorData.trade_dates.length ? indicatorData.trade_dates : fallbackTradeDates;
+            var rawOhlcData = Array.isArray(indicatorData.ohlc) && indicatorData.ohlc.length ? indicatorData.ohlc : fallbackOhlcData;
+            var volumes = Array.isArray(indicatorData.volumes) && indicatorData.volumes.length ? indicatorData.volumes : fallbackVolumes;
+            var overlays = indicatorData.overlays || {};
+            var oscillators = indicatorData.oscillators || {};
+            var ema = overlays.ema || {};
+            var boll = overlays.boll || {};
+            var macd = oscillators.macd || {};
+            var chartDom = document.getElementById('kline-chart');
+            if (!chartDom) return;
+            var controlsNode = document.getElementById('kline-controls');
+            var reportPriceNode = document.getElementById('report-price-value');
+            if (reportPriceNode) {
+                var previousClose = Array.isArray(rawOhlcData) && rawOhlcData.length >= 2
+                    ? rawOhlcData[rawOhlcData.length - 2][3]
+                    : Number.NaN;
+                var reportPriceTone = marketTone(reportPriceNode.dataset.price, previousClose);
+                reportPriceNode.classList.remove('up', 'down', 'neutral');
+                reportPriceNode.classList.add(reportPriceTone);
+                reportPriceNode.dataset.semantic = reportPriceTone;
+            }
+
+            if (typeof echarts === 'undefined') {
+                if (controlsNode) controlsNode.style.display = 'none';
+                renderFallbackLineChart(chartDom, tradeDates, [
+                    { name: '收盘价', color: '#2354E6', data: closeSeriesFromOhlc(rawOhlcData) },
+                    { name: 'EMA5', color: '#D97706', data: (overlays.ema || {})['5'] || [] },
+                    { name: 'EMA20', color: '#059669', data: (overlays.ema || {})['20'] || [] }
+                ], function(v) { return v.toFixed(2); });
+                return;
+            }
+            if (!Array.isArray(tradeDates) || !Array.isArray(rawOhlcData) || !tradeDates.length || !rawOhlcData.length) {
+                if (controlsNode) controlsNode.style.display = 'none';
+                chartDom.className = 'chart-empty';
+                chartDom.innerHTML = '<span data-chart-empty="true">暂无数据</span>';
+                return;
+            }
+            if (!Array.isArray(volumes)) {
+                volumes = [];
+            }
+
+            var ohlcRows = tradeDates.map(function(_, index) {
+                return Array.isArray(rawOhlcData[index]) ? rawOhlcData[index] : [null, null, null, null];
+            });
+            function numericValue(value) {
+                if (value === null || value === undefined || value === '') return Number.NaN;
+                var number = Number(value);
+                return Number.isFinite(number) ? number : Number.NaN;
+            }
+            function pointSeries(values) {
+                return tradeDates.map(function(_, index) {
+                    var value = Array.isArray(values) ? numericValue(values[index]) : Number.NaN;
+                    return Number.isFinite(value) ? value : null;
+                });
+            }
+            var ohlcData = ohlcRows.map(function(d) {
+                var open = numericValue(d[0]);
+                var high = numericValue(d[1]);
+                var low = numericValue(d[2]);
+                var close = numericValue(d[3]);
+                if (![open, high, low, close].every(Number.isFinite)) return { value: [null, null, null, null] };
+                var tone = marketTone(close, open);
+                var color = marketToneColor(tone);
+                return {
+                    // ECharts candlestick order is [open, close, low, high].
+                    value: [open, close, low, high],
+                    itemStyle: { color: color, color0: color, borderColor: color, borderColor0: color }
+                };
+            });
+            var ema5 = pointSeries(ema['5']);
+            var ema10 = pointSeries(ema['10']);
+            var ema20 = pointSeries(ema['20']);
+            var bollUpper = pointSeries(boll.upper);
+            var bollMiddle = pointSeries(boll.middle);
+            var bollLower = pointSeries(boll.lower);
+            var macdDif = pointSeries(macd.dif);
+            var macdDea = pointSeries(macd.dea);
+            var macdHistogram = pointSeries(macd.histogram);
+            function isFiniteNumber(value) { return value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value)); }
+            function finiteSeries(values) { return Array.isArray(values) ? values.filter(isFiniteNumber) : []; }
+            var hasMacd = finiteSeries(macdHistogram).length > 0 || finiteSeries(macdDif).length > 0 || finiteSeries(macdDea).length > 0;
+            var volumeWan = tradeDates.map(function(_, index) {
+                var v = volumes[index];
+                var n = numericValue(v);
+                return Number.isFinite(n) ? n / 10000 : null;
+            });
+            var finiteVolumes = volumeWan.filter(function(v) { return typeof v === 'number' && Number.isFinite(v); });
+            var volumeMax = finiteVolumes.length ? Math.max.apply(null, finiteVolumes) : 0;
+            var volumeAxisMax = volumeMax > 0 ? Math.ceil(volumeMax * 1.1 * 10) / 10 : 1;
+            var volumeAxisInterval = volumeAxisMax / 2;
+            var macdValues = macdHistogram.concat(macdDif, macdDea).filter(isFiniteNumber).map(Number);
+            var macdAbsMax = macdValues.length ? Math.max.apply(null, macdValues.map(function(v) { return Math.abs(v); })) : 0;
+            var macdAxisLimit = macdAbsMax > 0 ? Math.ceil(macdAbsMax * 1.15 * 1000) / 1000 : 1;
+            var macdAxisInterval = macdAxisLimit;
+            var dateInterval = tradeDates.length > 6 ? Math.ceil(tradeDates.length / 6) - 1 : 0;
+            var bollBandData = [];
+            bollLower.forEach(function(value, idx) {
+                var lower = numericValue(value);
+                var upper = numericValue(bollUpper[idx]);
+                if (Number.isFinite(lower) && Number.isFinite(upper)) bollBandData.push([idx, lower, upper]);
+            });
+            var chartValue = function(value) {
+                var n = numericValue(value);
+                return Number.isFinite(n) ? n.toFixed(2) : '—';
+            };
+            var panelGrid = hasMacd
+                ? [
+                    { left: '10%', right: '3.5%', top: '10%', height: '43%', show: true, backgroundColor: '#FFFFFF', borderColor: '#E5EAF0', borderWidth: 1, containLabel: true },
+                    { left: '10%', right: '3.5%', top: '58%', height: '15%', show: true, backgroundColor: '#FFFFFF', borderColor: '#E5EAF0', borderWidth: 1, containLabel: true },
+                    { left: '10%', right: '3.5%', top: '79%', height: '17%', show: true, backgroundColor: '#FFFFFF', borderColor: '#E5EAF0', borderWidth: 1, containLabel: true }
+                ]
+                : [
+                    { left: '10%', right: '3.5%', top: '10%', height: '55%', show: true, backgroundColor: '#FFFFFF', borderColor: '#E5EAF0', borderWidth: 1, containLabel: true },
+                    { left: '10%', right: '3.5%', top: '70%', height: '20%', show: true, backgroundColor: '#FFFFFF', borderColor: '#E5EAF0', borderWidth: 1, containLabel: true }
+                ];
+            var panelLegend = hasMacd
+                ? [
+                    { type: 'scroll', top: '1%', left: '13%', right: '3.5%', itemWidth: 14, itemHeight: 8, itemGap: 8, data: ['K线', 'EMA5', 'EMA10', 'EMA20', 'BOLL区间', 'BOLL中轨'], textStyle: { fontSize: 12, color: '#334155' }, pageButtonItemGap: 4 },
+                    { top: '55%', left: '13%', right: '3.5%', itemWidth: 14, itemHeight: 8, data: ['成交量(万股)'], textStyle: { fontSize: 12, color: '#334155' } },
+                    { type: 'scroll', top: '76%', left: '13%', right: '3.5%', itemWidth: 14, itemHeight: 8, itemGap: 8, data: ['MACD', 'DIF', 'DEA'], textStyle: { fontSize: 12, color: '#334155' }, pageButtonItemGap: 4 }
+                ]
+                : [
+                    { type: 'scroll', top: '1%', left: '13%', right: '3.5%', itemWidth: 14, itemHeight: 8, itemGap: 8, data: ['K线', 'EMA5', 'EMA10', 'EMA20', 'BOLL区间', 'BOLL中轨'], textStyle: { fontSize: 12, color: '#334155' }, pageButtonItemGap: 4 },
+                    { top: '67%', left: '13%', right: '3.5%', itemWidth: 14, itemHeight: 8, data: ['成交量(万股)'], textStyle: { fontSize: 12, color: '#334155' } }
+                ];
+            var xAxis = [
+                { type: 'category', data: tradeDates, gridIndex: 0, boundaryGap: true, axisLine: { lineStyle: { color: '#CBD5E1' } }, axisLabel: { show: false }, axisTick: { show: false } },
+                { type: 'category', data: tradeDates, gridIndex: 1, boundaryGap: true, axisLine: { lineStyle: { color: '#CBD5E1' } }, axisLabel: { show: !hasMacd, interval: dateInterval, hideOverlap: true, color: '#64748B', fontSize: 11 }, axisTick: { show: false } }
+            ];
+            var yAxis = [
+                {
+                    scale: true,
+                    gridIndex: 0,
+                    splitLine: { lineStyle: { color: '#EEF2F7' } },
+                    splitNumber: 4,
+                    axisLabel: { color: '#64748B', fontSize: 11, hideOverlap: true, formatter: chartValue }
+                },
+                {
+                    scale: true,
+                    gridIndex: 1,
+                    name: '万股',
+                    nameTextStyle: { color: '#94A3B8', fontSize: 11, padding: [0, 0, 0, 24] },
+                    min: 0,
+                    max: volumeAxisMax,
+                    interval: volumeAxisInterval,
+                    splitLine: { lineStyle: { color: '#F1F5F9' } },
+                    axisLabel: { color: '#64748B', fontSize: 11, hideOverlap: true, formatter: chartValue }
+                }
+            ];
+            if (hasMacd) {
+                xAxis.push({ type: 'category', data: tradeDates, gridIndex: 2, boundaryGap: true, axisLine: { lineStyle: { color: '#CBD5E1' } }, axisLabel: { interval: dateInterval, hideOverlap: true, color: '#64748B', fontSize: 11 }, axisTick: { show: false } });
+                yAxis.push({
+                    scale: true,
+                    gridIndex: 2,
+                    min: -macdAxisLimit,
+                    max: macdAxisLimit,
+                    interval: macdAxisInterval,
+                    splitLine: { lineStyle: { color: '#F1F5F9' } },
+                    axisLabel: { color: '#64748B', fontSize: 11, hideOverlap: true, formatter: chartValue }
+                });
+            }
+            var series = [
+                {
+                    name: 'K线',
+                    type: 'candlestick',
+                    xAxisIndex: 0,
+                    yAxisIndex: 0,
+                    data: ohlcData,
+                    itemStyle: {
+                        color: '#F53F3F',
+                        color0: '#00B42A',
+                        borderColor: '#F53F3F',
+                        borderColor0: '#00B42A'
+                    }
+                },
+                { name: 'EMA5', type: 'line', xAxisIndex: 0, yAxisIndex: 0, data: ema5, smooth: true, symbol: 'none', lineStyle: { width: 1.2, color: '#D97706' } },
+                { name: 'EMA10', type: 'line', xAxisIndex: 0, yAxisIndex: 0, data: ema10, smooth: true, symbol: 'none', lineStyle: { width: 1.2, color: '#2563EB' } },
+                { name: 'EMA20', type: 'line', xAxisIndex: 0, yAxisIndex: 0, data: ema20, smooth: true, symbol: 'none', lineStyle: { width: 1.2, color: '#059669' } },
+                {
+                    name: 'BOLL区间',
+                    type: 'custom',
+                    xAxisIndex: 0,
+                    yAxisIndex: 0,
+                    data: bollBandData,
+                    encode: { x: 0, y: [1, 2] },
+                    silent: true,
+                    z: 0,
+                    itemStyle: { color: 'rgba(148, 163, 184, 0.18)' },
+                    renderItem: function(params, api) {
+                        var index = Number(api.value(0));
+                        var lower = Number(api.value(1));
+                        var upper = Number(api.value(2));
+                        if (!Number.isFinite(lower) || !Number.isFinite(upper)) return null;
+                        var lowerPoint = api.coord([index, lower]);
+                        var upperPoint = api.coord([index, upper]);
+                        var width = Math.max(1, api.size([1, 0])[0] * 0.96);
+                        // Custom rectangles must stay inside the price grid after data zoom.
+                        var grid = params.coordSys;
+                        var left = Math.max(grid.x, lowerPoint[0] - width / 2);
+                        var right = Math.min(grid.x + grid.width, lowerPoint[0] + width / 2);
+                        var top = Math.max(grid.y, upperPoint[1]);
+                        var bottom = Math.min(grid.y + grid.height, lowerPoint[1]);
+                        if (right <= left || bottom <= top) return null;
+                        return {
+                            type: 'rect',
+                            shape: { x: left, y: top, width: right - left, height: bottom - top },
+                            style: { fill: 'rgba(148, 163, 184, 0.18)' }
+                        };
+                    },
+                    tooltip: { show: false }
+                },
+                { name: 'BOLL上轨', type: 'line', xAxisIndex: 0, yAxisIndex: 0, data: bollUpper, symbol: 'none', silent: true, lineStyle: { width: 1, color: 'rgba(100,116,139,0.48)', type: 'dashed' }, tooltip: { show: false } },
+                { name: 'BOLL中轨', type: 'line', xAxisIndex: 0, yAxisIndex: 0, data: bollMiddle, symbol: 'none', lineStyle: { width: 1.1, color: '#64748B' } },
+                { name: 'BOLL下轨', type: 'line', xAxisIndex: 0, yAxisIndex: 0, data: bollLower, symbol: 'none', silent: true, lineStyle: { width: 1, color: 'rgba(100,116,139,0.48)', type: 'dashed' }, tooltip: { show: false } },
+                {
+                    name: '成交量(万股)',
+                    type: 'bar',
+                    xAxisIndex: 1,
+                    yAxisIndex: 1,
+                    data: volumeWan,
+                    barMaxWidth: 10,
+                    itemStyle: {
+                        color: function(params) {
+                            var idx = params.dataIndex;
+                            if (ohlcRows[idx]) {
+                                return marketToneColor(marketTone(ohlcRows[idx][3], ohlcRows[idx][0]));
+                            }
+                            return '#94A3B8';
+                        }
+                    }
+                }
+            ];
+            if (hasMacd) {
+                series.push(
+                    {
+                        name: 'MACD',
+                        type: 'bar',
+                        xAxisIndex: 2,
+                        yAxisIndex: 2,
+                        data: macdHistogram,
+                        barMaxWidth: 5,
+                        barCategoryGap: '35%',
+                        z: 1,
+                        itemStyle: {
+                            color: function(params) {
+                                return marketToneColor(marketTone(params.value, 0));
+                            }
+                        }
+                    },
+                    { name: 'DIF', type: 'line', xAxisIndex: 2, yAxisIndex: 2, data: macdDif, smooth: true, symbol: 'none', z: 2, lineStyle: { width: 1.6, color: '#7656E8' } },
+                    { name: 'DEA', type: 'line', xAxisIndex: 2, yAxisIndex: 2, data: macdDea, smooth: true, symbol: 'none', z: 2, lineStyle: { width: 1.6, color: '#334155' } }
+                );
+            }
+            function marker(color) {
+                var safeColor = typeof color === 'string' ? color : '#64748B';
+                return '<span style="display:inline-block;flex:0 0 auto;margin-top:6px;border-radius:50%;width:8px;height:8px;background:' + safeColor + '"></span>';
+            }
+            function normalizeCandleValues(values) {
+                if (!Array.isArray(values)) {
+                    return [];
+                }
+                if (values.length >= 5) {
+                    return values.slice(1, 5);
+                }
+                if (values.length >= 4) {
+                    return values.slice(0, 4);
+                }
+                return [];
+            }
+            function candleTooltipValues(item) {
+                var idx = Number(item.dataIndex);
+                if (Number.isFinite(idx) && idx >= 0 && Math.floor(idx) === idx && ohlcData[idx] && Array.isArray(ohlcData[idx].value) && ohlcData[idx].value.length >= 4) {
+                    return ohlcData[idx].value;
+                }
+                var dataValues = normalizeCandleValues(item.data);
+                if (dataValues.length) {
+                    return dataValues;
+                }
+                var valueValues = normalizeCandleValues(item.value);
+                if (valueValues.length) {
+                    return valueValues;
+                }
+                return [];
+            }
+            function tooltipHtml(params) {
+                if (!Array.isArray(params) || !params.length) return '';
+                var rows = ['<div class="kline-tooltip-content"><div class="kline-tooltip-title">' + params[0].axisValue + '</div>'];
+                params.forEach(function(item) {
+                    if (item.seriesName === 'BOLL下沿' || item.seriesName === 'BOLL区间' || item.seriesName === 'BOLL上轨' || item.seriesName === 'BOLL下轨') return;
+                    if (item.seriesName === 'K线') {
+                        var v = candleTooltipValues(item);
+                        rows.push('<div class="kline-tooltip-row">' + marker(item.color) + '<span>K线&nbsp;&nbsp;开 ' + chartValue(v[0]) + ' / 收 ' + chartValue(v[1]) + ' / 低 ' + chartValue(v[2]) + ' / 高 ' + chartValue(v[3]) + '</span></div>');
+                        return;
+                    }
+                    var suffix = item.seriesName === '成交量(万股)' ? ' 万股' : '';
+                    rows.push('<div class="kline-tooltip-row">' + marker(item.color) + '<span>' + item.seriesName + '&nbsp;&nbsp;' + chartValue(item.value) + suffix + '</span></div>');
+                });
+                rows.push('</div>');
+                return rows.join('');
+            }
+            function klineTooltipPosition(point, params, dom, rect, size) {
+                var gap = 12;
+                var margin = 8;
+                var viewWidth = Math.max(size.viewSize[0] || 0, 0);
+                var viewHeight = Math.max(size.viewSize[1] || 0, 0);
+                var boxWidth = Math.min(size.contentSize[0] || 0, Math.max(viewWidth - margin * 2, 0));
+                var boxHeight = Math.min(size.contentSize[1] || 0, Math.max(viewHeight - margin * 2, 0));
+                var x = point[0] + gap;
+                var y = point[1] + gap;
+
+                if (x + boxWidth > viewWidth - margin) {
+                    x = point[0] - boxWidth - gap;
+                }
+                if (y + boxHeight > viewHeight - margin) {
+                    y = point[1] - boxHeight - gap;
+                }
+
+                var maxX = Math.max(margin, viewWidth - boxWidth - margin);
+                var maxY = Math.max(margin, viewHeight - boxHeight - margin);
+                return [
+                    Math.max(margin, Math.min(x, maxX)),
+                    Math.max(margin, Math.min(y, maxY))
+                ];
+            }
+
+            var chart = echarts.init(chartDom);
+            var linkedXAxis = xAxis.map(function(_, index) { return index; });
+            var option = {
+                animation: false,
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: { type: 'cross', snap: true, label: { backgroundColor: '#2354E6' }, lineStyle: { color: '#2354E6', width: 1 } },
+                    formatter: tooltipHtml,
+                    confine: true,
+                    appendToBody: true,
+                    className: 'kline-chart-tooltip',
+                    extraCssText: 'max-width:min(360px, calc(100vw - 32px));white-space:normal;overflow-wrap:anywhere;word-break:break-word;',
+                    position: klineTooltipPosition
+                },
+                axisPointer: { link: [{ xAxisIndex: 'all' }], snap: true, label: { backgroundColor: '#2354E6' } },
+                dataZoom: [{
+                    type: 'inside',
+                    xAxisIndex: linkedXAxis,
+                    filterMode: 'none',
+                    zoomOnMouseWheel: true,
+                    moveOnMouseMove: true,
+                    moveOnMouseWheel: true,
+                    preventDefaultMouseMove: true,
+                    throttle: 50
+                }],
+                legend: panelLegend,
+                grid: panelGrid,
+                xAxis: xAxis,
+                yAxis: yAxis,
+                series: series
+            };
+            chart.setOption(option);
+            function applyRange(count, button) {
+                var total = tradeDates.length;
+                var start = count === null || total <= count ? 0 : Math.max(0, ((total - count) / total) * 100);
+                chart.dispatchAction({ type: 'dataZoom', xAxisIndex: linkedXAxis, start: start, end: 100 });
+                if (controlsNode) {
+                    controlsNode.querySelectorAll('[data-kline-range]').forEach(function(node) {
+                        var active = node === button;
+                        node.classList.toggle('is-active', active);
+                        node.setAttribute('aria-pressed', active ? 'true' : 'false');
+                    });
+                }
+            }
+            function adjustZoom(direction) {
+                var zoom = chart.getOption().dataZoom && chart.getOption().dataZoom[0] || {};
+                var currentStart = Number.isFinite(Number(zoom.start)) ? Number(zoom.start) : 0;
+                var currentEnd = Number.isFinite(Number(zoom.end)) ? Number(zoom.end) : 100;
+                var center = (currentStart + currentEnd) / 2;
+                var span = Math.max(5, currentEnd - currentStart);
+                var nextSpan = direction === 'in' ? Math.max(8, span * 0.7) : Math.min(100, span / 0.7);
+                var nextStart = Math.max(0, center - nextSpan / 2);
+                var nextEnd = Math.min(100, center + nextSpan / 2);
+                if (nextEnd - nextStart < nextSpan) {
+                    if (nextStart === 0) nextEnd = Math.min(100, nextSpan);
+                    if (nextEnd === 100) nextStart = Math.max(0, 100 - nextSpan);
+                }
+                chart.dispatchAction({ type: 'dataZoom', xAxisIndex: linkedXAxis, start: nextStart, end: nextEnd });
+                if (controlsNode) controlsNode.querySelectorAll('[data-kline-range]').forEach(function(node) {
+                    node.classList.remove('is-active');
+                    node.setAttribute('aria-pressed', 'false');
+                });
+            }
+            if (controlsNode) {
+                controlsNode.querySelectorAll('[data-kline-range]').forEach(function(button) {
+                    button.addEventListener('click', function() {
+                        var value = button.dataset.klineRange;
+                        applyRange(value === 'all' ? null : Number(value), button);
+                    });
+                });
+                controlsNode.querySelectorAll('[data-kline-zoom]').forEach(function(button) {
+                    button.addEventListener('click', function() { adjustZoom(button.dataset.klineZoom); });
+                });
+                var restoreButton = controlsNode.querySelector('[data-kline-action="restore"]');
+                if (restoreButton) restoreButton.addEventListener('click', function() {
+                    chart.dispatchAction({ type: 'dataZoom', xAxisIndex: linkedXAxis, start: 0, end: 100 });
+                    controlsNode.querySelectorAll('[data-kline-range]').forEach(function(node) {
+                        var active = node.dataset.klineRange === 'all';
+                        node.classList.toggle('is-active', active);
+                        node.setAttribute('aria-pressed', active ? 'true' : 'false');
+                    });
+                });
+            }
+            window.addEventListener('resize', function() { chart.resize(); });
+        })();
+
+    </script>
+</body>
+
+</html>

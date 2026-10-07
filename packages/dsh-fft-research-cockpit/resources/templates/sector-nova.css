@@ -1,0 +1,124 @@
+/* Nova Research reference layout. Semantic data and original chart controls are retained. */
+body.sector-report{--primary-6:#0755f5;--font-1:#071b61;--font-2:#5871a6;--font-3:#7894c7;--fill-1:#f3f9ff;--gray-3:#dfedfb;background:#eaf5fd;background-image:none;color:var(--font-1);font:14px/1.65 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}
+.sector-report::before,.sector-report::after{display:none}
+.sector-report .page{width:100%;max-width:1248px;margin:0 auto;padding:0 16px 24px;gap:12px;display:block}
+.sector-report .nova-topbar{display:flex;align-items:center;justify-content:space-between;position:relative;gap:24px;min-height:52px;padding:8px 12px;margin:0 -16px;background:#fff;border-bottom:1px solid #d9edff;text-align:left}
+.nova-brand{display:flex;gap:8px;align-items:center;color:#092574;text-decoration:none;line-height:1.2;flex-shrink:0}.nova-brand strong{display:block;font-size:16px}.nova-brand small{font-size:10px;letter-spacing:2px;color:#6d86b7}.nova-logo{font-size:32px;color:#0665ff;line-height:1}
+.nova-search{display:flex;align-items:center;gap:8px;max-width:440px;flex:1;border:1px solid #d2e8ff;border-radius:24px;background:#edf7ff;color:#72a4df;padding:0 12px}.nova-search input{width:100%;min-width:0;border:0;background:none;font:inherit;font-size:12px;outline:0;padding:6px 0;color:#254a93}.nova-search input::placeholder{color:#82a7d5}.nova-actions{display:flex;gap:12px}.nova-actions button{border-radius:20px;border:1px solid #d6e6ff;color:#1259ed;background:#fff;padding:4px 16px;white-space:nowrap;cursor:pointer;font:inherit;font-size:12px}.nova-actions button:last-child{background:#0860f8;color:white;border-color:#0860f8}.nova-topbar #nova-action-status{position:absolute;right:12px;top:100%;z-index:30;background:#fff;color:#2354e6;font-size:12px}.nova-topbar #nova-action-status:empty{display:none}.nova-found{outline:2px solid #8355ff;outline-offset:4px}
+.sector-report .nova-banner{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:8px;min-height:168px;padding:20px 24px;margin:0 -16px 12px;border:0;border-radius:0;background:#dfedff url('__NOVA_BANNER__') center 73%/cover no-repeat;box-shadow:none}.nova-banner .identity{font-size:12px;color:#3a67b9}.nova-banner .ai-mark{display:none}.nova-banner .hero-title{order:0}.nova-banner .hero-title h1{font-size:28px;line-height:1.3;color:#061451;margin:0;font-weight:800;letter-spacing:1px}.nova-banner .hero-subline{font-size:12px;gap:12px;margin-top:8px;color:#42608b}.nova-banner .hero-meta{order:3;gap:8px;justify-content:flex-start}.nova-banner .chip{background:#e3f1ff;color:#0755ee;border:1px solid #cce7ff;font-size:12px;padding:2px 12px}.nova-banner .identity{order:2}
+.sector-report .page>.report-section{padding:12px 16px 8px;margin:12px 0;border:1px solid #e1effc;border-radius:12px;background:rgba(255,255,255,.94);box-shadow:none;scroll-margin-top:12px}.sector-report .section-head{gap:16px;margin:0 0 12px;align-items:center}.sector-report .section-number{font-size:28px;line-height:1;font-weight:700;color:#065cff;background:none;border:0;width:auto;height:auto;display:block}.sector-report .section-head>div{display:flex;align-items:baseline;gap:16px;flex:1;min-width:0}.sector-report .section-head h2{font-size:20px;color:#081951;font-weight:750;line-height:1.3;margin:0}.sector-report .section-head p{font-size:12px;color:#7c99c5;line-height:1.5;margin:0}.section-head time{font-size:12px;color:#829bc6;margin-left:auto;white-space:nowrap}
+.sector-report .surface,.sector-report .driver-card,.sector-report .industry-chain-card{box-shadow:none;border:1px solid #e2effb;border-radius:8px;background:#fbfdff}.sector-report .surface-head{padding:8px 12px;border-bottom:1px solid #e8f1fc;gap:8px}.sector-report .surface-head h3{font-size:14px;color:#075aff}.sector-report .surface-head p{font-size:12px;line-height:1.4;color:#8098bc;margin-top:2px}.sector-report .chip{font-size:12px;padding:2px 8px;box-shadow:none}.sector-report .chart-grid{gap:12px;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);margin:0}.sector-report .chart-grid>aside{display:block}.sector-report .chart-controls{gap:4px}.sector-report .view-btn{padding:4px 8px;font-size:12px}.sector-report .kline-chart-body{padding:0 8px}.sector-report .kline-echart{height:300px;min-height:300px}.sector-report .chart-legend{font-size:12px;padding:4px 12px;gap:8px;margin:0}.sector-report .legend-toggle{font-size:12px}.sector-report .kline-summary{margin:8px 12px}.sector-report .kline-summary-item{padding:8px}.sector-report .kline-summary-item span,.sector-report .kline-summary-item strong{font-size:12px}
+.nova-overview-grid{display:grid;grid-template-columns:180px minmax(0,1fr);gap:12px}.nova-verdict{border-radius:8px;background:#fff3f5;color:#f53f3f;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px;text-align:center;gap:4px}.nova-verdict>span{font-size:12px;color:#345489}.nova-verdict>strong{font-size:24px;line-height:1.4}.nova-verdict>small{font-size:12px}.sector-report .metrics-panel{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;border:0;background:transparent;margin:0;padding:0;box-shadow:none}.sector-report .metric{padding:12px;border:1px solid #e2effb!important;border-radius:8px;background:#f5faff;min-width:0}.sector-report .metric-label{color:#1452c4;font-size:12px}.sector-report .metric-value{font-size:24px;font-weight:750;line-height:1.4;margin:6px 0}.sector-report .metric-note{font-size:12px;color:#8aa1c5;line-height:1.4}.sector-report .metric::after,.sector-report .metric::before{display:none}
+.sector-report .hero-summary{background:transparent;border:0;box-shadow:none;padding:8px 0;margin:0;display:block}.sector-report .summary-label{display:none}.sector-report .summary-headline{font-size:14px;color:#365b9e}.sector-report .hero-summary p{font-size:12px;line-height:1.75;color:#6b87b8;margin:4px 0}.nova-insights{display:grid;grid-template-columns:1fr 1.4fr;gap:12px}.nova-insights>div{border:1px solid #e1effc;background:#f3faff;border-radius:8px;padding:8px 12px}.nova-insights h3{margin:0 0 4px;color:#1661ed;font-size:14px}.nova-insights>div:last-child h3{color:#f26485}.nova-insights ul{padding-left:18px;margin:0;color:#5e7aad;font-size:12px}.nova-insights li::marker{color:#145bff}.nova-insights>div:last-child li::marker{color:#f53f3f}
+.nova-ai{display:flex;align-items:flex-start;gap:12px;padding:8px 12px;margin-top:8px;border-radius:8px;background:#edf0ff;color:#6984bd;font-size:12px;line-height:1.7}.nova-ai-icon{display:grid;place-items:center;flex-shrink:0;width:24px;height:24px;border-radius:50%;background:#8354ed;color:white;border:3px solid #ceb8ff;font-size:14px}.nova-ai>strong{color:#0755f5;white-space:nowrap;font-size:14px;line-height:24px}.nova-ai p{margin:0!important;font-size:12px!important;line-height:1.7!important}.nova-ai p::before{content:'•';color:#165dff;margin-right:8px}
+.nova-detail{margin-top:8px;border-top:1px solid #e4eff9;padding-top:4px}.nova-detail>summary{cursor:pointer;color:#6a83b1;font-size:12px;padding:4px 0;min-height:28px}.nova-detail .report-section{background:none;margin:12px 0;padding:0;border:0}.nova-detail .section-head .section-number{display:none}.nova-detail .section-head h2{font-size:16px}.nova-detail .section-head p{display:none}.nova-detail .driver-card{padding:12px}.nova-detail .driver-card h3{font-size:14px}.nova-detail .driver-summary,.nova-detail .evidence-line{font-size:12px}.nova-detail .final-answer{padding:12px;background:#f5faff}.nova-detail .final-copy>p{font-size:14px}.nova-detail .phase-body{padding:12px}.nova-detail .phase-current{padding:12px}
+.sector-report .breadth-body{padding:12px}.sector-report .breadth-number{font-size:28px}.sector-report .breadth-caption{font-size:12px}.sector-report .breadth-bar{height:12px;margin-top:12px}.sector-report .breadth-legend{font-size:12px}.sector-report .breadth-stats{margin-top:12px}.sector-report .breadth-stat{padding:8px}.sector-report .breadth-stat strong{font-size:16px}.sector-report .breadth-stat span{font-size:12px}.sector-report .judgement{padding:8px 12px;margin-top:12px;font-size:12px;border:0;background:#eaf4ff}
+.sector-report .structure-grid{display:block}.sector-report table{font-size:12px}.sector-report th,.sector-report td{padding:6px 10px;line-height:1.45;border-color:#e4effb}.sector-report th{background:#ecf7ff;color:#0755f5;font-weight:600;font-size:12px}.sector-report tbody tr:nth-child(even){background:#f0f8ff}.sector-report .row-title{font-size:12px;color:#3a5c94}.sector-report .row-subtitle{font-size:12px;color:#8b9fbf;display:inline;margin-left:6px}.sector-report .leader-table{min-width:720px}.sector-report .leader-table td:last-child{max-width:260px}.sector-report .role-tag{font-size:12px;padding:0 4px}
+.sector-report .two-column,.sector-report .capital-classification-grid{gap:12px}.sector-report .capital-today-grid{gap:8px;padding:8px 12px;grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}.sector-report .capital-today-metric{padding:8px}.sector-report .capital-today-metric strong{font-size:20px}.sector-report .capital-reading,.sector-report .flow-analysis,.sector-report .flow-methodology{padding:8px 12px;font-size:12px;margin:8px 12px;background:#f0f6ff;border:0}.sector-report .capital-details{margin-top:8px}.sector-report .capital-details>summary{padding:4px 0;color:#5277bb;font-size:12px;min-height:28px}.sector-report .order-flow-list{padding:8px 12px}.sector-report .order-flow-row{gap:8px;margin-bottom:8px}.sector-report .order-flow-name strong{font-size:14px}.sector-report .order-flow-name span,.sector-report .order-flow-axis{font-size:12px}.sector-report .order-flow-net{font-size:14px}.sector-report .order-flow-track{height:12px}.sector-report .flow-chart-body{padding:8px}.sector-report #fund-flow-chart{max-height:220px}.sector-report .capital-trend-grid{margin-top:8px}.sector-report .flow-sync{padding:8px}.sector-report .flow-sync-item{padding:8px}.sector-report .flow-sync-item strong{font-size:16px}.sector-report .flow-horizons{gap:8px}.sector-report .flow-horizon{padding:8px}.sector-report .flow-horizon strong{font-size:16px}.sector-report .phase-current strong{font-size:16px}.sector-report .phase-current p{font-size:12px}.sector-report .phase-current{padding:12px}
+.sector-report .event-list,.sector-report .risk-list{padding:8px 12px;gap:4px}.sector-report .event-item,.sector-report .risk-item{padding:6px 8px;background:#f1f8ff;border:0;border-radius:4px}.sector-report .event-head h4,.sector-report .risk-head h4{font-size:12px}.sector-report .event-time,.sector-report .risk-level{font-size:12px}.sector-report .event-detail p{font-size:12px;line-height:1.6;margin:4px 0}.sector-report .event-toggle{display:none}.sector-report .industry-chain-grid{gap:12px}.sector-report .industry-chain-card{padding:12px}.sector-report .chain-overview{padding:12px;background:#f6fbff}.sector-report .chain-overview h3{font-size:14px}.sector-report .chain-overview p{font-size:12px}.sector-report .chain-path{margin-top:8px}.sector-report .chain-stage{padding:8px}.sector-report .chain-stage strong{font-size:14px}.sector-report .logic-summary{font-size:12px}.sector-report .logic-item{padding:12px}.sector-report .logic-item h3{font-size:14px}
+.sector-report .ftshare-mask-host{min-height:144px!important}.sector-report .ftshare-module-mask{min-height:144px;padding:8px!important}.sector-report .ftshare-module-mask-card{padding:8px 12px!important}.sector-report .ftshare-module-mask-card strong{font-size:16px!important}.sector-report .ftshare-module-mask-card p,.sector-report .ftshare-module-mask-card a{font-size:12px!important}.sector-report .ftshare-module-mask-icon{width:32px!important;height:32px!important}.sector-report .ftshare-module-mask-card a{padding:6px 12px!important}.sector-report .ftshare-partial-surface{margin-top:8px}.sector-report .footer{font-size:12px;padding:12px;color:#8b9ebc}
+@media(max-width:1000px){.sector-report .section-head>div{display:block}.nova-overview-grid{grid-template-columns:150px minmax(0,1fr)}.sector-report .metrics-panel{grid-template-columns:repeat(2,minmax(0,1fr))}.sector-report .metric-value{font-size:20px}.nova-search{max-width:320px}.nova-banner .hero-title h1{font-size:24px}}
+@media(max-width:760px){.sector-report .page{padding:0 12px 20px}.sector-report .nova-topbar{gap:12px;margin:0 -12px;flex-wrap:wrap;padding:8px 12px}.nova-search{order:3;flex-basis:100%;max-width:none}.nova-actions button{padding:4px 10px}.sector-report .nova-banner{margin:0 -12px 8px;padding:16px;min-height:176px;background-position:60% 70%}.nova-banner .hero-subline{max-width:75%;font-size:12px}.nova-banner .hero-meta{max-width:80%}.sector-report .page>.report-section{padding:12px;margin:8px 0}.sector-report .section-head{gap:8px;flex-wrap:wrap}.sector-report .section-number{font-size:24px}.sector-report .section-head h2{font-size:18px}.section-head time{font-size:12px}.sector-report .section-head p{display:none}.nova-overview-grid{grid-template-columns:minmax(0,1fr)}.nova-verdict{flex-direction:row;gap:12px;padding:12px}.nova-verdict>strong{font-size:20px}.nova-verdict small{display:none}.nova-insights,.sector-report .chart-grid,.sector-report .two-column,.sector-report .capital-classification-grid,.sector-report .industry-chain-grid{grid-template-columns:minmax(0,1fr)}.nova-ai{gap:8px;padding:8px;flex-wrap:wrap}.nova-ai p{flex-basis:100%}.sector-report .kline-echart{height:320px;min-height:320px}.sector-report .row-subtitle{display:block;margin:0}.sector-report .metrics-panel{grid-template-columns:repeat(2,minmax(0,1fr))}.sector-report .metric{padding:8px}.sector-report .metric-value{font-size:20px}.sector-report .chart-surface-head{flex-wrap:wrap}.sector-report .chart-controls{max-width:100%}}
+@media print{body.sector-report{background:#eaf5fd!important;print-color-adjust:exact;-webkit-print-color-adjust:exact}.sector-report .nova-topbar .nova-search,.nova-actions,.nova-detail>summary{display:none}.sector-report .page{max-width:none;padding:0}.sector-report .nova-banner{margin:0;min-height:136px}.sector-report .page>.report-section{break-inside:auto}.sector-report .section-head,.nova-ai{break-inside:avoid}.sector-report .kline-echart{height:300px;min-height:300px}.nova-detail:not([open]){display:none}.sector-report .ftshare-mask-host{break-inside:avoid}}
+/* Compact overview, market panel and three-column capital dashboard. */
+@media(min-width:761px){
+  .sector-report .metrics-panel{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .nova-overview-grid{grid-template-columns:150px minmax(0,1fr)}
+  .sector-report .metric{padding:10px 8px}
+  .sector-report .metric-value{font-size:20px;overflow-wrap:anywhere}
+  .nova-verdict>strong{font-size:22px}
+  .sector-report #capital-flow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+  #capital-flow>.section-head,#capital-flow>.nova-ai,#capital-flow>.nova-history{grid-column:1/-1;margin:0}
+  #capital-order-structure,#capital-order-structure>.capital-classification-grid{display:contents}
+  #capital-order-structure>summary{display:none}
+  #capital-order-structure .flow-methodology-details{grid-column:1/-1}
+  .sector-report .capital-today-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+.sector-report .kline-chart-body{min-height:0;height:auto}
+.sector-report .kline-echart{height:240px;min-height:240px}
+.sector-report .kline-summary{grid-template-columns:repeat(3,minmax(0,1fr));margin:4px 8px}
+.sector-report .kline-summary-item{padding:6px;background:#f3f9ff}
+.sector-report .capital-today-item{padding:8px;background:#f3f9ff}
+.sector-report .capital-today-item strong{font-size:18px}
+.sector-report .capital-today-item span,.sector-report .capital-today-item small{font-size:12px}
+.sector-report .order-flow-row,.sector-report .order-flow-axis{grid-template-columns:64px minmax(0,1fr) 64px;gap:6px}
+.sector-report .order-flow-label strong{font-size:12px}
+.sector-report .order-flow-label span{font-size:12px}
+.sector-report .order-flow-net{font-size:12px;overflow-wrap:anywhere}
+.sector-report .market-share-list,.sector-report .logic-list{padding:10px}
+.sector-report .market-share-head strong,.sector-report .market-share-head b{font-size:12px}
+.sector-report .market-share-meta{font-size:12px}
+.sector-report #events .two-column>.nova-ai{grid-column:1/-1}
+.sector-report .event-summary,.sector-report .risk-summary{padding:6px 8px}
+.sector-report .event-item .event-detail,.sector-report .risk-item .event-detail{padding:0 8px 6px}
+.sector-report .logic-metric{padding:8px}
+@media(max-width:760px){.sector-report .kline-summary{grid-template-columns:1fr}.sector-report .nova-verdict{flex-wrap:wrap}}
+.sector-report [data-semantic="neutral"]{color:#4e5969!important}
+.sector-report [data-semantic="up"]{color:#f53f3f!important}
+.sector-report [data-semantic="down"]{color:#00b42a!important}
+.sector-report .nova-directory .report-toolbar{position:static;display:block}
+.sector-report .nova-directory .context-strip{display:flex;position:static;flex-wrap:wrap}
+.sector-report .nova-directory nav{display:flex;flex-wrap:wrap;gap:8px}
+.nova-search:focus-within,.nova-actions button:focus-visible{outline:2px solid #8354ed;outline-offset:2px}
+@media(min-width:761px){
+  #capital-flow>#capital-order-structure{display:block;grid-column:span 2;margin:0;padding:0;border:0}
+  #capital-order-structure>.capital-classification-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  #capital-order-structure .flow-methodology-details{grid-column:1/-1}
+  #capital-flow>article.surface{align-self:start}
+  .nova-verdict>strong{font-size:20px}
+}
+.sector-report .order-flow-list{gap:8px}
+.sector-report .order-flow-row,.sector-report .order-flow-axis{grid-template-columns:80px minmax(0,1fr) 64px}
+.sector-report .capital-classification-grid{margin-top:0}
+.sector-report .capital-today-grid{background:transparent}
+.sector-report #kline-panel .flow-sync{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin:4px 8px;padding:0;background:transparent;border:0}
+.sector-report #kline-panel .flow-sync-item{padding:6px;background:#f3f9ff}
+.sector-report #kline-panel .flow-sync-item strong{font-size:12px;line-height:1.5}
+@media(max-width:760px){.sector-report #kline-panel .flow-sync{grid-template-columns:1fr}}
+/* Restricted content should not determine the height of the upgrade surface.
+   The unlock card stays in normal flow and expands for long text or mobile. */
+.sector-report .ftshare-mask-host > :not([data-ftshare-mask="true"]){
+  position:absolute!important;
+  inset:0;
+  overflow:hidden;
+}
+.sector-report .ftshare-module-mask{
+  background:linear-gradient(115deg,rgba(74,93,119,.66),rgba(104,124,150,.54));
+}
+.sector-report .nova-ai,.sector-report .nova-ai p{color:#536b9e}
+.sector-report .hero-summary p,.sector-report .nova-insights ul{color:#536d9b}
+.sector-report .metric-note,.sector-report .surface-head p{color:#657fA5}
+.sector-report .section-head p,.sector-report .section-head time{color:#657fa5}
+.sector-report .metric-value,.sector-report td,.sector-report .order-flow-net{font-variant-numeric:tabular-nums}
+.sector-report #capital-order-structure .surface{align-self:start}
+.sector-report .nova-detail>summary:hover{color:#0755f5}
+.sector-report .nova-detail>summary:focus-visible{outline:2px solid #8354ed;outline-offset:2px}
+@media(max-width:480px){
+  .sector-report .nova-topbar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:8px 12px}
+  .nova-topbar .nova-brand{gap:6px;min-width:0}
+  .nova-topbar .nova-brand strong{font-size:14px}
+  .nova-topbar .nova-brand small{font-size:9px;letter-spacing:1px}
+  .nova-topbar .nova-logo{font-size:24px}
+  .nova-topbar .nova-actions{gap:6px}
+  .nova-topbar .nova-actions button{padding:4px 8px;font-size:11px;min-height:32px}
+  .nova-topbar .nova-search{grid-column:1/-1;order:3;max-width:none}
+  .sector-report .nova-banner{min-height:160px;padding:16px}
+  .nova-banner .hero-subline{max-width:100%;gap:4px 10px;margin-top:8px}
+  .nova-banner .hero-title h1{font-size:22px}
+  .nova-banner .identity{font-size:12px}
+  .sector-report .section-head time{font-size:11px}
+}
+@media(prefers-reduced-motion:reduce){
+  .sector-report *{scroll-behavior:auto!important;transition:none!important}
+}
+/* Fit the blurred table preview to the card, without changing unlocked tables. */
+.sector-report .ftshare-mask-host table{min-width:0!important;width:100%;max-width:100%;table-layout:fixed}
+.sector-report .ftshare-mask-host th,.sector-report .ftshare-mask-host td{min-width:0;white-space:normal;overflow-wrap:anywhere}
+.nova-insights li+li{margin-top:10px}
+.nova-insights li>strong{color:#244575;font-size:13px}
+.nova-insights li>p{margin:3px 0;font-size:12px;line-height:1.7}
+.nova-analysis-evidence{font-size:12px;color:#657fa5;margin:4px 0}
+.nova-analysis-evidence summary{cursor:pointer;color:#0755f5}
+.nova-analysis-evidence p{margin:4px 0;padding-left:8px;border-left:2px solid #dae9ff;overflow-wrap:anywhere}
+.nova-analysis-unavailable{font-size:12px;color:#657fa5;margin:8px 0}
+.confidence{min-width:0;max-width:100%;white-space:normal;overflow-wrap:anywhere;flex-shrink:1}

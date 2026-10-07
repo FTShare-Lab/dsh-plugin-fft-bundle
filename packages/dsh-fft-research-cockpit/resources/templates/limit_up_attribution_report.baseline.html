@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ view.report_date }} 跌后涨停归因日报</title>
+    <style>
+        :root {
+            --page: #F7F8FA;
+            --surface: #FFFFFF;
+            --fill-1: #F7F8FA;
+            --fill-2: #F2F3F5;
+            --primary-1: #E8F2FF;
+            --primary-6: #2354E6;
+            --gray-3: #E7E8EB;
+            --font-1: #1D2129;
+            --font-2: #4E5969;
+            --font-3: #86909C;
+            --red-1: #FFF1F0;
+            --red-6: #F53F3F;
+            --green-1: #E8F8ED;
+            --green-6: #00B42A;
+            --orange-1: #FFF7E8;
+            --orange-6: #D97916;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            color: var(--font-1);
+            background: var(--page);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+        }
+
+        body {
+            margin: 0;
+            min-width: 0;
+            background: var(--page);
+            color: var(--font-1);
+            font-size: 14px;
+            line-height: 1.7;
+        }
+
+        a {
+            color: var(--primary-6);
+            text-decoration: none;
+            overflow-wrap: anywhere;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        a:focus-visible {
+            outline: 2px solid var(--primary-6);
+            outline-offset: 4px;
+            border-radius: 4px;
+        }
+
+        .report-shell {
+            width: min(1180px, calc(100% - 48px));
+            margin: 0 auto;
+            padding: 32px 0 48px;
+        }
+
+        .report-hero {
+            display: grid;
+            grid-template-areas:
+                "identity meta"
+                "title title"
+                "summary summary";
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 16px 24px;
+            padding: 32px;
+            border: 1px solid var(--gray-3);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, .96);
+            box-shadow: 0 8px 24px rgba(29, 33, 41, .05);
+        }
+
+        .hero-identity {
+            grid-area: identity;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+        }
+
+        .ai-mark {
+            display: inline-grid;
+            place-items: center;
+            width: 32px;
+            height: 32px;
+            flex: 0 0 auto;
+            border-radius: 8px;
+            background: var(--primary-1);
+            color: var(--primary-6);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .eyebrow {
+            color: var(--primary-6);
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: .04em;
+        }
+
+        .hero-meta {
+            grid-area: meta;
+            color: var(--font-3);
+            font-size: 12px;
+            font-variant-numeric: tabular-nums;
+            text-align: right;
+        }
+
+        .report-hero h1 {
+            grid-area: title;
+            margin: 0;
+            font-size: 24px;
+            line-height: 1.4;
+            overflow-wrap: anywhere;
+        }
+
+        .report-summary {
+            grid-area: summary;
+            width: 100%;
+            padding: 16px 20px;
+            border-radius: 8px;
+            background: var(--fill-1);
+            color: var(--font-2);
+        }
+
+        .summary-label {
+            display: block;
+            margin-bottom: 4px;
+            color: var(--primary-6);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .freshness-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .meta-chip,
+        .concept-chip,
+        .status-chip,
+        .reason-chip {
+            display: inline-flex;
+            align-items: center;
+            min-width: 0;
+            padding: 4px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .meta-chip {
+            border: 1px solid var(--gray-3);
+            background: var(--surface);
+            color: var(--font-2);
+        }
+
+        .metrics-panel {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 1px;
+            margin-top: 16px;
+            overflow: hidden;
+            border: 1px solid var(--gray-3);
+            border-radius: 12px;
+            background: var(--gray-3);
+        }
+
+        .metric {
+            min-width: 0;
+            padding: 20px 24px;
+            background: var(--surface);
+        }
+
+        .metric-label {
+            color: var(--font-3);
+            font-size: 12px;
+        }
+
+        .metric-value {
+            margin-top: 4px;
+            font-size: 24px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .metric-note {
+            margin-top: 4px;
+            color: var(--font-2);
+            font-size: 12px;
+        }
+
+        .report-section {
+            margin-top: 40px;
+        }
+
+        .section-head {
+            display: flex;
+            align-items: baseline;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .section-index {
+            color: var(--primary-6);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .section-head h2 {
+            margin: 0;
+            font-size: 18px;
+            line-height: 1.5;
+        }
+
+        .section-desc {
+            color: var(--font-3);
+            font-size: 12px;
+        }
+
+        .case-list {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16px;
+        }
+
+        .case-card {
+            min-width: 0;
+            padding: 24px;
+            border: 1px solid var(--gray-3);
+            border-radius: 12px;
+            background: var(--surface);
+        }
+
+        .case-list > .case-card:last-child:nth-child(odd) {
+            grid-column: 1 / -1;
+        }
+
+        .case-head {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 8px 16px;
+            min-width: 0;
+        }
+
+        .stock-title {
+            grid-column: 1 / -1;
+            min-width: 0;
+            font-size: 18px;
+            font-weight: 700;
+            line-height: 1.5;
+            overflow-wrap: anywhere;
+        }
+
+        .event-meta {
+            grid-column: 1;
+            grid-row: 2;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px 12px;
+            min-width: 0;
+            color: var(--font-3);
+            font-size: 12px;
+        }
+
+        .status-chip {
+            grid-column: 2;
+            grid-row: 2;
+            align-self: start;
+            white-space: nowrap;
+        }
+
+        .status-chip.known {
+            background: var(--red-1);
+            color: var(--red-6);
+        }
+
+        .status-chip.unknown {
+            background: var(--orange-1);
+            color: var(--orange-6);
+        }
+
+        .facts-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 1px;
+            margin-top: 20px;
+            overflow: hidden;
+            border-radius: 8px;
+            background: var(--gray-3);
+        }
+
+        .fact {
+            min-width: 0;
+            padding: 12px;
+            background: var(--fill-1);
+        }
+
+        .fact-label {
+            color: var(--font-3);
+            font-size: 12px;
+        }
+
+        .fact-value {
+            margin-top: 4px;
+            color: var(--font-2);
+            font-size: 16px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            overflow-wrap: anywhere;
+        }
+
+        [data-semantic="up"] {
+            color: var(--red-6);
+        }
+
+        [data-semantic="down"] {
+            color: var(--green-6);
+        }
+
+        [data-semantic="neutral"] {
+            color: var(--font-2);
+        }
+
+        .concepts {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .concept-chip {
+            background: var(--primary-1);
+            color: var(--primary-6);
+        }
+
+        .attribution-block {
+            margin-top: 20px;
+            padding: 16px;
+            border-radius: 8px;
+            background: var(--fill-1);
+        }
+
+        .attribution-head {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .attribution-title {
+            margin-right: auto;
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .reason-chip {
+            background: var(--fill-2);
+            color: var(--font-2);
+        }
+
+        .reason-text {
+            margin: 0;
+            color: var(--font-1);
+            font-size: 14px;
+            line-height: 1.75;
+            overflow-wrap: anywhere;
+        }
+
+        .evidence-list {
+            display: grid;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .evidence-line {
+            display: block;
+            min-width: 0;
+            padding: 12px 16px;
+            border: 1px solid var(--gray-3);
+            border-radius: 8px;
+            background: var(--fill-2);
+            overflow-wrap: anywhere;
+        }
+
+        .evidence-line strong {
+            display: inline;
+            font-weight: 700;
+        }
+
+        .evidence-line strong::after {
+            content: " ·";
+        }
+
+        .evidence-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px 12px;
+            margin-top: 8px;
+            color: var(--font-3);
+            font-size: 12px;
+        }
+
+        .empty-state {
+            padding: 40px 24px;
+            border: 1px solid var(--gray-3);
+            border-radius: 12px;
+            background: var(--surface);
+            text-align: center;
+        }
+
+        .empty-state strong {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 18px;
+        }
+
+        .empty-state span,
+        .report-footer {
+            color: var(--font-2);
+        }
+
+        .report-footer {
+            margin-top: 32px;
+            padding-top: 16px;
+            border-top: 1px solid var(--gray-3);
+            font-size: 12px;
+        }
+
+        .report-footer strong {
+            color: var(--font-1);
+        }
+
+        @media (max-width: 1100px) {
+            .case-list {
+                grid-template-columns: minmax(0, 1fr);
+            }
+
+            .case-list > .case-card:last-child:nth-child(odd) {
+                grid-column: auto;
+            }
+        }
+
+        @media (max-width: 760px) {
+            .report-shell {
+                width: min(100% - 24px, 1180px);
+                padding: 24px 0 32px;
+            }
+
+            .report-hero {
+                grid-template-areas:
+                    "identity"
+                    "meta"
+                    "title"
+                    "summary";
+                grid-template-columns: minmax(0, 1fr);
+                padding: 24px;
+            }
+
+            .hero-meta {
+                text-align: left;
+            }
+
+            .report-hero h1 {
+                font-size: 20px;
+            }
+
+            .metrics-panel,
+            .facts-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .section-head {
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 4px;
+            }
+
+            .case-card {
+                padding: 20px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .report-hero,
+            .case-card {
+                padding: 16px;
+            }
+
+            .metrics-panel,
+            .facts-grid {
+                grid-template-columns: minmax(0, 1fr);
+            }
+
+            .metric {
+                padding: 16px;
+            }
+
+            .case-head {
+                grid-template-columns: minmax(0, 1fr);
+            }
+
+            .event-meta,
+            .status-chip {
+                grid-column: 1;
+                grid-row: auto;
+            }
+
+            .status-chip {
+                justify-self: start;
+            }
+
+            .attribution-head {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="report-shell">
+        <header class="report-hero">
+            <div class="hero-identity">
+                <span class="ai-mark" aria-hidden="true">AI</span>
+                <span class="eyebrow">LIMIT-UP ATTRIBUTION REPORT</span>
+            </div>
+            <div class="hero-meta">
+                <div>报告日 {{ view.report_date }}</div>
+                <div>生成于 {{ view.generated_at }}</div>
+            </div>
+            <h1>跌后涨停归因日报</h1>
+            <div class="report-summary hero-summary">
+                <span class="summary-label">AI 摘要</span>
+                {{ view.hero_summary }}
+            </div>
+        </header>
+
+        <div class="freshness-row" aria-label="数据新鲜度">
+            <span class="meta-chip">资讯更新至 · {{ view.evidence_cutoff }}</span>
+            <span class="meta-chip">AI 归因 · 公开信息综合分析</span>
+        </div>
+
+        <section class="metrics-panel" aria-label="报告概览">
+            <div class="metric">
+                <div class="metric-label">今日案例</div>
+                <div class="metric-value">{{ report.summary.candidate_count }}</div>
+                <div class="metric-note">逐股查看涨停核心原因</div>
+            </div>
+            <div class="metric">
+                <div class="metric-label">已找到原因</div>
+                <div class="metric-value" data-semantic="up">{{ report.summary.known_count }}</div>
+                <div class="metric-note">有公开信息支持</div>
+            </div>
+            <div class="metric">
+                <div class="metric-label">暂未确定原因</div>
+                <div class="metric-value" data-semantic="neutral">{{ report.summary.unknown_count }}</div>
+                <div class="metric-note">数据已遮罩</div>
+            </div>
+        </section>
+
+        <section class="report-section">
+            <div class="section-head">
+                <span class="section-index">01</span>
+                <h2>逐股核心归因</h2>
+                <span class="section-desc">每个案例只保留一个最核心原因</span>
+            </div>
+
+            {% if view.cases | length == 0 %}
+            <div class="empty-state">
+                <strong>今日暂无案例</strong>
+                <span>今天暂时没有可展示的涨停归因案例。</span>
+            </div>
+            {% else %}
+            <div class="case-list">
+                {% for item in view.cases %}
+                <article class="case-card">
+                    <div class="case-head" data-priority-layout="title-first">
+                        <div class="stock-title" data-priority="primary">{{ item.stock_name }} · {{ item.stock_code }}</div>
+                        <div class="event-meta" data-priority="secondary">
+                            <span>{{ item.industry }}</span>
+                        </div>
+                        <span class="status-chip {{ item.status_key }}">{{ item.status_label }}</span>
+                    </div>
+
+                    <div class="facts-grid">
+                        <div class="fact">
+                            <div class="fact-label">上一日涨跌</div>
+                            <div class="fact-value" data-semantic="down">{{ item.previous_change }}</div>
+                        </div>
+                        <div class="fact">
+                            <div class="fact-label">报告日涨幅</div>
+                            <div class="fact-value" data-semantic="up">{{ item.report_change }}</div>
+                        </div>
+                        <div class="fact">
+                            <div class="fact-label">收盘 / 涨停价</div>
+                            <div class="fact-value" data-semantic="up">{{ item.close }} / {{ item.limit_up }}</div>
+                        </div>
+                        <div class="fact">
+                            <div class="fact-label">成交额 / 量比</div>
+                            <div class="fact-value" data-semantic="neutral">{{ item.amount }} / {{ item.volume_ratio }}</div>
+                        </div>
+                        <div class="fact">
+                            <div class="fact-label">换手率</div>
+                            <div class="fact-value" data-semantic="neutral">{{ item.turnover_rate }}</div>
+                        </div>
+                        <div class="fact">
+                            <div class="fact-label">行业平均涨跌</div>
+                            <div class="fact-value" data-semantic="{{ item.sector_average_semantic }}">{{ item.sector_average_change }}</div>
+                        </div>
+                    </div>
+
+                    {% if item.concepts | length > 0 %}
+                    <div class="concepts" aria-label="股票概念标签">
+                        {% for concept in item.concepts %}
+                        <span class="concept-chip">{{ concept }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <div class="attribution-block">
+                        <div class="attribution-head">
+                            <span class="attribution-title">最核心原因</span>
+                            <span class="reason-chip">{{ item.reason_type_label }}</span>
+                            <span class="reason-chip">{{ item.confidence_label }}</span>
+                        </div>
+                        <p class="reason-text">{{ item.core_reason }}</p>
+
+                        {% if item.evidence | length > 0 %}
+                        <div class="evidence-list" aria-label="归因证据">
+                            {% for evidence in item.evidence %}
+                            <div class="evidence-line">
+                                <strong>{{ evidence.source_name }}</strong>
+                                <a href="{{ evidence.url }}" target="_blank" rel="noopener noreferrer">{{ evidence.title }}</a>
+                                <div class="evidence-meta">
+                                    <span>{{ evidence.published_at }}</span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </section>
+
+        <footer class="report-footer">
+            <strong>风险提示：</strong>
+            涨停原因由 AI 基于公开信息归纳，可能无法覆盖全部市场交易因素，仅供参考，不构成投资建议。
+        </footer>
+    </main>
+</body>
+</html>
