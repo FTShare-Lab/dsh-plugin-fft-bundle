@@ -4,9 +4,16 @@
 #   dsh plugin --profile <name> add @ft/dsh-fft-bundle
 #
 # Each row's package comes from this bundle's dependencies. The connection
-# row from dsh-web-app is NOT overridden: on DSH 0.1.5-rc.2 the connection
-# plugin already waits for webServer internally, and pinning its activation
-# to webServer would break profiles that only provide webRuntime.
+# row from dsh-web-app is NOT overridden: the connection plugin already waits
+# for webServer internally, and pinning its activation to webServer would
+# break profiles that only provide webRuntime.
+#
+# Row order follows the service direction: the shared settings service is
+# inserted first because the research cockpit injects `ftshareSettings`.
 - insert:
     - id: dsh-fft-settings
       name: '@ft/dsh-fft-settings'
+    - id: ft-research-cockpit
+      name: '@ft/dsh-fft-research-cockpit'
+    - id: newapi-wechat-sso
+      name: '@ft/dsh-newapi-wechat-sso'

@@ -6,9 +6,12 @@ DSH 插件 bundle 仓：非凸金融工作台插件集合。pnpm workspace，组
 
 ```
 packages/
-├── dsh-fft-bundle/    # 组合层：cordis.patch.yml 装配清单 + 管理器 icon/locale，无运行时代码
-└── dsh-fft-settings/  # 插件：共享设置、FTShare API Key 管理
+├── dsh-fft-bundle/            # 组合层：cordis.patch.yml 装配清单 + 管理器 icon/locale，无运行时代码
+├── dsh-fft-settings/          # 插件：共享设置、FTShare API Key 管理（ftshareSettings 服务）
+├── dsh-fft-research-cockpit/  # 插件：FT 投研舱，8 类 FTShare 投研报告 + 组合推荐工具
 ```
+
+插件间依赖方向：`dsh-fft-research-cockpit` 注入 `dsh-fft-settings` 的 `ftshareSettings` 服务；
 
 ## 开发
 
@@ -23,8 +26,11 @@ pnpm build && pnpm test
 # 开发：单插件直装
 dsh plugin --profile <name> add link:./packages/dsh-fft-settings
 
-# 开发：组合层（双链，插件 + 组合包各自 link）
-dsh plugin --profile <name> add link:./packages/dsh-fft-settings link:./packages/dsh-fft-bundle
+# 开发：组合层（各包 + 组合包分别 link）
+dsh plugin --profile <name> add \
+  link:./packages/dsh-fft-settings \
+  link:./packages/dsh-fft-research-cockpit \
+  link:./packages/dsh-fft-bundle
 
 # 发布后：终端用户一条命令拉全套
 dsh plugin --profile <name> add @ft/dsh-fft-bundle
