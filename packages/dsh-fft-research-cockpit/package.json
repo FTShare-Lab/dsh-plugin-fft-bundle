@@ -1,6 +1,6 @@
 {
-  "name": "ft-research-cockpit",
-  "version": "0.1.1",
+  "name": "@ft/dsh-fft-research-cockpit",
+  "version": "0.2.0",
   "description": "FT 投研舱：FTShare-only investment research tools for DeepSeek Harness",
   "type": "module",
   "main": "lib/index.js",
@@ -12,41 +12,37 @@
     },
     "./client": {
       "default": "./lib/client.js"
-    }
+    },
+    "./package.json": "./package.json",
+    "./cordis.patch.yml": "./cordis.patch.yml"
   },
   "files": [
     "lib",
+    "resources",
     "cordis.patch.yml",
-    "resources"
+    "package.json",
+    "README.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json && node scripts/build-client.mjs",
-    "prepare": "pnpm build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test:llm": "pnpm build && node scripts/test-llm-contracts.mjs",
-    "test:completeness": "pnpm build && node scripts/test-report-completeness.mjs",
-    "test:report-facts": "pnpm build && node scripts/test-report-facts.mjs",
-    "test:ftshare": "pnpm build && node scripts/test-ftshare.mjs",
-    "test:missing-data": "pnpm build && node scripts/test-missing-data.mjs",
-    "test:market-commentary": "pnpm build && node scripts/test-market-commentary.mjs",
-    "test:permissions:browser": "pnpm build && node scripts/test-permission-rendering.mjs",
-    "test:indicators": "pnpm build && node scripts/test-indicators.mjs"
+    "test": "pnpm run build && node scripts/test-indicators.mjs && node scripts/test-report-facts.mjs && node scripts/test-missing-data.mjs && node scripts/test-report-completeness.mjs && node scripts/test-llm-contracts.mjs && node scripts/test-fft-sidebar.mjs && node scripts/test-report-host-sidebar.mjs && node scripts/test-report-export-bridge.mjs && node scripts/test-sector-structure.mjs",
+    "test:ftshare": "pnpm run build && node scripts/test-ftshare.mjs",
+    "test:permissions:browser": "pnpm run build && node scripts/test-permission-rendering.mjs",
+    "test:market-commentary": "pnpm run build && node scripts/test-market-commentary.mjs"
   },
   "license": "MIT",
-  "peerDependencies": {
-    "@deepseek-ai/cordis": "4.0.2",
-    "@deepseek-ai/dsh-fs": "0.1.2-alpha.4",
-    "@deepseek-ai/dsh-llm": "0.1.2-alpha.4",
-    "@deepseek-ai/dsh-tools": "0.1.2-alpha.4",
-    "dsh-better-sidebar": "^0.18.0"
-  },
   "dependencies": {
-    "@ft/dsh-ftshare-settings": "file:../dsh-ftshare-settings",
-    "@deepseek-ai/dsh-brand": "0.1.2-rc.1",
-    "@deepseek-ai/dsh-invariants": "0.1.2-rc.1",
-    "@deepseek-ai/schemastery": "3.18.2",
+    "@ft/dsh-fft-settings": "workspace:^",
+    "@deepseek-ai/schemastery": ">=3.18.2",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "nunjucks": "3.2.4"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/dsh-llm": ">=0.2.0-rc.2",
+    "@deepseek-ai/dsh-tools": ">=0.2.0-rc.2",
+    "dsh-better-sidebar": ">=0.18.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
@@ -67,7 +63,12 @@
         "@deepseek-ai/dsh-client-ui-layout",
         "dsh-better-sidebar"
       ]
+    },
+    "engines": {
+      "dsh": ">=0.2.0-rc.2"
     }
   },
-  "packageManager": "pnpm@11.25.0+sha512.5cde925b4f075f725eb71fbae18a42ffe784524789f19b61c731cb8721ec28aaee160e01a8d5af4fedb2a42cdbf300efe23db356b0d4a17b4d63e11f8ab7c956"
+  "engines": {
+    "node": ">=22.19.0"
+  }
 }

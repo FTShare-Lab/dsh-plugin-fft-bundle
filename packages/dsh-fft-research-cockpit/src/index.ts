@@ -1,7 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-tools'
-import type {} from '@ft/dsh-ftshare-settings'
+import type {} from '@ft/dsh-fft-settings'
 
 import { Config } from './config.js'
 import { registerReportTool } from './report-tool.js'

@@ -1,5 +1,5 @@
 import type { Context } from '@deepseek-ai/cordis'
-import type { FtshareSettingsService } from '@ft/dsh-ftshare-settings/contract'
+import type { FtshareSettingsService } from '@ft/dsh-fft-settings/contract'
 
 import { FtShareClient, isFtSharePermissionError, type FtShareSession } from './ftshare-client.js'
 import { loadSnapshot, rows } from './ftshare-data.js'

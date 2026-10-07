@@ -1,12 +1,12 @@
 /*
- * Browser half of FT 投研舱 (ft-research-cockpit).
+ * Browser half of FT 投研舱 (@ft/dsh-fft-research-cockpit).
  *
  * The report HTML stays in the durable tool-result presentation metadata. This
  * card only creates a browser Blob when the user clicks Download, so running a
  * report never writes a file into the workspace or the user's home directory.
  */
 window.__ModuleLoader__.load({
-  id: 'ft-research-cockpit',
+  id: '@ft/dsh-fft-research-cockpit',
   factory: (require) => {
     var module = { exports: {} }
     var exports = module.exports
@@ -682,10 +682,9 @@ body { font-size: 13px !important; }
         || reports.find(entry => entry.callId === selectedCallId)
         || reports.at(-1)
 
-      React.useEffect(() => {
-        props.closeDetails()
-      }, [props.closeDetails])
-
+      // DSH 0.2 dropped the injectable details-panel close callback; the View
+      // owns the conversation area now, so there is no side panel to dismiss
+      // when the report view opens.
       React.useEffect(() => {
         setSelectedCallId(readReportSelection(props.sessionId))
         setFocusMode(false)
@@ -875,13 +874,16 @@ body { font-size: 13px !important; }
           collapsedContent: React.createElement(React.Fragment, null,
             React.createElement('span', { className: 'ftai-report-separator', 'aria-hidden': true }),
             React.createElement('span', { className: 'ftai-report-summary' }, summary),
-            report && typeof callId === 'string' && callId !== '' ? React.createElement('button', {
+            report && typeof callId === 'string' && callId !== '' && (openView || openDetails) ? React.createElement('button', {
               type: 'button',
               className: 'ftai-report-open-view',
               onClick: (event) => {
                 event.stopPropagation()
-                if (openView) openView(REPORT_VIEW_ID, callId)
-                else if (openDetails) openDetails(callId, callToolName)
+                // DSH 0.2 no longer hands custom tool views an `openView`
+                // seat; the report View is reachable from the conversation
+                // view tabs and the FFT Sidebar tab.
+                if (typeof openView === 'function') openView(REPORT_VIEW_ID, callId)
+                else if (typeof openDetails === 'function') openDetails(callId, callToolName)
               },
             }, React.createElement(IconFullscreenOutline16, { size: 14 }), '打开报告') : null,
             report && typeof callId === 'string' && callId !== '' && openDetails ? React.createElement('button', {
@@ -910,71 +912,69 @@ body { font-size: 13px !important; }
       )
     }
 
+    // FFT Sidebar (dsh-better-sidebar) is optional and may activate after this
+    // plugin, so its handle is resolved through the service scope and read
+    // lazily inside the callbacks instead of gating every registration on it.
+    let sidebar = null
+    let uiConversation = null
+
     function apply(ctx) {
       ctx.inject(['betterSidebar', 'uiConversation'], fft => {
-        const sidebar = fft.betterSidebar
+        sidebar = fft.betterSidebar
+        uiConversation = fft.uiConversation
         fft.effect(() => sidebar.registerTab({
           id: FFT_REPORT_TAB,
           title: '投研报告',
           hidden: true,
           dedupeKey: tab => tab.id,
           component: ({ scope, tab }) => React.createElement(FFTReportTab, {
-            source: fft.uiConversation.binding(scope.sessionId).target('chat'),
+            source: uiConversation.binding(scope.sessionId).target('chat'),
             sessionId: scope.sessionId,
             tab,
           }),
         }))
-        const injectSidebar = sessionId => ({
-          openReportSidebar: callId => {
-            const snapshot = fft.uiConversation.binding(sessionId).target('chat').getSnapshot()
-            const entry = snapshot && reportEntriesOf(snapshot.nodes.values()).find(item => item.callId === callId)
-            if (!entry) throw new Error('当前会话未加载这份报告')
-            if (!sidebar.isTabEnabled(FFT_REPORT_TAB)) throw new Error('请先在 FFT Sidebar 设置中启用投研报告')
-            sidebar.openTab({
-              type: FFT_REPORT_TAB,
-              id: `${FFT_REPORT_TAB}:${callId}`,
-              title: reportEntryLabel(entry),
-              path: `ft-report://${encodeURIComponent(sessionId)}/${encodeURIComponent(callId)}`,
-              meta: { sessionId, callId },
-            }, { sessionId })
-          },
-        })
-        for (const key of REPORT_TOOL_NAMES) {
-          fft.slots.inject('tool.call.toolview', () => fft.slots.register({
-            name: 'tool.call.toolview', key, priority: -20, inject: injectSidebar,
-          }, ReportRow))
-        }
-        fft.slots.inject('conversation.chat.turnTail', () => fft.slots.register({
-          name: 'conversation.chat.turnTail', select: owner => owner,
-          priority: -20, inject: injectSidebar,
-        }, ReportResult))
       })
+
+      const injectSidebar = sessionId => ({
+        openReportSidebar: callId => {
+          if (sidebar === null || uiConversation === null) throw new Error('请先安装并启用 FFT Sidebar')
+          const snapshot = uiConversation.binding(sessionId).target('chat').getSnapshot()
+          const entry = snapshot && reportEntriesOf(snapshot.nodes.values()).find(item => item.callId === callId)
+          if (!entry) throw new Error('当前会话未加载这份报告')
+          if (!sidebar.isTabEnabled(FFT_REPORT_TAB)) throw new Error('请先在 FFT Sidebar 设置中启用投研报告')
+          sidebar.openTab({
+            type: FFT_REPORT_TAB,
+            id: `${FFT_REPORT_TAB}:${callId}`,
+            title: reportEntryLabel(entry),
+            path: `ft-report://${encodeURIComponent(sessionId)}/${encodeURIComponent(callId)}`,
+            meta: { sessionId, callId },
+          }, { sessionId })
+        },
+      })
+
       for (const key of REPORT_TOOL_NAMES) {
         ctx.slots.inject('tool.call.toolview', () => ctx.slots.register({
-          name: 'tool.call.toolview',
-          key,
+          name: 'tool.call.toolview', key, priority: -20, inject: injectSidebar,
         }, ReportRow))
       }
+      // The full report reads inside the conversation: the view tabs own the
+      // selection, so the entry needs no injected callbacks beyond the
+      // framework's standard session kit.
       ctx.slots.inject('conversation.view', () => ctx.slots.register({
         name: 'conversation.view',
         id: REPORT_VIEW_ID,
         order: 5,
         label: '报告',
-        inject: () => ({ closeDetails: () => ctx.layout.closeDetails() }),
       }, ReportView))
-      ctx.slots.inject('conversation.details.tool.preview', () => ctx.slots.register({
-        name: 'conversation.details.tool.preview',
-        key: 'investment-report',
-        priority: -10,
-      }, ReportDetails))
       ctx.slots.inject('conversation.chat.turnTail', () => ctx.slots.register({
         name: 'conversation.chat.turnTail',
-        select: owner => owner,
-        priority: -10,
+        id: 'ft-research-cockpit:turn-tail',
+        priority: -20,
+        inject: injectSidebar,
       }, ReportResult))
     }
 
-    const inject = ['slots', 'layout', 'betterSidebar', 'uiConversation']
+    const inject = ['slots']
     exports.apply = apply
     exports.inject = inject
     return module.exports

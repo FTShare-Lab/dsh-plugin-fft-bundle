@@ -1,8 +1,10 @@
 # FT 投研舱
 
-安装包名为 `ft-research-cockpit`（用于 npm/pnpm 和 DeepSeek Harness 包解析），运行时插件显示名为 `FT 投研舱`。
+安装包名为 `@ft/dsh-fft-research-cockpit`（用于 npm/pnpm 和 DeepSeek Harness 包解析），运行时插件显示名为 `FT 投研舱`，profile 行 id 仍为 `ft-research-cockpit`。
 
-已有 profile 若仍保留旧的 `investment-research` 或 `ft-个人投研-kit` 条目，请将该条目的 `id` 更新为 `ft-research-cockpit`，并将依赖名从 `ft-personal-research-kit` 更新为 `ft-research-cockpit`；这是一次插件身份改名，不会自动迁移旧条目。
+> **本仓迁移（2026-10）**：源码自 `dsh-ft/submodules/dsh-ft-research-cockpit@b91ff2a` 整包搬入 `dsh-fft-bundle`，包名由 `ft-research-cockpit` 改为 `@ft/dsh-fft-research-cockpit`，并按 DSH 0.2.0-rc.2 校准宿主 API。共享设置依赖由 `@ft/dsh-ftshare-settings` 改为 `@ft/dsh-fft-settings`（Host 服务名 `ftshareSettings` 与路由未变）。详见 `docs/plans/migrate-internal-plugin-sso-and-research-cockpit.md`。
+
+已有 profile 若仍保留旧的 `investment-research` 或 `ft-个人投研-kit` 条目，请将该条目的 `id` 更新为 `ft-research-cockpit`，并将依赖名改为本仓的 `@ft/dsh-fft-research-cockpit`；这是一次插件身份改名，不会自动迁移旧条目。
 
 独立于 `stock_rec_stream` 的 DeepSeek Harness 投研报告插件。当前设计边界是：
 
@@ -221,12 +223,12 @@ dsh --profile demo
 也可以交付 tarball：
 
 ```bash
-cd /Users/xzmini24/FtNova_work/dsh-investment-research
+cd /Users/ben/workspace/dsh-fft-bundle/packages/dsh-fft-research-cockpit
 pnpm pack
-dsh plugin --profile demo add ./ft-research-cockpit-0.1.1.tgz
+dsh plugin --profile demo add ./ft-dsh-fft-research-cockpit-0.2.0.tgz
 ```
 
-`package.json` 中的 `dsh.bundle.patch` 使用安装包名引用入口；本地开发 patch 才使用绝对路径。正式 bundle 需要先在 Harness 可解析的包源中安装 `ft-research-cockpit`。
+`package.json` 中的 `dsh.bundle.patch` 使用安装包名引用入口；本地开发 patch 才使用绝对路径。正式 bundle 需要先在 Harness 可解析的包源中安装 `@ft/dsh-fft-research-cockpit`，或直接安装组合层 `@ft/dsh-fft-bundle`。
 
 ## 与原项目的迁移边界
 
@@ -250,9 +252,10 @@ dsh plugin --profile demo add ./ft-research-cockpit-0.1.1.tgz
 
 消息预览的“右侧展开”和工具卡的“在右侧打开”使用 `dsh-better-sidebar` 的公开服务：注册 `ft-research-cockpit:report` 标签类型，通过 `openTab(seed, { sessionId })` 打开对应报告。投研插件不创建右侧浮层，也不修改 FFT/DSH 核心。相同报告重复打开会聚焦原标签，标签只保存会话与调用 ID，正文从该会话的工具结果读取，不复制到侧栏的 localStorage。
 
-本插件是 FFT Better Sidebar 的子插件：`dsh-better-sidebar`（服务 API 0.18.0）为必需 peer 依赖，客户端等待 `betterSidebar` 和 `uiConversation` 服务就绪后才加载。宿主必须安装并启用 Better Sidebar；不会退回 DSH 原生详情面板。“独立放大”保留独立弹层。侧栏标签跟随 Better Sidebar 的面板位置设置，用户移动到下方面板或浮窗后的布局由宿主维护。
+本插件是 FFT Better Sidebar 的子插件：`dsh-better-sidebar`（服务 API ≥0.18.0）为 peer 依赖。宿主安装并启用 Better Sidebar 时，“右侧展开/在右侧打开”走它注册的 `ft-research-cockpit:report` 标签类型；未安装时侧栏路由按「能力不可用」报错，并退还到 `ctx.inject(['betterSidebar', 'uiConversation'])` 之外的注册路径（工具卡与轮末卡片仍渲染，只是没有侧栏入口）。“独立放大”保留独立弹层。
 
+DSH 0.2.0-rc.2 起，原来的 `conversation.details.tool.preview` 槽与 `ctx.layout.closeDetails()` 已从宿主移除，本插件的右侧详情预览路径随之删除：完整报告改为会话视图标签（`conversation.view`，id `investment-report`，标签名“报告”）承载，工具卡上的“打开报告”在无 `openView` 座位时回落到 Better Sidebar 标签。
 
-联调必须使用 FFT 宿主配置，而不是未加载 Better Sidebar 的普通 DSH。GitLab `ben/dsh-ft` 的 `app/build-config.json` 将 `dsh-better-sidebar` 与 `ft-research-cockpit` 均列为必需 bundle。测试 profile 也必须同时安装和启用这两个 bundle，投研插件链接到本次构建目录；启动后验证“右侧展开”产生 FFT 报告标签、重复点击不重复建标签、关闭后可重新打开。
+联调建议使用装好 Better Sidebar 的宿主，并验证：工具卡“在右侧打开”产生 FFT 报告标签、重复点击不重复建标签、关闭后可重新打开，以及会话视图“报告”标签能切换到对应报告。
 
 侧栏回归：`pnpm build && node scripts/test-fft-sidebar.mjs && node scripts/test-report-host-sidebar.mjs`。其中包含禁止用原生 `openDetails` 替代 FFT 路由的断言。

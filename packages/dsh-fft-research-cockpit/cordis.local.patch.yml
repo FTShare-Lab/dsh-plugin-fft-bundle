@@ -1,8 +1,0 @@
-- insert:
-    - id: ft-research-cockpit
-      name: '/Users/xzmini24/FtNova_work/dsh-investment-research/src/index.ts'
-      config:
-        ftshareUrl: 'https://market.ft.tech/gateway/mcp'
-        llmProvider: 'deepseek-official'
-        llmModel: 'deepseek-v4-flash'
-        outputDir: './reports'

@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
-import type { FtshareSettingsService } from '@ft/dsh-ftshare-settings/contract'
+import type { FtshareSettingsService } from '@ft/dsh-fft-settings/contract'
 
 import { calculateTechnicalSignals } from './indicators.js'
 import { FtShareClient } from './ftshare-client.js'

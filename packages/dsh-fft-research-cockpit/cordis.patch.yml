@@ -1,3 +1,12 @@
+# dsh-fft-research-cockpit bundle patch
+#
+# `dsh.bundle.patch` layer of the published package: installing through the
+# official CLI —
+#
+#   dsh plugin --profile <name> add @ft/dsh-fft-research-cockpit
+#
+# — appends this single `insert` (one plugin row) to the bundle stack. The row
+# id stays `ft-research-cockpit`; the package name is the 0.2 rename.
 - insert:
     - id: ft-research-cockpit
-      name: ft-research-cockpit
+      name: '@ft/dsh-fft-research-cockpit'

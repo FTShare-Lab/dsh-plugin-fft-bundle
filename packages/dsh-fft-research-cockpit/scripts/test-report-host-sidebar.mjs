@@ -54,5 +54,14 @@ const fftOpen = () => {}
 const props = { turn: {turn:1}, useChat: select => select({locations:{getTurn:()=>[]},nodes:new Map()}), openDetails:nativeOpen }
 assert.equal(renderResult(props).props.openDetails,undefined)
 assert.equal(renderResult({...props,openReportSidebar:fftOpen}).props.openDetails,fftOpen)
-assert.ok(source.includes("const inject = ['slots', 'layout', 'betterSidebar', 'uiConversation']"))
-console.log('FFT-only routing and required client dependency passed')
+// The client no longer hard-requires Better Sidebar: only the framework slots
+// service gates activation, while the FFT Sidebar integration mounts through
+// the optional `ctx.inject(['betterSidebar', 'uiConversation'], …)` scope.
+// DSH 0.2 also removed the native details-preview slot and its close callback,
+// which must not come back as a substitute route.
+assert.ok(source.includes("const inject = ['slots']"), 'the client must declare only the slots service as a hard dependency')
+assert.ok(source.includes("ctx.inject(['betterSidebar', 'uiConversation']"), 'FFT Sidebar must be mounted through the optional service scope')
+assert.equal(source.includes('conversation.details.tool.preview'), false, 'the removed native details-preview slot must not be registered')
+assert.equal(source.includes('props.closeDetails('), false, 'the removed native close callback must not be called')
+assert.equal(source.includes('ctx.layout.'), false, 'the removed layout details API must not be reached')
+console.log('FFT-only routing and optional client dependency passed')
