@@ -17,7 +17,7 @@
 
 设置页「非凸金融终端」最上方的版本与「检查更新」卡片只消费**桌面壳**的状态，不经过本插件的 Host RPC：Host RPC 面没有新增方法，版本与更新状态也不走 `/api/ftshare-settings`。
 
-- 来源是 Electron 预加载脚本注入的页面全局对象 `window.dshFft`（协议版本 1；完整契约见父仓 `docs/specs/desktop-auto-update/spec.md` §2.9）。壳只暴露版本读取、能力查询、状态订阅与 `check`/`download`/`install`/`skip` 四个动作；动作**受理即返回、不承载结果**，结果一律等订阅推送。
+- 来源是 Electron 预加载脚本注入的页面全局对象 `window.dshFft`（协议版本 1；完整契约见父仓 `dsh-ft` 的 `docs/specs/desktop-auto-update/spec.md` §2.9，该 spec 属父仓桌面壳工程，不随本包迁入）。壳只暴露版本读取、能力查询、状态订阅与 `check`/`download`/`install`/`skip` 四个动作；动作**受理即返回、不承载结果**，结果一律等订阅推送。
 - 其他插件的浏览器侧代码应 `import { createShellReader } from '@ft/dsh-fft-settings/shell'`（包客户端入口也再导出），不要各自复刻壳协议，也不要另开一条读取版本的通路。
 - **无桌面运行时**（纯浏览器打开 Host）该全局不存在，卡片必须照常渲染：`createShellReader()` 仍然可用，`appInfo()` 返回 `undefined`（版本**不可知**，界面显示「版本未知」而不是空版本号或 `undefined`），`capability()` 返回 `{ supported: false, reason: '当前环境不提供版本信息' }`，`subscribe()` 返回空取消函数，四个动作是空操作。读取封装自身不抛错，壳报错或返回畸形数据时都退化为上述默认值。
 - 更新能力与原因文案由壳给出（平台不支持、开发运行、构建不含更新通道等）；插件只如实展示，不自行推断运行环境。能力不可用时版本照常显示，入口禁用并给出原因。

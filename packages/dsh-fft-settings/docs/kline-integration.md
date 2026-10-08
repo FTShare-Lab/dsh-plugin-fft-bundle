@@ -34,7 +34,7 @@ await proxyJson(response, `${serviceOrigin(session)}/api/tools/${encodeURICompon
 
 因此只改 Host 页面的代理分支，仍覆盖不了 MCP 直接调用 Python 的入口。建议保留行情代理，让两种入口最终都从 Python 私有桥调用同一个 Host 适配器。
 
-接入后 `src/index.ts` 的关键变化：
+接入后 kline 仓库 `src/index.ts` 的关键变化（本节与下文写作 `src/…`、`scripts/…` 的路径都相对 kline 仓库根，不是本包）：
 
 ```ts
 import type { Context } from '@deepseek-ai/cordis'

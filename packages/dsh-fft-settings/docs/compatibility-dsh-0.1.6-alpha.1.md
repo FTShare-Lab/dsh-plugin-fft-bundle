@@ -29,9 +29,9 @@
 
 ## 接口核对
 
-- `src/modules/api-key/host.ts` 使用的 `credentialRef`、`resolve/describe/set/unset` 和引用更新事件继续可用。凭据基础包对应源码在比较范围内未改变。
-- `src/index.ts` / `src/rpc-core.ts` 使用的 `connection.rpc.handle(channel, handler)` 与客户端 `call(...)` 契约保留；新增流式能力不要求现有普通 RPC 修改。
-- `src/client.tsx` / `src/card-registry.ts` 使用的设置 slot 注册接口保留；类型检查和构建通过。没有执行新版完整 DSH 页面交互测试。
+- `../src/modules/api-key/host.ts` 使用的 `credentialRef`、`resolve/describe/set/unset` 和引用更新事件继续可用。凭据基础包对应源码在比较范围内未改变。
+- `../src/index.ts` / `../src/rpc-core.ts` 使用的 `connection.rpc.handle(channel, handler)` 与客户端 `call(...)` 契约保留；新增流式能力不要求现有普通 RPC 修改。
+- `../src/client.tsx` / `../src/card-registry.ts` 使用的设置 slot 注册接口保留；类型检查和构建通过。没有执行新版完整 DSH 页面交互测试。
 - 新版 LocalCredentialProvider 使用带 `version: 1`、`refs`、`records` 的凭据文档，启动时可迁移可识别的旧平面格式。插件通过 provider API 访问，不依赖文件布局；真实临时文件迁移已验证。异常格式仍由上游拒绝，不能保证任意手写文件自动迁移。
 
 ## 升级时需要调整的依赖范围
