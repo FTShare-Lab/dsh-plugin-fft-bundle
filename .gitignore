@@ -1,6 +1,5 @@
 /thirdparty/
 node_modules/
-lib/
 .pnpm-store/
 tmp/
 .dsh-progress/

@@ -33,7 +33,7 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@ft/dsh-fft-settings": "workspace:^",
+    "@ft/dsh-fft-settings": "git+ssh://git@github.com/FTShare-Lab/dsh-plugin-fft-bundle.git#path:packages/dsh-fft-settings",
     "@deepseek-ai/schemastery": ">=3.18.2",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "nunjucks": "3.2.4"

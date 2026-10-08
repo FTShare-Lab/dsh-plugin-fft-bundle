@@ -27,8 +27,8 @@
     "test": "node --test tests/*.test.mjs"
   },
   "dependencies": {
-    "@ft/dsh-fft-research-cockpit": "workspace:^",
-    "@ft/dsh-fft-settings": "workspace:^"
+    "@ft/dsh-fft-research-cockpit": "git+ssh://git@github.com/FTShare-Lab/dsh-plugin-fft-bundle.git#path:packages/dsh-fft-research-cockpit",
+    "@ft/dsh-fft-settings": "git+ssh://git@github.com/FTShare-Lab/dsh-plugin-fft-bundle.git#path:packages/dsh-fft-settings"
   },
   "engines": {
     "node": ">=22.19.0"

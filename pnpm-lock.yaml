@@ -6,6 +6,8 @@ settings:
 
 overrides:
   '@deepseek-ai/cordis': 4.0.4
+  '@ft/dsh-fft-settings': link:packages/dsh-fft-settings
+  '@ft/dsh-fft-research-cockpit': link:packages/dsh-fft-research-cockpit
 
 importers:
 
@@ -14,10 +16,10 @@ importers:
   packages/dsh-fft-bundle:
     dependencies:
       '@ft/dsh-fft-research-cockpit':
-        specifier: workspace:^
+        specifier: link:../dsh-fft-research-cockpit
         version: link:../dsh-fft-research-cockpit
       '@ft/dsh-fft-settings':
-        specifier: workspace:^
+        specifier: link:../dsh-fft-settings
         version: link:../dsh-fft-settings
     devDependencies:
       js-yaml:
@@ -42,7 +44,7 @@ importers:
         specifier: '>=3.18.2'
         version: 3.18.4
       '@ft/dsh-fft-settings':
-        specifier: workspace:^
+        specifier: link:../dsh-fft-settings
         version: link:../dsh-fft-settings
       '@modelcontextprotocol/sdk':
         specifier: ^1.30.0
