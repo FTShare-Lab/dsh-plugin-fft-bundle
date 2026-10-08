@@ -3,3 +3,4 @@ node_modules/
 .pnpm-store/
 tmp/
 .dsh-progress/
+.DS_Store
