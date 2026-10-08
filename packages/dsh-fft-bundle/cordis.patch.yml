@@ -18,6 +18,13 @@
 # template — copied only when that file is absent and imported once on DSH 0.2,
 # so existing users and fresh profiles never receive it. A later profile patch
 # still overrides this row wholesale.
+# The dsh-kline rows are a verbatim copy of the two rows the kline package
+# inserts from its own `cordis.patch.yml`. They must live here as well: the
+# loader composes only the layers named in `dsh.profile.bundles`, and a
+# dependency's own patch is never loaded transitively — installing kline as a
+# dependency of this bundle puts its code in `node_modules` but leaves its
+# patch dead. `tests/kline-rows.test.mjs` diffs these two rows against the
+# installed kline package, so an upstream edit fails this repo's test run.
 - insert:
     - id: dsh-fft-settings
       name: '@ft/dsh-fft-settings'
@@ -28,3 +35,41 @@
       config:
         baseUrl: https://llm-proxy.ftai.chat
         redirectUri: https://llm-proxy.ftai.chat/oauth/ft-sso
+    # `ctx.baseUrl` is the profile's cordis.yml URL, making the installed
+    # package root independent of the caller's workspace directory. Hosts with
+    # a different layout may provide DSH_KLINE_PACKAGE_ROOT as an absolute
+    # package directory.
+    - id: mcp-dsh-kline
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: dsh-kline
+        transport: stdio
+        command: !!js process.execPath
+        args:
+          - scripts/run-dsh-kline.mjs
+        cwd: !!js String(process.env.DSH_KLINE_PACKAGE_ROOT || '').trim() || ((process.platform === 'win32' && /^\/[A-Za-z]:\//.test(decodeURIComponent(new URL('./node_modules/@ftshare-lab/dsh-kline/', ctx.baseUrl).pathname)) && decodeURIComponent(new URL('./node_modules/@ftshare-lab/dsh-kline/', ctx.baseUrl).pathname).slice(1)) || decodeURIComponent(new URL('./node_modules/@ftshare-lab/dsh-kline/', ctx.baseUrl).pathname))
+        env:
+          DSH_KLINE_HOST_PID: !!js String(process.pid)
+          DSH_KLINE_DEFER_BOOTSTRAP: '1'
+          DSH_KLINE_PYTHON: !!js process.env.DSH_KLINE_PYTHON || ''
+          DSH_KLINE_VENV: !!js process.env.DSH_KLINE_VENV || ''
+          DSH_KLINE_CACHE_DIR: !!js process.env.DSH_KLINE_CACHE_DIR || ''
+          DSH_KLINE_RUNTIME_DIR: !!js process.env.DSH_KLINE_RUNTIME_DIR || ''
+          DSH_KLINE_RUNTIME_MODE: !!js process.env.DSH_KLINE_RUNTIME_MODE || 'auto'
+          DSH_KLINE_CHART_HOST: !!js process.env.DSH_KLINE_CHART_HOST || '127.0.0.1'
+          DSH_KLINE_CHART_PORT: !!js process.env.DSH_KLINE_CHART_PORT || '8765'
+          FTSHARE_SDK_SRC: !!js process.env.FTSHARE_SDK_SRC || ''
+          FTSHARE_API_KEY: !!js process.env.FTSHARE_API_KEY || ''
+          FTSHARE_API_KEY_FILE: !!js process.env.FTSHARE_API_KEY_FILE || ''
+        toolCallTimeoutMs: 120000
+        # A fresh Python environment can outlast the MCP SDK's fixed 60 s
+        # discovery timeout. Let the launcher's detached bootstrap finish and
+        # let reconnect attach the tools, rather than aborting DSH Web itself.
+        failOnStartupError: false
+        reconnect:
+          enabled: true
+          initialDelayMs: 500
+          maxDelayMs: 30000
+          maxAttempts: 10
+    - id: dsh-kline-sidebar
+      name: '@ftshare-lab/dsh-kline'
