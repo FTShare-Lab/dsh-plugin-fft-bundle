@@ -10,6 +10,14 @@
 #
 # Row order follows the service direction: the shared settings service is
 # inserted first because the research cockpit injects `ftshareSettings`.
+#
+# The NewAPI row carries the deployment's public URLs, because this layer is
+# the only one that reaches every install: the plugin reads its config once at
+# startup, and the other sources are per-machine (a profile patch or
+# `$DSH_HOME/cordis.patch.yml`) or the desktop installer's settings.yaml
+# template — copied only when that file is absent and imported once on DSH 0.2,
+# so existing users and fresh profiles never receive it. A later profile patch
+# still overrides this row wholesale.
 - insert:
     - id: dsh-fft-settings
       name: '@ft/dsh-fft-settings'
@@ -17,3 +25,6 @@
       name: '@ft/dsh-fft-research-cockpit'
     - id: newapi-wechat-sso
       name: '@ft/dsh-newapi-wechat-sso'
+      config:
+        baseUrl: https://llm-proxy.ftai.chat
+        redirectUri: https://llm-proxy.ftai.chat/oauth/ft-sso
