@@ -22,21 +22,47 @@ pnpm build && pnpm test
 
 ## 装入 DSH
 
+包内构建产物（`lib/`）已随仓提交：git 安装只送达 git 跟踪的文件、且不在安装期构建，
+所以**安装前必须已 build 并提交 `lib/`**（见 AGENTS.md）。
+
+### 终端用户：一条 spec 装全套
+
+私有仓前置（每台机器一次）：
+
+- ssh 能访问本仓：`git -c credential.helper= ls-remote ssh://git@github.com/gigaflw/dsh-fft-bundle.git HEAD`
+- profile 的 `pnpm-workspace.yaml` 里加 `blockExoticSubdeps: false`：bundle 的 `dependencies`
+  指向本仓的 `#path:` 子目录包，pnpm 11 默认拒绝子依赖里的 git 协议；pnpm ≥10 只从
+  `pnpm-workspace.yaml` 读设置，`.npmrc` 无效
+
+在 Electron「插件管理」里粘贴这一条（等价地，应用自带 CLI `dsh plugin --profile desktop add <同一 spec>`）：
+
+```
+git+ssh://git@github.com/gigaflw/dsh-fft-bundle.git#path:packages/dsh-fft-bundle
+```
+
+装前先卸掉旧的 `link:` 安装（如 `@ft/dsh-fft-settings`），避免同名包两种来源并存。
+更新：重贴同一 spec 即覆盖（git spec 不做"已安装"预检），取默认分支最新提交。
+
+### 开发：本地 link
+
 ```bash
-# 开发：单插件直装
+# 单插件直装
 dsh plugin --profile <name> add link:./packages/dsh-fft-settings
 
-# 开发：组合层（各包 + 组合包分别 link）
+# 组合层（各包 + 组合包分别 link）
 dsh plugin --profile <name> add \
   link:./packages/dsh-fft-settings \
   link:./packages/dsh-fft-research-cockpit \
   link:./packages/dsh-fft-bundle
-
-# 发布后：终端用户一条命令拉全套
-dsh plugin --profile <name> add @ft/dsh-fft-bundle
 ```
 
 修改插件后需重新 build 并重启 `dsh web`（Host 代码不热载）。
+
+### 发布到 registry
+
+`@ft/*` 之间的依赖边写的是本仓 git 地址（`packages/*/package.json` 内 4 处 + 仓库改名时同步）。
+改用 registry 分发时，须把这 4 处换回 `workspace:^`，并删掉根 `pnpm-workspace.yaml` 里对应的
+`link:` overrides。
 
 ## 文档
 
