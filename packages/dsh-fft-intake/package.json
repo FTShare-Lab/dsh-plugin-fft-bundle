@@ -1,0 +1,33 @@
+{
+  "name": "@ft/dsh-fft-intake",
+  "version": "0.1.0",
+  "description": "Bundled factor-intake skill for the FT financial workbench: evaluate and ingest alpha factors locally, with the FTShare credential read from the DSH credentials document.",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "skills",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test tests/*.test.mjs"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-skill": ">=0.2.0-rc.2"
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "license": "MIT"
+}

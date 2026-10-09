@@ -10,7 +10,6 @@ import socket
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote
 
 import numpy as np
 
@@ -239,12 +238,16 @@ def report_stamp(host: str | None = None) -> tuple[str, str, str]:
 
 
 def default_report_dir() -> Path:
-    env = os.getenv("FACTOR_REPORT_DIR") or os.getenv("OPENALPHA_REPORT_DIR") or ""
+    """Where reports land: the workspace `reports/` directory by default.
+
+    Reports must stay inside the session workspace, because that is the only
+    place the DSH client can preview them from. `FACTOR_REPORT_DIR` overrides
+    the location; a report written outside the workspace is still produced, but
+    the user can no longer open it from the Files panel.
+    """
+    env = os.getenv("FACTOR_REPORT_DIR") or ""
     if env.strip():
         return Path(env).expanduser()
-    mac = Path.home() / "Documents" / "openalpha" / "reports"
-    if mac.parent.exists():
-        return mac
     return Path.cwd() / "reports"
 
 
@@ -896,37 +899,26 @@ def save_report(html_doc: str, *, directory: Path | None = None, title: str | No
     return path
 
 
-def report_http_base() -> str:
-    return (os.environ.get("FACTOR_REPORT_HTTP") or "http://127.0.0.1:18768").rstrip("/")
+def report_path(path: Path | str) -> str:
+    """Absolute path of a report file.
 
-
-def file_url(path: Path | str) -> str:
-    """Clickable URL for chat: HTTP if the file sits in the report dir, else file://."""
-    p = Path(path).expanduser().resolve()
-    try:
-        rel = p.relative_to(default_report_dir().resolve()).as_posix()
-        return f"{report_http_base()}/{quote(rel, safe='/')}"
-    except ValueError:
-        extra = Path.home() / "Documents" / "openalpha" / "factor-intake-work" / "reports"
-        try:
-            rel = p.relative_to(extra.resolve()).as_posix()
-            return f"{report_http_base()}/{quote(rel, safe='/')}"
-        except ValueError:
-            return "file://" + quote(p.as_posix(), safe="/")
+    The DSH client renders HTML from the Files panel of the session workspace,
+    so nothing here builds a `file://` or HTTP address: a chat bubble cannot
+    navigate to either one, and inventing a port would only produce a dead link.
+    """
+    return Path(path).expanduser().resolve().as_posix()
 
 
 def report_open_lines(html_path: Path | str | None, md_path: Path | str | None = None) -> str:
-    """Markdown links for session replies. Empty string if no files."""
+    """Absolute report paths for session replies. Empty string if no files."""
     lines: list[str] = []
     if html_path:
         hp = Path(html_path)
-        url = file_url(hp)
-        lines.append(f"[打开 HTML 报告]({url})")
-        lines.append(f"open_html={url}")
+        lines.append(f"打开 HTML 报告：{report_path(hp)}")
+        lines.append(f"open_html={report_path(hp)}")
     if md_path:
         mp = Path(md_path)
         if mp.exists():
-            url = file_url(mp)
-            lines.append(f"[打开 Markdown 摘要]({url})")
-            lines.append(f"open_md={url}")
+            lines.append(f"打开 Markdown 摘要：{report_path(mp)}")
+            lines.append(f"open_md={report_path(mp)}")
     return ("\n".join(lines) + "\n") if lines else ""

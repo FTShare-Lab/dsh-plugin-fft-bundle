@@ -35,6 +35,11 @@
       config:
         baseUrl: https://llm-proxy.ftai.chat
         redirectUri: https://llm-proxy.ftai.chat/oauth/ft-sso
+    # The factor-intake row only needs the skill registry. Its scripts resolve
+    # the FTShare credential from the DSH credentials document themselves, so
+    # the row deliberately injects no FTShare settings service.
+    - id: dsh-fft-intake
+      name: '@ft/dsh-fft-intake'
     # `ctx.baseUrl` is the profile's cordis.yml URL, making the installed
     # package root independent of the caller's workspace directory. Hosts with
     # a different layout may provide DSH_KLINE_PACKAGE_ROOT as an absolute

@@ -1,0 +1,17 @@
+# dsh-fft-intake bundle patch
+#
+# `dsh.bundle.patch` layer of the published package: installing through the
+# official CLI —
+#
+#   dsh plugin --profile <name> add @ft/dsh-fft-intake
+#
+# — appends this single `insert` (one plugin row) to the bundle stack. No manual
+# profile edits.
+#
+# The row only needs the skill registry. It deliberately injects no FTShare
+# settings service: the skill's Python scripts read the credential from the DSH
+# credentials document themselves, so the row works even when the settings
+# plugin is absent.
+- insert:
+    - id: dsh-fft-intake
+      name: '@ft/dsh-fft-intake'

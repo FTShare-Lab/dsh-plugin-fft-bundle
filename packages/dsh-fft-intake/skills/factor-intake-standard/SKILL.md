@@ -16,7 +16,14 @@ description: "Evaluate and ingest alpha factors locally from 3-column panels (da
 
 默认路径是纯本地：用户有因子三列，再给一张同形状的收益（或价格）三列，就能算出研究口径。周频点时 Top-N 对照仍可按 `stock-factor-eval-v1` 做，但那是可选加料，不是本 Skill 的执行依赖。
 
-在桌面包中执行本 Skill 脚本时使用 `python3`；桌面运行环境会将内置 Python 放在 PATH 首位，避免调用系统 Python。
+在 DSH 中执行本 Skill 的脚本时**不要依赖 `PATH` 上的 Python**，用 `uv` 按需加载解释器与依赖。`<skilldir>` 是本 Skill 的目录（`skill` 工具返回的 `resourceBase.path`），用绝对路径调用脚本：
+
+```bash
+uv run --quiet --python 3.12 --with-requirements <skilldir>/requirements.txt \
+  python <skilldir>/scripts/factor_lib.py eval --csv factor.csv --ret ret.csv
+```
+
+FTShare API Key 由脚本自己从 DSH 解析：环境变量 `FTSHARE_API_KEY` → DSH 凭据文档（`$DSH_HOME/.credentials.yaml`，即「设置 → FTShare」写入的位置）。不要在命令里传 key、不要写进报告或仓库。
 
 ## When to use
 
@@ -48,9 +55,9 @@ description: "Evaluate and ingest alpha factors locally from 3-column panels (da
 5. **对齐交易日**：CSV 日期映射到 **≤ 该日的最近交易日**（无前视），同一股票两次快照之间前向填充，最后一笔之后不虚构到样本末尾。
 6. **窗口**：按用户年份截取；若因子是稀疏快照，自动收窄到「有值的首末日 + 足够的 t+21 开盘空间」，并在报告里写明日历窗。
 7. **日频研究计算**（默认）：
-   - **最小输入**：因子三列 + 收益三列（收益已对齐到信号日，值为该日持有期回报）。命令：`python scripts/factor_lib.py eval --csv factor.csv --ret ret.csv`。
+   - **最小输入**：因子三列 + 收益三列（收益已对齐到信号日，值为该日持有期回报）。命令：`factor_lib.py eval --csv factor.csv --ret ret.csv`。
    - **价格输入**：因子三列 + 价格三列。脚本按 `px[t+1+H]/px[t+1]-1` 构造收益（默认 H=1，即 t+1→t+2）。给的是开盘价就是开盘路径，给 VWAP 就是 VWAP 路径。
-   - **本机行情矩阵（优先）**：`--data-dir` / `--auto-market` 读 OpenAlpha 风格 `open/high/low/volume/vwap/limit_*/adjfactor/csi_*`。一次出开盘 1/5/20、VWAP 1/5/20、涨跌停可交易、指数超额。先 `python scripts/factor_lib.py discover`。
+   - **本机行情矩阵（优先）**：`--data-dir` / `--auto-market` 读 OpenAlpha 风格 `open/high/low/volume/vwap/limit_*/adjfactor/csi_*`。一次出开盘 1/5/20、VWAP 1/5/20、涨跌停可交易、指数超额。先跑 `factor_lib.py discover`。
    - **FTShare 补洞（可选）**：`--ftshare` 只拉因子里缺字段的股票；缓存 `~/.factor-intake/market_cache/`。全市场必须用 data_dir，不要对五千只逐票打 MCP。
    - **HTML**：`--html` 写单文件离线报告（有 matplotlib 则 PNG，否则 SVG）。
    - 可选：行业、对数市值两张同样三列，才做四种中性化；没有就不做，不报错。
@@ -112,7 +119,7 @@ description: "Evaluate and ingest alpha factors locally from 3-column panels (da
 ## 固定输出结构
 
 0. **因子总结（开头必出，结尾再复述一次）**：入库决定一句话 + 开盘 1 日 RankIC / Q10−Q1 Sharpe / peak_q / Q10−Q9；分层是否成立；IC 与多空是否同号；VWAP 对照；可交易与缺字段；库内最近邻。正文表格之前先让人读完这段，数字细节放后面。HTML 用 `<section class="summary">`，终端用同样的 bullets。
-0b. **可点击报告链接（每次会话必出）**：聊天窗口点不开 `file://`。本机用 `python factor-intake-work/reports_http.py` 把 `reports/` 挂到 `http://127.0.0.1:18768/`。脚本 stderr / JSON 的 `open_html` 必须是这个 HTTP 地址。Agent 回复单独成行：`[打开 HTML 报告](http://127.0.0.1:18768/文件名.html)`。不要贴 `file://` 或无协议路径。多因子就每个因子一行。索引页：`http://127.0.0.1:18768/INDEX_20260909.html`。
+0b. **报告文件（每次会话必出）**：报告写在会话工作区的 `reports/` 下，DSH 的 Files 面板能直接渲染 HTML。脚本 stderr / JSON 的 `open_html`、`open_md` 就是报告的**绝对路径**：原样贴给用户，别改写成 `file://`、`http://` 或别加端口——聊天窗口点不开那些，也不要起本地 HTTP 服务。多因子就每个因子一行。
 1. 评价状态、窗口、股票池、方向、覆盖率、排除原因。
 2. 时点与可交易性（开盘 / VWAP 各持有期的可买可卖比例）。
 3. RankIC、ICIR、t、Q10−Q1 Sharpe/年化/回撤/换手；有行业/市值才出四种中性化。
@@ -132,20 +139,21 @@ description: "Evaluate and ingest alpha factors locally from 3-column panels (da
 
 ## Examples
 
+（下文 `uv … factor_lib.py` 是上面那条 uv 前缀 + `<skilldir>/scripts/factor_lib.py` 的简写。）
+
 **例 A：两张三列 CSV，本地算完。**  
 `factor.csv` 为 `date,code,factor`，`ret.csv` 为 `date,code,value`（已是信号日对应的远期收益）。  
-`python scripts/factor_lib.py eval --csv factor.csv --ret ret.csv --orientation 1`  
+`uv … factor_lib.py eval --csv factor.csv --ret ret.csv --orientation 1`  
 未声明方向则标 `unrated` 并询问，不擅自按全样本 IC 翻号。没有 ret/price 时只入库矩阵、不算 IC。
 
 **例 D：本机 data_dir + HTML。**  
-`python scripts/factor_lib.py discover`  
-`python scripts/factor_lib.py eval --csv factor.csv --orientation 1 --data-dir "$OPENALPHA_DATA_DIR" --html`  
-跑完后 stderr 有 `open_html=http://127.0.0.1:18768/…html`。会话回复必须给出可点 HTTP 链接，例如：  
-`[打开 HTML 报告](http://127.0.0.1:18768/因子评价报告-local-Factor-….html)`
+`uv … factor_lib.py discover`  
+`uv … factor_lib.py eval --csv factor.csv --orientation 1 --data-dir "$OPENALPHA_DATA_DIR" --html`  
+跑完后 stderr 有 `open_html=/…/reports/因子评价报告-….html`。回复里原样给出该绝对路径，说明用户在 DSH 的 Files 面板打开。
 
 **例 E：小面板、本机无行情，FTShare 补洞。**  
-`python scripts/factor_lib.py ftshare-probe`  
-`python scripts/factor_lib.py eval --csv factor.csv --orientation 1 --ftshare --html`  
+`uv … factor_lib.py ftshare-probe`  
+`uv … factor_lib.py eval --csv factor.csv --orientation 1 --ftshare --html`  
 只拉 CSV 里出现的股票。缓存不进仓库。
 
 **例 B：入库并查重。**  

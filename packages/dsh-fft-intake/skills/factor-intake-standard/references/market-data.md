@@ -39,8 +39,8 @@ $OA_DATA_DIR
 ```
 
 ```bash
-python scripts/factor_lib.py discover
-python scripts/factor_lib.py discover --path /path/to/data_dir
+uv … factor_lib.py discover
+uv … factor_lib.py discover --path /path/to/data_dir
 ```
 
 **不要**把行情 parquet 拷进 `skills/factor-intake-standard/`。
@@ -61,7 +61,7 @@ python scripts/factor_lib.py discover --path /path/to/data_dir
 日期参数类型随工具而变：K 线用毫秒，涨跌停用整数日期。实现见 `scripts/ftshare_client.py`。
 
 ```bash
-python scripts/factor_lib.py ftshare-probe
+uv … factor_lib.py ftshare-probe
 ```
 
 缓存（用户本机，不进 git）：
@@ -80,15 +80,15 @@ python scripts/factor_lib.py ftshare-probe
 
 ```bash
 # 已有本机 data_dir
-python scripts/factor_lib.py eval --csv factor.csv --orientation 1 \
+uv … factor_lib.py eval --csv factor.csv --orientation 1 \
   --data-dir "$OPENALPHA_DATA_DIR" --html
 
 # 本机没有矩阵：只对因子里的股票补洞（小面板）
-python scripts/factor_lib.py eval --csv factor.csv --orientation 1 \
+uv … factor_lib.py eval --csv factor.csv --orientation 1 \
   --ftshare --html
 
 # 先搜本机，缺字段再 FTShare
-python scripts/factor_lib.py eval --csv factor.csv --orientation 1 \
+uv … factor_lib.py eval --csv factor.csv --orientation 1 \
   --auto-market --ftshare --html
 ```
 

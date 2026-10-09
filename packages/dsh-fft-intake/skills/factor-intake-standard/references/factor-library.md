@@ -23,7 +23,7 @@ factor_lib/
 ## 2. 入库步骤
 
 1. 解析 CSV → 对齐交易日 → 得到与市场日历同形的矩阵。
-2. 用同形状的收益或价格三列，在本地跑 `python scripts/factor_lib.py eval`（或 `ingest --ret/--price`）。没有收益/价格就只存矩阵，不算 IC。
+2. 用同形状的收益或价格三列，在本地跑 `uv … factor_lib.py eval`（或 `ingest --ret/--price`）。没有收益/价格就只存矩阵，不算 IC。
 3. 与库内 **同股票池、status=intake_ok** 的矩阵算相关（见下）。
 4. 写 parquet + eval json + 追加 catalog。相关过高则 `duplicate`，不覆盖旧条目。
 5. 若用户要求「作者合成」：同作者、同股票池的正式因子矩阵先截面 rank 再等权（缺失忽略），存 `combo/`。合成后再评价一次，但 **合成 IC 升高不能单独作为入库理由**。
@@ -57,22 +57,22 @@ factor_lib/
 
 ```bash
 # 只要两张三列面板：因子 + 已对齐的远期收益
-python scripts/factor_lib.py eval --csv factor.csv --ret ret.csv --orientation 1
+uv … factor_lib.py eval --csv factor.csv --ret ret.csv --orientation 1
 
 # 或者因子 + 价格（默认 t+1 → t+2）
-python scripts/factor_lib.py eval --csv factor.csv --price open.csv --hold-days 1
+uv … factor_lib.py eval --csv factor.csv --price open.csv --hold-days 1
 
 # 入库（带评价）
-python scripts/factor_lib.py ingest --csv factor.csv --lib ./factor_lib \
+uv … factor_lib.py ingest --csv factor.csv --lib ./factor_lib \
   --name my_factor --author Alice --universe csi_300 --orientation 1 \
   --ret ret.csv --calendar trading_days.txt
 
-python scripts/factor_lib.py corr --lib ./factor_lib --a csi_300_Alice_00001 --top-k 5
+uv … factor_lib.py corr --lib ./factor_lib --a csi_300_Alice_00001 --top-k 5
 ```
 
 `trading_days.txt` 每行一个 `YYYYMMDD`。缺日历时按 CSV 中出现的日期透视，不再做「≤ 最近交易日」映射。全部在本地算，不提交到任何远程评价服务。
 
-行情不进库目录。评价用 `--data-dir` 读本机矩阵，或 `--ftshare` 把缺失股票缓存到 `~/.factor-intake/market_cache/`。`python scripts/factor_lib.py discover` 只扫本机，不下载。
+行情不进库目录。评价用 `--data-dir` 读本机矩阵，或 `--ftshare` 把缺失股票缓存到 `~/.factor-intake/market_cache/`。`uv … factor_lib.py discover` 只扫本机，不下载。
 
 ## 5. 轻量实现要点
 

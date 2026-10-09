@@ -240,8 +240,6 @@ def default_search_roots() -> list[Path]:
             home / "openalpha-data",
             home / "Documents" / "openalpha-data",
             home / "Documents" / "openalpha" / "data",
-            Path("/home/nolan/openalpha-data"),
-            Path("/home/nolan/openalpha-data/rq/D1/20260820"),
         ]
     )
     # one extra level under *openalpha-data*/rq/D1/*

@@ -838,11 +838,11 @@ def _print_summary(out: dict) -> None:
         sys.stderr.write("\n打开报告：\n")
         sys.stderr.write(links)
         try:
-            from report_html import file_url
+            from report_html import report_path
             if out.get("html") and not out.get("open_html"):
-                out["open_html"] = file_url(out["html"])
+                out["open_html"] = report_path(out["html"])
             if out.get("md") and not out.get("open_md"):
-                out["open_md"] = file_url(out["md"])
+                out["open_md"] = report_path(out["md"])
         except Exception:
             pass
     sys.stderr.flush()
@@ -898,34 +898,52 @@ def _slim_label(lab: dict | None) -> dict | None:
     return keep
 
 
+def _diagnostics_payload(out: Any) -> dict | None:
+    """Accept either a bare evaluation summary or a whole command result.
+
+    `evaluate_local` returns the summary itself, while `eval` and the data-dir
+    path nest it under `eval`. The diagnose payload carries its `modes` mapping
+    in both shapes, so one reader serves all three call sites.
+    """
+    if not isinstance(out, dict):
+        return None
+    if isinstance(out.get("modes"), dict):
+        return out
+    nested = out.get("eval")
+    if isinstance(nested, dict) and isinstance(nested.get("modes"), dict):
+        return nested
+    return None
+
+
 def _maybe_write_html(args: argparse.Namespace, out: dict) -> Path | None:
     if not getattr(args, "html", False) and not getattr(args, "html_dir", None):
         return None
-    if not isinstance(out, dict) or not isinstance(out.get("none"), dict):
+    diag = _diagnostics_payload(out)
+    if diag is None:
         return None
     from report_html import render_report, save_report
 
-    html_doc = render_report(out, neighbors=out.get("neighbors"))
+    html_doc = render_report(diag, neighbors=diag.get("neighbors"))
     directory = Path(args.html_dir) if getattr(args, "html_dir", None) else None
     path = save_report(html_doc, directory=directory)
-    out["html"] = str(path)
+    diag["html"] = str(path)
     md_path = None
     try:
         from report_tabs import diagnostics_markdown
         md_path = path.with_suffix(".md")
-        md_path.write_text(diagnostics_markdown(out), encoding="utf-8")
-        out["md"] = str(md_path)
+        md_path.write_text(diagnostics_markdown(diag), encoding="utf-8")
+        diag["md"] = str(md_path)
         print(f"md={md_path}", file=sys.stderr)
     except Exception as exc:
         print(f"md_skip={exc}", file=sys.stderr)
     print(f"html={path}", file=sys.stderr)
     try:
-        from report_html import file_url
-        out["open_html"] = file_url(path)
-        print(f"open_html={out['open_html']}", file=sys.stderr)
+        from report_html import report_path
+        diag["open_html"] = report_path(path)
+        print(f"open_html={diag['open_html']}", file=sys.stderr)
         if md_path is not None:
-            out["open_md"] = file_url(md_path)
-            print(f"open_md={out['open_md']}", file=sys.stderr)
+            diag["open_md"] = report_path(md_path)
+            print(f"open_md={diag['open_md']}", file=sys.stderr)
     except Exception:
         pass
     return path

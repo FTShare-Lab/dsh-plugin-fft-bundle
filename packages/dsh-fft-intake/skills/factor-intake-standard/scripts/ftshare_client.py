@@ -14,6 +14,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+import ft_credentials
 from market_data import (
     INDEX_SYMBOL,
     MarketBundle,
@@ -24,24 +25,15 @@ from market_data import (
 
 DEFAULT_URL = os.environ.get("FTSHARE_MCP_URL", "https://market.ft.tech/gateway/mcp")
 CST = timezone(timedelta(hours=8))
-API_KEY_HEADER = "FTSHARE_API_KEY"
-DEFAULT_KEY_FILE = Path.home() / "Documents" / "openalpha" / "factor-intake-work" / "secrets" / "ftshare_api_key"
+API_KEY_HEADER = ft_credentials.API_KEY_NAME
+# Last-resort local store. The real source is the DSH credentials document the
+# FTShare settings page writes; this file only exists for a machine that keeps a
+# key without DSH managing it.
+FALLBACK_KEY_FILE = Path.home() / ".factor-intake" / "ftshare_api_key"
 
 
 class FtshareError(RuntimeError):
     pass
-
-
-def _key_file_candidates() -> list[Path]:
-    out: list[Path] = []
-    env_path = (os.environ.get("FTSHARE_API_KEY_FILE") or "").strip()
-    if env_path:
-        out.append(Path(env_path).expanduser())
-    out.append(DEFAULT_KEY_FILE)
-    cache = Path.home() / ".factor-intake" / "ftshare_api_key"
-    if cache not in out:
-        out.append(cache)
-    return out
 
 
 def mask_api_key(key: str) -> str:
@@ -54,27 +46,27 @@ def mask_api_key(key: str) -> str:
 
 
 def load_api_key(explicit: str | None = None) -> str:
-    if explicit and str(explicit).strip():
-        return str(explicit).strip()
-    env = (os.environ.get(API_KEY_HEADER) or "").strip()
-    if env:
-        return env
-    for path in _key_file_candidates():
-        try:
-            if path.is_file():
-                text = path.read_text(encoding="utf-8").strip()
-                if text:
-                    return text.splitlines()[0].strip()
-        except OSError:
-            continue
-    return ""
+    """Resolve the key from the DSH credentials document or the environment.
+
+    Precedence matches DSH: the process environment wins, then the managed
+    credentials document, then `FTSHARE_API_KEY_FILE`, then
+    `~/.factor-intake/ftshare_api_key`.
+    """
+    key, _source = ft_credentials.resolve_api_key(explicit=explicit)
+    if key:
+        return key
+    try:
+        text = FALLBACK_KEY_FILE.read_text(encoding="utf-8").strip()
+    except OSError:
+        return ""
+    return text.splitlines()[0].strip() if text else ""
 
 
 def save_api_key(key: str, path: Path | None = None) -> Path:
     text = (key or "").strip()
     if not text:
         raise FtshareError("empty api key")
-    dest = Path(path) if path else DEFAULT_KEY_FILE
+    dest = Path(path) if path else FALLBACK_KEY_FILE
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(text + "\n", encoding="utf-8")
     try:
@@ -85,7 +77,7 @@ def save_api_key(key: str, path: Path | None = None) -> Path:
 
 
 def clear_api_key(path: Path | None = None) -> bool:
-    dest = Path(path) if path else DEFAULT_KEY_FILE
+    dest = Path(path) if path else FALLBACK_KEY_FILE
     if dest.is_file():
         dest.unlink()
         return True
@@ -93,22 +85,27 @@ def clear_api_key(path: Path | None = None) -> bool:
 
 
 def api_key_status() -> dict[str, Any]:
-    env = bool((os.environ.get(API_KEY_HEADER) or "").strip())
-    file_path = None
-    file_key = ""
-    for path in _key_file_candidates():
-        if path.is_file():
-            file_path = str(path)
-            try:
-                file_key = path.read_text(encoding="utf-8").strip().splitlines()[0].strip()
-            except OSError:
-                file_key = ""
-            break
+    """Report where the key comes from, without exposing it.
+
+    A credentials document that exists but cannot be trusted is reported as an
+    error rather than as "not configured": the two need different fixes.
+    """
+    try:
+        status = ft_credentials.describe_api_key()
+    except ft_credentials.CredentialError as exc:
+        return {
+            "configured": False,
+            "source": "error",
+            "file": None,
+            "masked": "",
+            "length": 0,
+            "error": str(exc),
+        }
     key = load_api_key()
     return {
         "configured": bool(key),
-        "source": "env" if env else ("file" if file_key else "none"),
-        "file": file_path,
+        "source": status["source"],
+        "file": status["credentials_file"] if status["credentials_file_present"] else None,
         "masked": mask_api_key(key),
         "length": len(key),
     }
