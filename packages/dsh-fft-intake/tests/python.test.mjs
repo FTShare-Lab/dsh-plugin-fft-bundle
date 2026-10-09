@@ -27,6 +27,20 @@ test('the factor-intake python unit tests pass', { skip: !uvAvailable() }, () =>
   assert.match(result.stderr, /OK/)
 })
 
+test('the synthetic-market suite still renders a report', { skip: !uvAvailable() }, () => {
+  // `test_research_eval.py` is a script, not a unittest module: it builds a
+  // synthetic market, evaluates it and renders HTML, which is exactly the path
+  // this package changed.
+  const result = spawnSync('uv', [
+    'run', '--quiet', '--no-project', '--python', '3.12',
+    '--with-requirements', REQUIREMENTS,
+    'python', 'test_research_eval.py',
+  ], { cwd: SCRIPTS, encoding: 'utf8', timeout: 600_000 })
+  assert.equal(result.status, 0, `synthetic suite failed:\n${result.stdout}\n${result.stderr}`)
+  assert.match(result.stdout, /"has_limit": true/)
+  assert.match(result.stdout, /^ok$/mu)
+})
+
 test('eval writes an HTML report into the workspace reports/ directory', { skip: !uvAvailable() }, () => {
   const workdir = mkdtempSync(join(tmpdir(), 'factor-intake-'))
   const dates = Array.from({ length: 26 }, (_, index) => `202501${String(index + 2).padStart(2, '0')}`)

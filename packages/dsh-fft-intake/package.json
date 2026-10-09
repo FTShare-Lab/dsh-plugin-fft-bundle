@@ -12,6 +12,7 @@
   "files": [
     "src",
     "skills",
+    "!skills/**/__pycache__",
     "cordis.patch.yml",
     "README.md"
   ],
