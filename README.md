@@ -4,12 +4,10 @@ pnpm workspace 组织，组合包 `@ft/dsh-fft-bundle` 是终端用户的安装�
 
 ## 使用方式
 
-安装前置：本机 ssh 能访问私有仓；profile 的 `pnpm-workspace.yaml` 里加 `blockExoticSubdeps: false`。
-
 ### 终端
 
 ```bash
-dsh plugin --profile desktop add git+ssh://git@github.com/gigaflw/dsh-fft-bundle.git#path:packages/dsh-fft-bundle
+dsh plugin --profile desktop add git+ssh://git@github.com/FTShare-Lab/dsh-plugin-fft-bundle.git#path:packages/dsh-fft-bundle
 ```
 
 ### Deepseek 官方 Harness
@@ -19,7 +17,7 @@ DSH 官网：<https://deepseek-harness.github.io/deepseek-harness/>
 「插件管理」里粘贴同一条 spec：
 
 ```
-git+ssh://git@github.com/gigaflw/dsh-fft-bundle.git#path:packages/dsh-fft-bundle
+git+ssh://git@github.com/FTShare-Lab/dsh-plugin-fft-bundle.git#path:packages/dsh-fft-bundle
 ```
 
 重贴同一 spec 即更新到默认分支最新提交；装前先卸掉旧的 `link:` 安装。
