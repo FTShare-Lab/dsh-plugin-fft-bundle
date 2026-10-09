@@ -45,10 +45,6 @@
       "types": "./lib/client.d.ts",
       "default": "./lib/client.js"
     },
-    "./shell": {
-      "types": "./lib/shell.d.ts",
-      "default": "./lib/shell.js"
-    },
     "./client-api": {
       "types": "./lib/rpc.d.ts",
       "default": "./lib/rpc.js"

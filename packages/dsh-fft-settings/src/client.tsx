@@ -4,8 +4,6 @@ import { FTSHARE_SETTINGS_SECTION } from './contract.js'
 import { SETTINGS_CSS } from './styles.js'
 export type { FtshareSettingsClientContext } from './card-registry.js'
 export { FtshareSettingsSection } from './modules/api-key/card.js'
-/** Re-exported so other plugins read the shell protocol instead of re-implementing it (FR-15). */
-export * from './shell.js'
 export const inject = [...new Set(['slots', ...settingsCards.flatMap(card => [...card.inject])])]
 export function apply(ctx: FtshareSettingsClientContext): void { registerFtshareSettings(ctx) }
 export function registerFtshareSettings(ctx: FtshareSettingsClientContext): void {

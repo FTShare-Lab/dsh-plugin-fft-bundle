@@ -4,9 +4,8 @@ export const FTSHARE_API_KEY_REF = 'FTSHARE_API_KEY';
 /**
  * Identity of the settings section that carries this plugin's cards.
  *
- * The id replaces the old `ftshare`; the label is also the brand shown next to
- * the desktop version, while the shell's own `productName` stays `DSH FFT`
- * (spec B.5 Q6 leaves that rename out of scope).
+ * The id replaces the old `ftshare`; the label is the brand this plugin shows
+ * for itself, independent of any host application name.
  */
 export const FTSHARE_SETTINGS_SECTION = { id: 'dsh-fft', order: 120, label: '非凸金融终端' };
 export const FTSHARE_CREDENTIAL_EVENTS = ['credentials/reference-updated'];

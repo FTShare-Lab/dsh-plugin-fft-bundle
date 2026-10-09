@@ -5,8 +5,6 @@ export const SETTINGS_CSS = `
 .ftshare-settings h2 { font-size:26px; margin:4px 0 8px; }
 .ftshare-settings h3 { font-size:15px; margin:0 0 12px; }
 .ftshare-settings p { margin:8px 0; color:var(--ftshare-muted,#aeb2bd); }
-.ftshare-settings .ftshare-version { margin:0 0 4px; color:inherit; font-size:18px; font-weight:600; }
-.ftshare-settings .ftshare-advisory { font-size:13px; color:#e8bf35; }
 .ftshare-settings .ftshare-eyebrow { color:#e8bf35; font-size:11px; letter-spacing:.12em; }
 .ftshare-settings header { display:flex; justify-content:space-between; align-items:flex-start; gap:20px; margin-bottom:20px; }
 .ftshare-settings .ftshare-badge { padding:5px 12px; border:1px solid #585b66; border-radius:20px; white-space:nowrap; }

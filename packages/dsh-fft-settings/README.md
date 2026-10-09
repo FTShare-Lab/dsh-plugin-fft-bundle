@@ -8,19 +8,11 @@
 
 - Host 消费者声明 `inject = ['ftshareSettings']`，通过 `ctx.ftshareSettings.apiKey` 调用；不要依赖插件排列顺序。
 - 包名为 `@ft/dsh-fft-settings`（Host API 服务名 `ftshareSettings`、RPC 路由 `/api/ftshare-settings` 维持不变，旧消费者无需适配），bundle 入口仍为 `cordis.patch.yml`；设置页 ID 为 `dsh-fft`（显示名「非凸金融终端」，`order: 120`），旧 ID `ftshare` 不再注册。
-- 包主入口导出 Host 类型；`/contract` 是浏览器安全的类型、常量和输入校验；`/client-api` 导出 `createApiKeyClient`；`/shell` 导出桌面壳读取封装。
+- 包主入口导出 Host 类型；`/contract` 是浏览器安全的类型、常量和输入校验；`/client-api` 导出 `createApiKeyClient`。
 - `apiVersion = 1`。新增设置领域应新增命名空间；破坏公开语义的修改需要重新评估协议版本。
 - 本仓没有修改 dsh_kline。下面的 kline 代码是接入示例，不代表消费者已经完成适配。
 - 不读取 `.credentials.yaml`、不解析 kline 的旧 JSON 文件、不把 Key 写入普通 settings 或 localStorage，不通过修改全局 `process.env` 同步运行中消费者。
-
-### 应用版本与更新能力（桌面壳）
-
-设置页「非凸金融终端」最上方的版本与「检查更新」卡片只消费**桌面壳**的状态，不经过本插件的 Host RPC：Host RPC 面没有新增方法，版本与更新状态也不走 `/api/ftshare-settings`。
-
-- 来源是 Electron 预加载脚本注入的页面全局对象 `window.dshFft`（协议版本 1；完整契约见父仓 `dsh-ft` 的 `docs/specs/desktop-auto-update/spec.md` §2.9，该 spec 属父仓桌面壳工程，不随本包迁入）。壳只暴露版本读取、能力查询、状态订阅与 `check`/`download`/`install`/`skip` 四个动作；动作**受理即返回、不承载结果**，结果一律等订阅推送。
-- 其他插件的浏览器侧代码应 `import { createShellReader } from '@ft/dsh-fft-settings/shell'`（包客户端入口也再导出），不要各自复刻壳协议，也不要另开一条读取版本的通路。
-- **无桌面运行时**（纯浏览器打开 Host）该全局不存在，卡片必须照常渲染：`createShellReader()` 仍然可用，`appInfo()` 返回 `undefined`（版本**不可知**，界面显示「版本未知」而不是空版本号或 `undefined`），`capability()` 返回 `{ supported: false, reason: '当前环境不提供版本信息' }`，`subscribe()` 返回空取消函数，四个动作是空操作。读取封装自身不抛错，壳报错或返回畸形数据时都退化为上述默认值。
-- 更新能力与原因文案由壳给出（平台不支持、开发运行、构建不含更新通道等）；插件只如实展示，不自行推断运行环境。能力不可用时版本照常显示，入口禁用并给出原因。
+- 设置页只有访问凭据一张卡；本插件不展示应用版本，也不提供检查更新入口。
 
 ## Host API v1
 
@@ -220,13 +212,13 @@ pnpm typecheck
 pnpm test
 ```
 
-Node >=22.19。`test` 先构建，再运行 Node 测试：Cordis 服务生命周期、存储来源与事件、远端／Key 独立验证、节假日空数据成功、业务错误与网络错误、响应限额、并发与旧结果隔离、RPC 白名单、页面状态模型，以及桌面壳读取封装的无壳降级、版本／能力读取、状态到文案与可用性的映射（含 2.10 的降级矩阵）。默认全部使用模拟凭据／响应，不发真实 FTShare 请求，不读取用户真实 Key。发布前若需真实联调，应使用明确授权的 Key，记录已验证接口及时间，不输出 Key。
+Node >=22.19。`test` 先构建，再运行 Node 测试：Cordis 服务生命周期、存储来源与事件、远端／Key 独立验证、节假日空数据成功、业务错误与网络错误、响应限额、并发与旧结果隔离、RPC 白名单、页面状态模型。默认全部使用模拟凭据／响应，不发真实 FTShare 请求，不读取用户真实 Key。发布前若需真实联调，应使用明确授权的 Key，记录已验证接口及时间，不输出 Key。
 
-实现入口：`src/index.ts` 通用 Host 装配；`src/rpc-core.ts` 通用 RPC 白名单分发；`src/client.tsx` 通用设置页；`src/modules.ts` 和 `src/cards.ts` 分别登记 Host 模块与浏览器卡片。API Key 模块位于 `src/modules/api-key/`，复用 `src/api-key.ts` 的凭据协调、`src/probe.ts` 的探测和 `src/settings-model.ts` 的页面状态模型。版本与更新卡片位于 `src/modules/app-version/`，只读桌面壳，无 Host 模块；`src/shell.ts` 是浏览器安全的壳读取封装。`src/rpc.ts` 保留现有 `/client-api` 导出的兼容入口。
+实现入口：`src/index.ts` 通用 Host 装配；`src/rpc-core.ts` 通用 RPC 白名单分发；`src/client.tsx` 通用设置页；`src/modules.ts` 和 `src/cards.ts` 分别登记 Host 模块与浏览器卡片。API Key 模块位于 `src/modules/api-key/`，复用 `src/api-key.ts` 的凭据协调、`src/probe.ts` 的探测和 `src/settings-model.ts` 的页面状态模型。`src/rpc.ts` 保留现有 `/client-api` 导出的兼容入口。
 
 ### 新增一种设置：添加模块，再登记条目
 
-当前注册 API Key 与桌面壳版本／检查更新两张卡片，没有增加主题设置，也未改变 API Key 的公共方法、RPC 路径或页面操作。版本与更新卡片按上面的约定**只有浏览器侧**（`cards.ts` 登记，`modules.ts` 不登记）：它的数据来自桌面壳而非 Host 服务。
+当前只注册 API Key 一张卡片，没有增加主题设置，也未改变 API Key 的公共方法、RPC 路径或页面操作。
 
 Host 与浏览器必须分别注册。只添加一种设置时，不修改通用入口、通用 RPC、通用页面或已有 API Key 模块：
 
