@@ -8,7 +8,7 @@
  * from the DSH credentials document themselves, so no Cordis service, no HTTP
  * route, and no extra process is involved.
  *
- * @module @ft/dsh-fft-intake
+ * @module @ft/dsh-fft-factor-intake-standard
  */
 
 import { readFile } from 'node:fs/promises'
@@ -110,7 +110,7 @@ function stripFrontmatter(text) {
 }
 
 /** Cordis plugin name. */
-export const name = '@ft/dsh-fft-intake'
+export const name = '@ft/dsh-fft-factor-intake-standard'
 
 /** The bundled provider is only useful next to the skill registry. */
 export const inject = ['skills']
@@ -119,7 +119,7 @@ export const inject = ['skills']
 export function apply(ctx) {
   if (typeof ctx.skills?.registerProvider !== 'function') {
     throw new Error(
-      '@ft/dsh-fft-intake requires the skill registry (@deepseek-ai/dsh-skill, service `skills`) in this composition',
+      '@ft/dsh-fft-factor-intake-standard requires the skill registry (@deepseek-ai/dsh-skill, service `skills`) in this composition',
     )
   }
   ctx.skills.registerProvider(() => provider)

@@ -1,5 +1,5 @@
 {
-  "name": "@ft/dsh-fft-intake",
+  "name": "@ft/dsh-fft-factor-intake-standard",
   "version": "0.1.0",
   "description": "Bundled factor-intake skill for the FT financial workbench: evaluate and ingest alpha factors locally, with the FTShare credential read from the DSH credentials document.",
   "type": "module",

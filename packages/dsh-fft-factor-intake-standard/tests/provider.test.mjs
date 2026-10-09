@@ -21,7 +21,7 @@ const PACKAGE_ROOT = dirname(dirname(fileURLToPath(import.meta.url)))
 const SKILL_DIR = join(PACKAGE_ROOT, 'skills', SKILL_NAME)
 
 test('plugin exports the cordis contract', () => {
-  assert.equal(name, '@ft/dsh-fft-intake')
+  assert.equal(name, '@ft/dsh-fft-factor-intake-standard')
   assert.deepEqual(inject, ['skills'])
   assert.equal(typeof apply, 'function')
 })

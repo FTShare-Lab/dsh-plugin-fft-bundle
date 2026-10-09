@@ -1,11 +1,11 @@
-# @ft/dsh-fft-intake
+# @ft/dsh-fft-factor-intake-standard
 
 FT 因子入库技能（`factor-intake-standard`）的 DSH 插件包：`dsh plugin add` 一次之后，每个会话的技能目录里就有「因子入库」，不需要手工往 `$DSH_HOME/skills` 拷文件。
 
 ## 使用方式
 
 ```bash
-dsh plugin --profile desktop add git+ssh://git@github.com/gigaflw/dsh-fft-bundle.git#path:packages/dsh-fft-intake
+dsh plugin --profile desktop add git+ssh://git@github.com/gigaflw/dsh-fft-bundle.git#path:packages/dsh-fft-factor-intake-standard
 ```
 
 装上后模型用 `skill` 工具加载，或直接 `/factor-intake-standard`。
@@ -20,7 +20,7 @@ dsh plugin --profile desktop add git+ssh://git@github.com/gigaflw/dsh-fft-bundle
 
 ```bash
 pnpm install
-pnpm -C packages/dsh-fft-intake test
+pnpm -C packages/dsh-fft-factor-intake-standard test
 ```
 
 本包没有构建步骤：入口 `src/index.js` 直接发布，`lib/` 不存在，git 安装不需要安装期构建。

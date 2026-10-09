@@ -8,7 +8,7 @@ overrides:
   '@deepseek-ai/cordis': 4.0.4
   '@ft/dsh-fft-settings': link:packages/dsh-fft-settings
   '@ft/dsh-fft-research-cockpit': link:packages/dsh-fft-research-cockpit
-  '@ft/dsh-fft-intake': link:packages/dsh-fft-intake
+  '@ft/dsh-fft-factor-intake-standard': link:packages/dsh-fft-factor-intake-standard
 
 importers:
 
@@ -16,9 +16,9 @@ importers:
 
   packages/dsh-fft-bundle:
     dependencies:
-      '@ft/dsh-fft-intake':
-        specifier: link:../dsh-fft-intake
-        version: link:../dsh-fft-intake
+      '@ft/dsh-fft-factor-intake-standard':
+        specifier: link:../dsh-fft-factor-intake-standard
+        version: link:../dsh-fft-factor-intake-standard
       '@ft/dsh-fft-research-cockpit':
         specifier: link:../dsh-fft-research-cockpit
         version: link:../dsh-fft-research-cockpit
@@ -36,7 +36,7 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
-  packages/dsh-fft-intake:
+  packages/dsh-fft-factor-intake-standard:
     dependencies:
       '@deepseek-ai/dsh-skill':
         specifier: '>=0.2.0-rc.2'

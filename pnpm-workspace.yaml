@@ -8,4 +8,4 @@ overrides:
   # （另有 kline 指向上游仓，不随本仓改名）。
   '@ft/dsh-fft-settings': link:packages/dsh-fft-settings
   '@ft/dsh-fft-research-cockpit': link:packages/dsh-fft-research-cockpit
-  '@ft/dsh-fft-intake': link:packages/dsh-fft-intake
+  '@ft/dsh-fft-factor-intake-standard': link:packages/dsh-fft-factor-intake-standard
