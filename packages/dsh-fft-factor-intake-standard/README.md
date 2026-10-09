@@ -5,7 +5,7 @@ FT 因子入库技能（`factor-intake-standard`）的 DSH 插件包：`dsh plug
 ## 使用方式
 
 ```bash
-dsh plugin --profile desktop add git+ssh://git@github.com/gigaflw/dsh-fft-bundle.git#path:packages/dsh-fft-factor-intake-standard
+dsh plugin --profile desktop add git+ssh://git@github.com/FTShare-Lab/dsh-plugin-fft-bundle.git#path:packages/dsh-fft-factor-intake-standard
 ```
 
 装上后模型用 `skill` 工具加载，或直接 `/factor-intake-standard`。

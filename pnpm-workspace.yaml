@@ -3,7 +3,9 @@ packages:
 overrides:
   '@deepseek-ai/cordis': 4.0.4
   # 本仓插件包的 dependencies 指向本仓 git 地址（`dsh plugin add` 一条 spec 装全套时
-  # pnpm 顺藤摸瓜）；本地开发用 link 覆盖，否则 dev 会去 GitHub 取旧提交。
+  # pnpm 顺藤摸瓜）；本地开发用 link 覆盖，否则 dev 会去远端取已推送的提交，
+  # 看不到本地未推送的改动。
+  # public 侧全部指 GitHub。
   # 仓库改名时须同步：此处 3 条 + packages/*/package.json 内的 3 处 `#path:` 地址
   # （另有 kline 指向上游仓，不随本仓改名）。
   '@ft/dsh-fft-settings': link:packages/dsh-fft-settings
