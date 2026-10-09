@@ -6,6 +6,8 @@ tmp/
 .DS_Store
 # 本地发布凭据与群 ID（如 RN_LARK_CHAT_ID），禁止入库。
 /.env
+# 待发布条目的本地草稿：只存在于本机，定版后才写进 docs/releases.md。
+docs/releases.draft.md
 # Python bytecode from running the packaged skill scripts in place.
 __pycache__/
 *.pyc
