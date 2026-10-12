@@ -1,4 +1,5 @@
 import type { Context } from '@deepseek-ai/cordis';
+import type { Logger } from '@deepseek-ai/cordis';
 import type { Config } from './config.js';
 import type { JsonRecord, PermissionNotice, Provenance } from './types.js';
 /**
@@ -80,5 +81,5 @@ export interface PortfolioRecommendationResult {
     freshness: JsonRecord;
     report?: JsonRecord;
 }
-export declare function generatePortfolioRecommendation(ctx: Context, input: PortfolioRecommendationArgs, signal: AbortSignal, config: Config): Promise<PortfolioRecommendationResult>;
+export declare function generatePortfolioRecommendation(ctx: Context, input: PortfolioRecommendationArgs, signal: AbortSignal, config: Config, logger?: Logger): Promise<PortfolioRecommendationResult>;
 //# sourceMappingURL=portfolio-recommendation.d.ts.map

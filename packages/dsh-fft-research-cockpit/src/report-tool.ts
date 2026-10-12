@@ -1,4 +1,4 @@
-import type { Context } from '@deepseek-ai/cordis'
+import type { Context, Logger } from '@deepseek-ai/cordis'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { ParameterSchemaSpec, ToolRunContext, ValueSchemaSpec } from '@deepseek-ai/dsh-tools'
 
@@ -128,7 +128,7 @@ function renderRecommendation(value: Record<string, unknown>): Array<{ type: 'te
   return [{ type: 'text', text: lines.join('\n') }]
 }
 
-function register(ctx: Context, config: Config, name: string, fixedType?: ReportType): void {
+function register(ctx: Context, config: Config, name: string, logger?: Logger, fixedType?: ReportType): void {
   const parameters: ParameterSchemaSpec = fixedType
     ? Object.fromEntries(Object.entries(commonParameters).filter(([key]) => key !== 'reportType')) as ParameterSchemaSpec
     : commonParameters
@@ -144,15 +144,15 @@ function register(ctx: Context, config: Config, name: string, fixedType?: Report
     async execute(args: unknown, exec: ToolRunContext): Promise<any> {
       const input = args as Record<string, unknown>
       const request = fixedType ? { ...input, reportType: fixedType } : input
-      if (fixedType === 'deep_read') return generateDeepReadReport(ctx, request as { symbol: string; asOf?: string }, exec.signal, config) as any
-      return generateInvestmentReport(ctx, request as any, exec.signal, config) as any
+      if (fixedType === 'deep_read') return generateDeepReadReport(ctx, request as { symbol: string; asOf?: string }, exec.signal, config, logger) as any
+      return generateInvestmentReport(ctx, request as any, exec.signal, config, logger) as any
     },
   }))
 }
 
-export function registerReportTool(ctx: Context, config: Config): void {
-  register(ctx, config, 'generate_investment_report')
-  for (const reportType of REPORT_TYPES) register(ctx, config, `generate_${reportType}_report`, reportType)
+export function registerReportTool(ctx: Context, config: Config, logger?: Logger): void {
+  register(ctx, config, 'generate_investment_report', logger)
+  for (const reportType of REPORT_TYPES) register(ctx, config, `generate_${reportType}_report`, logger, reportType)
   ctx.tools.register(defineTool({
     name: 'generate_portfolio_recommendation',
     description: '从中证1000或用户自定义股票池中构建可解释的股票组合推荐；先筛选候选，再按主题/分散/风险权重生成组合，可选继续生成股票组合报告。',
@@ -167,7 +167,7 @@ export function registerReportTool(ctx: Context, config: Config): void {
       },
     },
     async execute(args: unknown, exec: ToolRunContext): Promise<any> {
-      return generatePortfolioRecommendation(ctx, args as any, exec.signal, config)
+      return generatePortfolioRecommendation(ctx, args as any, exec.signal, config, logger)
     },
   }))
 }

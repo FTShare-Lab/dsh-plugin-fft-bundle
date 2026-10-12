@@ -1,3 +1,4 @@
+import type { Logger } from '@deepseek-ai/cordis';
 import type { JsonRecord } from './types.js';
 import type { PermissionNotice } from './types.js';
 /** FTShare subscription tiers, ordered from lowest to highest access. */
@@ -54,10 +55,11 @@ export interface FtShareSession {
  * lower-tier endpoint succeeds, so reports can explain the downgrade and link
  * to the subscription page.
  */
-export declare function callWithSubscriptionFallback(session: FtShareSession, candidates: FtShareCallCandidate[], signal: AbortSignal): Promise<FtShareCallResult>;
+export declare function callWithSubscriptionFallback(session: FtShareSession, candidates: FtShareCallCandidate[], signal: AbortSignal, logger?: Logger): Promise<FtShareCallResult>;
 export declare class FtShareClient {
     private readonly endpoint;
-    constructor(endpoint: string, configuredApiKey?: string);
+    private readonly logger?;
+    constructor(endpoint: string, configuredApiKey?: string, logger?: Logger | undefined);
     private readonly headers;
     withSession<T>(signal: AbortSignal, fn: (session: FtShareSession) => Promise<T>): Promise<T>;
 }

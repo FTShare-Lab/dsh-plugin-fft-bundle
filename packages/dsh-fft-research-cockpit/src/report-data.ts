@@ -1,5 +1,6 @@
 import { FtShareError, callWithSubscriptionFallback, isFtSharePermissionError, permissionNotices, type FtShareCallCandidate, type FtShareSession } from './ftshare-client.js'
 import { loadSnapshot, rows } from './ftshare-data.js'
+import type { Logger } from '@deepseek-ai/cordis'
 import type { Config } from './config.js'
 import type { JsonRecord, PermissionNotice, Provenance, ReportRequest, ReportType, SectorConstituent, Snapshot } from './types.js'
 
@@ -147,7 +148,8 @@ async function optionalCall(
   toolOrCandidates: string | FtShareCallCandidate[],
   arguments_: JsonRecord | undefined,
   signal: AbortSignal,
-  state: Pick<ReportFacts, 'permissions' | 'blockedPermissions' | 'dataGaps' | 'warnings' | 'provenance'>,
+  state: Pick<ReportFacts, 'reportType' | 'permissions' | 'blockedPermissions' | 'dataGaps' | 'warnings' | 'provenance'>,
+  logger?: Logger,
 ): Promise<JsonRecord | null> {
   const candidates: FtShareCallCandidate[] = typeof toolOrCandidates === 'string'
     ? [{ tool: toolOrCandidates, arguments_: arguments_ ?? {} }]
@@ -155,7 +157,7 @@ async function optionalCall(
   try {
     const result = await (async () => {
       for (let attempt = 0; ; attempt++) {
-        try { return await callWithSubscriptionFallback(session, candidates, signal) }
+        try { return await callWithSubscriptionFallback(session, candidates, signal, logger) }
         catch (error) {
           if (!(error instanceof FtShareError) || error.code !== 'UPSTREAM_UNAVAILABLE' || attempt >= 2 || signal.aborted) throw error
           await new Promise(resolve => setTimeout(resolve, 250 * (attempt + 1)))
@@ -178,6 +180,13 @@ async function optionalCall(
   } catch (error) {
     if (isFtSharePermissionError(error)) {
       const notices = permissionNotices(error)
+      logger?.warn('ftshare.permission_denied', {
+        section: state.reportType,
+        tools: candidates.map(item => item.tool),
+        code: notices[0]?.code,
+        requiredPlan: notices[0]?.requiredPlan,
+        errorType: 'permission_denied',
+      })
       state.permissions.push(...notices)
       state.blockedPermissions.push(...notices)
       state.dataGaps.push(...notices.map(item => item.message))
@@ -196,7 +205,8 @@ async function loadStockSnapshots(
   asOf: string,
   config: Config,
   signal: AbortSignal,
-  state: Pick<ReportFacts, 'permissions' | 'blockedPermissions' | 'dataGaps' | 'warnings' | 'provenance'>,
+  state: Pick<ReportFacts, 'reportType' | 'permissions' | 'blockedPermissions' | 'dataGaps' | 'warnings' | 'provenance'>,
+  logger?: Logger,
 ): Promise<Snapshot[]> {
   const normalized = unique(symbols.map(value => value.trim()).filter(Boolean), value => value)
   const loaded = await Promise.all(normalized.slice(0, 30).map(async symbol => {
@@ -209,6 +219,7 @@ async function loadStockSnapshots(
         signal,
         config.announcementLookbackDays,
         { includeExtendedFacts: true },
+        logger,
       )
       state.permissions.push(...snapshot.permissions)
       state.blockedPermissions.push(...(snapshot.blockedPermissions ?? []))
@@ -219,6 +230,13 @@ async function loadStockSnapshots(
     } catch (error) {
       if (isFtSharePermissionError(error)) {
         const notices = permissionNotices(error)
+        logger?.warn('ftshare.permission_denied', {
+          section: state.reportType,
+          symbol,
+          code: notices[0]?.code,
+          requiredPlan: notices[0]?.requiredPlan,
+          errorType: 'permission_denied',
+        })
         state.permissions.push(...notices)
         state.blockedPermissions.push(...notices)
         state.dataGaps.push(...notices.map(item => item.message))
@@ -238,7 +256,8 @@ async function loadMarketFacts(
   asOf: string,
   phase: ReportRequest['phase'],
   signal: AbortSignal,
-  state: Pick<ReportFacts, 'market' | 'indices' | 'sectors' | 'flows' | 'limits' | 'announcements' | 'news' | 'raw' | 'permissions' | 'blockedPermissions' | 'dataGaps' | 'warnings' | 'provenance'>,
+  state: Pick<ReportFacts, 'reportType' | 'market' | 'indices' | 'sectors' | 'flows' | 'limits' | 'announcements' | 'news' | 'raw' | 'permissions' | 'blockedPermissions' | 'dataGaps' | 'warnings' | 'provenance'>,
+  logger?: Logger,
 ): Promise<void> {
   const day = date8(asOf)
   const range = dateRange(asOf, 30)
@@ -263,8 +282,8 @@ async function loadMarketFacts(
       ? await optionalCall(session, [
         { tool: 'ft_v3_announcements_stock_announcements', plan: 'Basic', arguments_: args },
         { tool: 'ft_v1_report_announcements_list', plan: 'Free', arguments_: { date: day, page: 1, page_size: 100 } },
-      ], undefined, signal, state)
-      : await optionalCall(session, tool, args, signal, state),
+      ], undefined, signal, state, logger)
+      : await optionalCall(session, tool, args, signal, state, logger),
   })))
   for (const result of results) {
     if (!result.value) continue
@@ -285,23 +304,23 @@ async function loadMarketFacts(
   }
   const hasAggregate = state.market.some(row => ['up_count', 'down_count', 'flat_count', 'limit_up_count', 'limit_down_count'].some(key => row[key] !== undefined))
   if (!hasAggregate) {
-    const snapshot = await optionalCall(session, 'ft_v1_daec_market_snapshot', { trade_date: fallbackDay }, signal, state)
+    const snapshot = await optionalCall(session, 'ft_v1_daec_market_snapshot', { trade_date: fallbackDay }, signal, state, logger)
     if (snapshot) { state.market.push(...flattenRows(snapshot)); clearEmpty('ft_v1_daec_market_snapshot') }
   }
   if (!state.indices.length) {
-    const indices = await optionalCall(session, 'ft_v1_eastmoney_market_valuation', { trade_date: fallbackDay, page: 1, page_size: 100 }, signal, state)
+    const indices = await optionalCall(session, 'ft_v1_eastmoney_market_valuation', { trade_date: fallbackDay, page: 1, page_size: 100 }, signal, state, logger)
     if (indices) { state.indices.push(...flattenRows(indices)); clearEmpty('ft_v1_eastmoney_market_valuation') }
   }
   if (!state.flows.length) {
     const [stockFlows, marketFlows] = await Promise.all([
-      optionalCall(session, 'ft_v1_stock_capital_flows', { date: fallbackDay, page: 1, page_size: 100 }, signal, state),
-      optionalCall(session, 'ft_v2_eastmoney_dapan_flow', { start_date: fallbackDay, end_date: fallbackDay, page: 1, page_size: 100 }, signal, state),
+      optionalCall(session, 'ft_v1_stock_capital_flows', { date: fallbackDay, page: 1, page_size: 100 }, signal, state, logger),
+      optionalCall(session, 'ft_v2_eastmoney_dapan_flow', { start_date: fallbackDay, end_date: fallbackDay, page: 1, page_size: 100 }, signal, state, logger),
     ])
     if (stockFlows) { state.flows.push(...flattenRows(stockFlows)); clearEmpty('ft_v1_stock_capital_flows') }
     if (marketFlows) { state.flows.push(...flattenRows(marketFlows)); clearEmpty('ft_v2_eastmoney_dapan_flow') }
   }
   if (!state.limits.length) {
-    const limits = await optionalCall(session, 'ft_v1_limit_list', { limit_type: 'up', trade_date: fallbackDay }, signal, state)
+    const limits = await optionalCall(session, 'ft_v1_limit_list', { limit_type: 'up', trade_date: fallbackDay }, signal, state, logger)
     if (limits) { state.limits.push(...flattenRows(limits)); clearEmpty('ft_v1_limit_list') }
   }
   if (fallbackAsOf !== asOf && (state.market.length || state.indices.length || state.flows.length || state.limits.length)) {
@@ -313,7 +332,7 @@ async function loadMarketFacts(
   // resolve today's quote/candle facts so the ETF section is populated from
   // FTShare instead of silently rendering an empty shell.
   if (phase === 'midday' || phase === 'after_close' || phase == null) {
-    await loadMarketEtfFacts(session, asOf, signal, state)
+    await loadMarketEtfFacts(session, asOf, signal, state, logger)
   }
 }
 
@@ -321,9 +340,10 @@ async function loadMarketEtfFacts(
   session: FtShareSession,
   asOf: string,
   signal: AbortSignal,
-  state: Pick<ReportFacts, 'market' | 'raw' | 'permissions' | 'blockedPermissions' | 'dataGaps' | 'warnings' | 'provenance'>,
+  state: Pick<ReportFacts, 'reportType' | 'market' | 'raw' | 'permissions' | 'blockedPermissions' | 'dataGaps' | 'warnings' | 'provenance'>,
+  logger?: Logger,
 ): Promise<void> {
-  const descriptions = await optionalCall(session, 'ft_v2_etf_description_all', { page: 1, page_size: 80 }, signal, state)
+  const descriptions = await optionalCall(session, 'ft_v2_etf_description_all', { page: 1, page_size: 80 }, signal, state, logger)
   if (!descriptions) return
   const descriptionRows = flattenRows(descriptions)
   state.raw.ft_v2_etf_description_all = descriptions
@@ -339,7 +359,7 @@ async function loadMarketEtfFacts(
   ).slice(0, 20)
   if (symbols.length === 0) return
 
-  const realtime = await optionalCall(session, 'ft_v4_etf_realtime_day_kline', { symbols }, signal, state)
+  const realtime = await optionalCall(session, 'ft_v4_etf_realtime_day_kline', { symbols }, signal, state, logger)
   if (realtime) {
     state.raw.ft_v4_etf_realtime_day_kline = realtime
     state.market.push(...flattenRows(realtime).map(row => ({ ...row, asset_type: 'etf' })))
@@ -358,7 +378,7 @@ async function loadMarketEtfFacts(
       until_ts_millis: timestampForDate(range.until, true),
       adjust_kind: 'Forward',
       limit: 60,
-    }, signal, state)
+    }, signal, state, logger)
     return value ? flattenRows(value).map(row => ({ ...row, symbol, asset_type: 'etf' })) : []
   }))
   state.market.push(...candleRows.flat())
@@ -369,7 +389,8 @@ async function loadSectorFacts(
   request: ReportRequest,
   asOf: string,
   signal: AbortSignal,
-  state: Pick<ReportFacts, 'sectors' | 'constituents' | 'flows' | 'news' | 'raw' | 'permissions' | 'blockedPermissions' | 'dataGaps' | 'warnings' | 'provenance'>,
+  state: Pick<ReportFacts, 'reportType' | 'sectors' | 'constituents' | 'flows' | 'news' | 'raw' | 'permissions' | 'blockedPermissions' | 'dataGaps' | 'warnings' | 'provenance'>,
+  logger?: Logger,
 ): Promise<void> {
   const day = date8(asOf)
   const sectorName = request.sectorName?.trim()
@@ -377,7 +398,7 @@ async function loadSectorFacts(
   // Resolve the THS industry code first.  The report request uses an
   // Eastmoney BK code, while the historical board K-line endpoint uses a THS
   // numeric code (for example 电力 -> 881145).
-  const boardList = await optionalCall(session, 'ft_v1_ths_board_list', {}, signal, state)
+  const boardList = await optionalCall(session, 'ft_v1_ths_board_list', {}, signal, state, logger)
   const boardRows = flattenRows(boardList)
   const normalizeLabel = (value: unknown): string => String(value ?? '').trim().toLowerCase().replace(/[\s_-]+/g, '')
   const requestedNames = new Set([sectorName, sectorCode].filter(Boolean).map(normalizeLabel))
@@ -409,8 +430,8 @@ async function loadSectorFacts(
     tool,
     bucket,
     value: tool === klineCandidates[0]?.tool
-      ? await optionalCall(session, klineCandidates, undefined, signal, state)
-      : await optionalCall(session, tool, args, signal, state),
+      ? await optionalCall(session, klineCandidates, undefined, signal, state, logger)
+      : await optionalCall(session, tool, args, signal, state, logger),
   })))
   for (const result of results) {
     if (!result.value) continue
@@ -445,15 +466,15 @@ async function loadSectorFacts(
   }
   if (!state.flows.some(row => row.sector_name || row.sector_code)) {
     const [thsFlow, eastmoneyFlow] = await Promise.all([
-      optionalCall(session, 'ft_v1_ths_industry_daily_flow', { start_date: fallbackDay, end_date: fallbackDay, sector_name: sectorName, page: 1, page_size: 500 }, signal, state),
-      optionalCall(session, 'ft_v1_eastmoney_sector_flow', { sector_code: sectorCode, sector_type: 'industry', trade_date: fallbackDay, page: 1, page_size: 200 }, signal, state),
+      optionalCall(session, 'ft_v1_ths_industry_daily_flow', { start_date: fallbackDay, end_date: fallbackDay, sector_name: sectorName, page: 1, page_size: 500 }, signal, state, logger),
+      optionalCall(session, 'ft_v1_eastmoney_sector_flow', { sector_code: sectorCode, sector_type: 'industry', trade_date: fallbackDay, page: 1, page_size: 200 }, signal, state, logger),
     ])
     if (thsFlow) { state.flows.push(...flattenRows(thsFlow)); clearEmptyNotice('ft_v1_ths_industry_daily_flow') }
     if (eastmoneyFlow) { state.flows.push(...flattenRows(eastmoneyFlow)); clearEmptyNotice('ft_v1_eastmoney_sector_flow') }
     if (thsFlow || eastmoneyFlow) state.warnings.push(`FTShare ${day} 尚无已发布板块资金快照，已使用 ${fallbackDay} 最近可用数据。`)
   }
   if (!state.sectors.some(row => row.industryName || row.industryCode || row.industry_name || row.industry_code || row.sector_name || row.sector_code)) {
-    const overview = await optionalCall(session, 'ft_v1_sw_industry_overview', { date: fallbackDay, level: 2, page: 1, page_size: 200 }, signal, state)
+    const overview = await optionalCall(session, 'ft_v1_sw_industry_overview', { date: fallbackDay, level: 2, page: 1, page_size: 200 }, signal, state, logger)
     if (overview) { state.sectors.push(...flattenRows(overview)); clearEmptyNotice('ft_v1_sw_industry_overview'); state.warnings.push(`FTShare ${day} 尚无申万行业估值快照，已使用 ${fallbackDay} 最近可用数据。`) }
   }
 
@@ -464,7 +485,7 @@ async function loadSectorFacts(
   const classifications: JsonRecord[] = Array.isArray(state.raw.sector_classifications) ? [...state.raw.sector_classifications] : []
   if (parentCode && state.raw.sector_classifications_complete !== true) {
     for (let page = Number(state.raw.sector_classifications_next_page ?? 1); page <= 50; page++) {
-      const value = await optionalCall(session, 'ft_v1_sw_industry_constituent_history', { industry_code: parentCode, page, page_size: 100 }, signal, state)
+      const value = await optionalCall(session, 'ft_v1_sw_industry_constituent_history', { industry_code: parentCode, page, page_size: 100 }, signal, state, logger)
       const found = flattenRows(value)
       classifications.push(...found)
       const metadata = value?.metadata as JsonRecord | undefined
@@ -483,7 +504,7 @@ async function loadSectorFacts(
   if (!memberSymbols.length) return
   // Request the highest tier, but historical breadth always uses a common
   // closing date. Fetch every constituent with bounded concurrency.
-  const realtime = await optionalCall(session, 'ft_v4_stock_realtime_day_kline', { symbols: memberSymbols }, signal, state)
+  const realtime = await optionalCall(session, 'ft_v4_stock_realtime_day_kline', { symbols: memberSymbols }, signal, state, logger)
   const historyRows: JsonRecord[] = Array.isArray(state.raw.sector_member_history) ? [...state.raw.sector_member_history] : []
   const loadedSymbols = new Set(historyRows.map(row => String(row.symbol)))
   const pendingSymbols = memberSymbols.filter(symbol => !loadedSymbols.has(symbol))
@@ -495,10 +516,10 @@ async function loadSectorFacts(
       const symbol = pendingSymbols[next++]
       const history = await optionalCall(session, 'ft_v1_stock_candlesticks', {
         symbol, interval_unit: 'Day', since_ts_millis: timestampForDate(range.since), until_ts_millis: timestampForDate(asOf, true), adjust_kind: 'Forward', limit: 65,
-      }, signal, state)
+      }, signal, state, logger)
       historyRows.push(...flattenKlineRows(history, 'stock').map(row => ({ ...row, symbol })))
       if (!history) {
-        const company = await optionalCall(session, 'ft_v1_company_list', { stock_code: symbol.split('.')[0], page: 1, page_size: 1 }, signal, state)
+        const company = await optionalCall(session, 'ft_v1_company_list', { stock_code: symbol.split('.')[0], page: 1, page_size: 1 }, signal, state, logger)
         companyRows.push(...flattenRows(company))
       }
     }
@@ -512,7 +533,8 @@ async function loadLimitFacts(
   session: FtShareSession,
   asOf: string,
   signal: AbortSignal,
-  state: Pick<ReportFacts, 'limits' | 'announcements' | 'news' | 'raw' | 'permissions' | 'blockedPermissions' | 'dataGaps' | 'warnings' | 'provenance'>,
+  state: Pick<ReportFacts, 'reportType' | 'limits' | 'announcements' | 'news' | 'raw' | 'permissions' | 'blockedPermissions' | 'dataGaps' | 'warnings' | 'provenance'>,
+  logger?: Logger,
 ): Promise<void> {
   const day = date8(asOf)
   const calls: Array<[string, JsonRecord, 'limits' | 'announcements' | 'news']> = [
@@ -529,8 +551,8 @@ async function loadLimitFacts(
       ? await optionalCall(session, [
         { tool: 'ft_v3_announcements_stock_announcements', plan: 'Basic', arguments_: args },
         { tool: 'ft_v1_report_announcements_list', plan: 'Free', arguments_: { date: day, page: 1, page_size: 200 } },
-      ], undefined, signal, state)
-      : await optionalCall(session, tool, args, signal, state),
+      ], undefined, signal, state, logger)
+      : await optionalCall(session, tool, args, signal, state, logger),
   })))
   for (const result of results) {
     if (!result.value) continue
@@ -545,17 +567,18 @@ async function loadEtfFacts(
   asOf: string,
   config: Config,
   signal: AbortSignal,
-  state: Pick<ReportFacts, 'market' | 'indices' | 'raw' | 'permissions' | 'blockedPermissions' | 'dataGaps' | 'warnings' | 'provenance'>,
+  state: Pick<ReportFacts, 'reportType' | 'market' | 'indices' | 'raw' | 'permissions' | 'blockedPermissions' | 'dataGaps' | 'warnings' | 'provenance'>,
+  logger?: Logger,
 ): Promise<void> {
   const range = dateRange(asOf, config.maxKlineDays)
   const normalized = unique(symbols.map(normalizeStockSymbol), value => value).slice(0, 30)
-  const descriptions = await optionalCall(session, 'ft_v2_etf_description_all', { page: 1, page_size: 50 }, signal, state)
+  const descriptions = await optionalCall(session, 'ft_v2_etf_description_all', { page: 1, page_size: 50 }, signal, state, logger)
   if (descriptions) {
     state.raw.ft_v2_etf_description_all = descriptions
     state.market.push(...flattenRows(descriptions).map(row => ({ ...row, asset_type: 'etf' })))
   }
   if (asOf === new Date().toISOString().slice(0, 10) && normalized.length > 0) {
-    const realtime = await optionalCall(session, 'ft_v4_etf_realtime_day_kline', { symbols: normalized }, signal, state)
+    const realtime = await optionalCall(session, 'ft_v4_etf_realtime_day_kline', { symbols: normalized }, signal, state, logger)
     if (realtime) {
       state.raw.ft_v4_etf_realtime_day_kline = realtime
       state.indices.push(...flattenKlineRows(realtime, 'etf'))
@@ -571,7 +594,7 @@ async function loadEtfFacts(
       until_ts_millis: timestampForDate(range.until, true),
       adjust_kind: 'Forward',
       limit: 500,
-    }, signal, state),
+    }, signal, state, logger),
   })))
   for (const result of results) {
     if (!result.value) continue
@@ -587,6 +610,7 @@ export async function loadReportFacts(
   config: Config,
   signal: AbortSignal,
   previous?: ReportFacts,
+  logger?: Logger,
 ): Promise<ReportFacts> {
   const state: ReportFacts = {
     reportType: request.reportType,
@@ -615,19 +639,19 @@ export async function loadReportFacts(
   ].map(value => value.trim()).filter(Boolean), value => value)
 
   if (['deep_read', 'holding_analysis', 'portfolio_stocks', 'review'].includes(request.reportType)) {
-    state.snapshots = await loadStockSnapshots(session, symbols, asOf, config, signal, state)
+    state.snapshots = await loadStockSnapshots(session, symbols, asOf, config, signal, state, logger)
   }
   if (request.reportType === 'portfolio_etfs') {
-    await loadEtfFacts(session, symbols, asOf, config, signal, state)
+    await loadEtfFacts(session, symbols, asOf, config, signal, state, logger)
   }
   if (['market_commentary', 'review', 'limit_up_attribution'].includes(request.reportType)) {
-    await loadMarketFacts(session, asOf, request.phase, signal, state)
+    await loadMarketFacts(session, asOf, request.phase, signal, state, logger)
   }
   if (request.reportType === 'sector_analysis') {
-    await loadSectorFacts(session, request, asOf, signal, state)
+    await loadSectorFacts(session, request, asOf, signal, state, logger)
   }
   if (request.reportType === 'limit_up_attribution') {
-    await loadLimitFacts(session, asOf, signal, state)
+    await loadLimitFacts(session, asOf, signal, state, logger)
   }
 
   state.permissions = unique(state.permissions, item => `${item.tool}:${item.requiredPlan}`)

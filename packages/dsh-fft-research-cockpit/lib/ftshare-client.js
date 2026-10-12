@@ -3,7 +3,7 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 function isRecord(value) {
     return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
-function readableMcpError(value) {
+function readableMcpError(value, tool, logger) {
     try {
         const parsed = JSON.parse(value);
         if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
@@ -25,6 +25,7 @@ function readableMcpError(value) {
     }
     catch {
         // Keep the upstream text when it is not JSON.
+        logger?.warn('ftshare.invalid_response', { tool, errorType: 'invalid_response' });
     }
     return { message: value };
 }
@@ -249,9 +250,10 @@ function permissionNotice(tool, parsed) {
  * lower-tier endpoint succeeds, so reports can explain the downgrade and link
  * to the subscription page.
  */
-export async function callWithSubscriptionFallback(session, candidates, signal) {
+export async function callWithSubscriptionFallback(session, candidates, signal, logger) {
     if (candidates.length === 0)
         throw new FtShareError('FTShare 没有可用的数据接口候选');
+    const startedAt = Date.now();
     const attemptedTools = [];
     const permissions = [];
     const orderedCandidates = candidates
@@ -292,6 +294,14 @@ export async function callWithSubscriptionFallback(session, candidates, signal) 
                 continue;
             if (permissions.length > 0) {
                 const last = permissions[permissions.length - 1];
+                logger?.warn('ftshare.permission_denied', {
+                    tools: attemptedTools,
+                    tool: last.tool,
+                    code: last.code,
+                    requiredPlan: last.requiredPlan,
+                    durationMs: Date.now() - startedAt,
+                    errorType: 'permission_denied',
+                });
                 throw new FtSharePermissionError(`${last.message}; 兼容接口失败：${error instanceof Error ? error.message : String(error)}`, last, { tool: last.tool, code: last.code }, permissions);
             }
             throw error;
@@ -300,14 +310,30 @@ export async function callWithSubscriptionFallback(session, candidates, signal) 
     const uniquePermissions = [...new Map(permissions.map(item => [`${item.tool}:${item.requiredPlan}`, item])).values()];
     const last = uniquePermissions.at(-1);
     if (last) {
+        logger?.warn('ftshare.permission_denied', {
+            tools: attemptedTools,
+            tool: last.tool,
+            code: last.code,
+            requiredPlan: last.requiredPlan,
+            durationMs: Date.now() - startedAt,
+            errorType: 'permission_denied',
+        });
         throw new FtSharePermissionError(last.message, last, { code: last.code, tool: last.tool }, uniquePermissions);
     }
+    logger?.error('ftshare.candidates_failed', {
+        tools: attemptedTools,
+        attempts: attemptedTools.length,
+        durationMs: Date.now() - startedAt,
+        errorType: 'candidates_exhausted',
+    });
     throw new FtShareError(`FTShare 所有候选接口调用失败：${attemptedTools.join('、')}`);
 }
 export class FtShareClient {
     endpoint;
-    constructor(endpoint, configuredApiKey) {
+    logger;
+    constructor(endpoint, configuredApiKey, logger) {
         this.endpoint = endpoint;
+        this.logger = logger;
         const headers = {};
         // Prefer the Harness credential seam value (which may come from the
         // persistent ~/.dsh/.credentials.yaml store), while retaining the
@@ -340,7 +366,7 @@ export class FtShareClient {
                                 .map(block => block.text)
                                 .join('\n')
                             : `${tool} returned an MCP error`;
-                        const parsed = readableMcpError(message || `${tool} returned an MCP error`);
+                        const parsed = readableMcpError(message || `${tool} returned an MCP error`, tool, this.logger);
                         if (isPermissionFailure(parsed.code, parsed.message)) {
                             const permission = permissionNotice(tool, parsed);
                             throw new FtSharePermissionError(permission.message, permission, { code: parsed.code, tool });

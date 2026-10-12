@@ -1,4 +1,5 @@
 import { callWithSubscriptionFallback, isFtSharePermissionError, permissionNotices, permissionNoticesFromPayload, type FtShareCallCandidate, type FtShareSession } from './ftshare-client.js'
+import type { Logger } from '@deepseek-ai/cordis'
 import type { JsonRecord, OhlcvPoint, PermissionNotice, Provenance, Snapshot } from './types.js'
 
 function isRecord(value: unknown): value is JsonRecord {
@@ -203,6 +204,7 @@ async function loadRecentAnnouncements(
   asOf: string,
   lookbackDays: number,
   signal: AbortSignal,
+  logger?: Logger,
 ): Promise<JsonRecord> {
   const days = Math.max(1, Math.min(90, Math.trunc(lookbackDays)))
   const end = new Date(`${asOf}T12:00:00Z`)
@@ -230,7 +232,7 @@ async function loadRecentAnnouncements(
           plan: 'Free',
           arguments_: { date, sec_code: bareStockSymbol(symbol), page: 1, page_size: 30 },
         },
-      ], signal)
+      ], signal, logger)
       permissions.push(...result.permissions)
       downgraded ||= result.downgraded
       selectedTool = result.tool
@@ -308,6 +310,7 @@ export async function loadSnapshot(
   signal: AbortSignal,
   announcementLookbackDays = 30,
   options: SnapshotLoadOptions = {},
+  logger?: Logger,
 ): Promise<Snapshot> {
   const range = dateRange(asOf, maxKlineDays)
   const includeAnnouncements = options.includeAnnouncements ?? true
@@ -350,7 +353,7 @@ export async function loadSnapshot(
     {
       label: '公告',
       invoke: includeAnnouncements
-        ? () => loadRecentAnnouncements(session, symbol, asOf, announcementLookbackDays, signal)
+        ? () => loadRecentAnnouncements(session, symbol, asOf, announcementLookbackDays, signal, logger)
         : () => Promise.resolve({ data: [], metadata: { source: 'ftshare', skipped: true } }),
     },
     {
@@ -382,7 +385,7 @@ export async function loadSnapshot(
           : [],
         downgraded: isRecord(value.metadata) && value.metadata.downgraded === true,
       }))
-      : callWithSubscriptionFallback(session, spec.candidates ?? [], signal)),
+      : callWithSubscriptionFallback(session, spec.candidates ?? [], signal, logger)),
   )
 
   const dataGaps: string[] = []
@@ -434,6 +437,13 @@ export async function loadSnapshot(
     } catch (error) {
       if (isFtSharePermissionError(error)) {
         const notices = permissionNotices(error)
+        logger?.warn('ftshare.permission_denied', {
+          section: 'security_quote',
+          tools: [TOOLS.securityPreferred, TOOLS.security],
+          code: notices[0]?.code,
+          requiredPlan: notices[0]?.requiredPlan,
+          errorType: 'permission_denied',
+        })
         permissions.push(...notices)
         blockedPermissions.push(...notices)
         dataGaps.push(...notices.map(item => item.message))
@@ -529,6 +539,13 @@ export async function loadSnapshot(
     } catch (error) {
       if (isFtSharePermissionError(error)) {
         const notices = permissionNotices(error)
+        logger?.warn('ftshare.permission_denied', {
+          section: 'margin',
+          tools: ['ft_v1_margin_trading_details'],
+          code: notices[0]?.code,
+          requiredPlan: notices[0]?.requiredPlan,
+          errorType: 'permission_denied',
+        })
         permissions.push(...notices)
         blockedPermissions.push(...notices)
         dataGaps.push(...notices.map(item => item.message))

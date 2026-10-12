@@ -3,6 +3,7 @@ import type { FtshareSettingsService } from '@ft/dsh-fft-settings/contract'
 
 import { FtShareClient, isFtSharePermissionError, type FtShareSession } from './ftshare-client.js'
 import { loadSnapshot, rows } from './ftshare-data.js'
+import type { Logger } from '@deepseek-ai/cordis'
 import type { Config } from './config.js'
 import type { JsonRecord, PermissionNotice, Provenance, Snapshot } from './types.js'
 import { generateInvestmentReport } from './report-service.js'
@@ -286,13 +287,22 @@ async function callOptional(
   args: JsonRecord,
   signal: AbortSignal,
   state: RecommendationState,
+  logger?: Logger,
 ): Promise<JsonRecord | null> {
   try {
     const result = await session.call(tool, args, signal)
     addSource(state, tool, result)
     return result
   } catch (error) {
-    if (isFtSharePermissionError(error)) addPermission(state, error.permission)
+    if (isFtSharePermissionError(error)) {
+      addPermission(state, error.permission)
+      logger?.warn('ftshare.permission_denied', {
+        step: tool,
+        code: error.permission.code,
+        requiredPlan: error.permission.requiredPlan,
+        errorType: 'permission_denied',
+      })
+    }
     return null
   }
 }
@@ -317,6 +327,7 @@ async function collectIndexRows(
   asOf: string,
   signal: AbortSignal,
   state: RecommendationState,
+  logger?: Logger,
 ): Promise<{ rows: JsonRecord[]; succeeded: boolean }> {
   let cursor: string | undefined
   const collected: JsonRecord[] = []
@@ -326,7 +337,7 @@ async function collectIndexRows(
     const args: JsonRecord = isWeightTool
       ? { index_code: indexCode, ...(date ? { date } : {}), page: page + 1, page_size: 100 }
       : { index_code: indexCode, included_date_to: asOf, limit: 200, page: page + 1, page_size: 200, ...(cursor ? { cursor } : {}) }
-    const result = await callOptional(session, tool, args, signal, state)
+    const result = await callOptional(session, tool, args, signal, state, logger)
     if (!result) break
     succeeded = true
     const currentRows = constituentRows(result)
@@ -364,8 +375,9 @@ async function effectiveWeightDate(
   asOf: string,
   signal: AbortSignal,
   state: RecommendationState,
+  logger?: Logger,
 ): Promise<string | undefined> {
-  const summary = await callOptional(session, 'ft_v1_index_index_weight_summary', { index_code: indexCode, page: 1, page_size: 100 }, signal, state)
+  const summary = await callOptional(session, 'ft_v1_index_index_weight_summary', { index_code: indexCode, page: 1, page_size: 100 }, signal, state, logger)
   if (!summary) return undefined
   const periods = constituentRows(summary).flatMap(row => Array.isArray(row.periods) ? row.periods.filter(isRecord) : [row])
   return periods
@@ -381,15 +393,16 @@ async function loadIndexSymbols(
   asOf: string,
   signal: AbortSignal,
   state: RecommendationState,
+  logger?: Logger,
 ): Promise<string[]> {
   for (const tool of INDEX_CONSTITUENT_TOOLS) {
     const isWeightTool = tool === 'ft_v1_index_index_weight'
-    let collected = await collectIndexRows(session, tool, indexCode, isWeightTool ? asOf.replaceAll('-', '') : undefined, asOf, signal, state)
+    let collected = await collectIndexRows(session, tool, indexCode, isWeightTool ? asOf.replaceAll('-', '') : undefined, asOf, signal, state, logger)
     let filtered = currentIndexSymbols(collected.rows, asOf)
     if (isWeightTool && collected.succeeded && !filtered.length) {
-      const fallbackDate = await effectiveWeightDate(session, indexCode, asOf, signal, state)
+      const fallbackDate = await effectiveWeightDate(session, indexCode, asOf, signal, state, logger)
       if (fallbackDate) {
-        collected = await collectIndexRows(session, tool, indexCode, fallbackDate, asOf, signal, state)
+        collected = await collectIndexRows(session, tool, indexCode, fallbackDate, asOf, signal, state, logger)
         filtered = currentIndexSymbols(collected.rows, asOf)
       }
     }
@@ -403,6 +416,7 @@ async function loadDirectory(
   session: FtShareSession,
   signal: AbortSignal,
   state: RecommendationState,
+  logger?: Logger,
 ): Promise<JsonRecord[]> {
   const values: JsonRecord[] = []
   let pages = 1
@@ -410,7 +424,7 @@ async function loadDirectory(
     const result = await callOptional(session, 'ft_v1_company_list', {
       page,
       page_size: 200,
-    }, signal, state)
+    }, signal, state, logger)
     if (!result) break
     values.push(...rows(result))
     const metadata = isRecord(result.metadata) ? result.metadata : {}
@@ -780,18 +794,19 @@ async function loadCandidates(
   asOf: string,
   signal: AbortSignal,
   state: RecommendationState,
+  logger?: Logger,
 ): Promise<{ candidates: CandidateRecord[]; requested: number; sourceDescription: string }> {
   const requestedSymbols = args.poolSource === 'custom'
     ? unique(input.symbols?.map(canonicalSymbol).filter(Boolean) ?? [], bareSymbol)
-    : await loadIndexSymbols(session, args.indexCode, asOf, signal, state)
+    : await loadIndexSymbols(session, args.indexCode, asOf, signal, state, logger)
   if (args.poolSource === 'custom' && requestedSymbols.length === 0) throw new Error('custom 股票池需要提供非空 symbols')
   const directoryRows = args.poolSource === 'csi1000'
-    ? await loadDirectory(session, signal, state)
+    ? await loadDirectory(session, signal, state, logger)
     : (await Promise.all(requestedSymbols.map(symbol => callOptional(session, 'ft_v1_company_list', {
       stock_code: bareSymbol(symbol),
       page: 1,
       page_size: 1,
-    }, signal, state)))).flatMap(result => result ? rows(result) : [])
+    }, signal, state, logger)))).flatMap(result => result ? rows(result) : [])
   const directoryBySymbol = new Map(directoryRows.map(row => [bareSymbol(directorySymbol(row) ?? ''), row]))
   const requested = requestedSymbols.length
   const requestedSet = new Set(requestedSymbols.map(bareSymbol))
@@ -814,15 +829,23 @@ async function loadCandidates(
         const snapshot = await loadSnapshot(session, symbol, asOf, 120, signal, 30, {
           includeAnnouncements: false,
           includeResearch: false,
-        })
+        }, logger)
         state.permissions.push(...snapshot.permissions)
         state.dataGaps.push(...snapshot.dataGaps)
         state.warnings.push(...snapshot.warnings)
         state.provenance.push(...snapshot.provenance)
         return { symbol, snapshot }
       } catch (error) {
-        if (isFtSharePermissionError(error)) addPermission(state, error.permission)
-        else state.warnings.push(`${symbol}：${error instanceof Error ? error.message : String(error)}`)
+        if (isFtSharePermissionError(error)) {
+          addPermission(state, error.permission)
+          logger?.warn('ftshare.permission_denied', {
+            step: 'candidate_snapshot',
+            symbol,
+            code: error.permission.code,
+            requiredPlan: error.permission.requiredPlan,
+            errorType: 'permission_denied',
+          })
+        } else state.warnings.push(`${symbol}：${error instanceof Error ? error.message : String(error)}`)
         return { symbol, snapshot: null }
       }
     }))
@@ -890,14 +913,15 @@ export async function generatePortfolioRecommendation(
   input: PortfolioRecommendationArgs,
   signal: AbortSignal,
   config: Config,
+  logger?: Logger,
 ): Promise<PortfolioRecommendationResult> {
   const args = normalizeParameters(input)
   const asOf = validAsOf(input.asOf)
   const state: RecommendationState = { permissions: [], dataGaps: [], warnings: [], provenance: [] }
   const settings = (ctx as Context & { ftshareSettings: FtshareSettingsService }).ftshareSettings
   const resolvedCredential = await settings.apiKey.resolve()
-  const client = new FtShareClient(config.ftshareUrl, resolvedCredential)
-  const loaded = await client.withSession(signal, session => loadCandidates(session, args, input, asOf, signal, state))
+  const client = new FtShareClient(config.ftshareUrl, resolvedCredential, logger)
+  const loaded = await client.withSession(signal, session => loadCandidates(session, args, input, asOf, signal, state, logger))
   const sorted = [...loaded.candidates].sort((left, right) => right.score - left.score || left.symbol.localeCompare(right.symbol))
   const enoughForTheme = sorted.some(candidate => sorted.filter(item => item.industry === candidate.industry).length >= Math.min(3, args.portfolioSize))
   let strategyUsed: PortfolioRecommendationStrategy = args.strategy
@@ -976,10 +1000,15 @@ export async function generatePortfolioRecommendation(
         reportType: 'portfolio_stocks',
         symbols: recommendations[0].holdings.map(holding => holding.symbol),
         asOf,
-      }, signal, config)
+      }, signal, config, logger)
       result.report = report as unknown as JsonRecord
       if (report.status !== 'complete') result.status = 'degraded'
     } catch (error) {
+      logger?.warn('portfolio.report_failed', {
+        fallback: 'partial-report',
+        reportType: 'portfolio_stocks',
+        errorType: error instanceof Error ? error.name : typeof error,
+      })
       result.dataGaps.push('组合已生成，但后续股票组合报告生成失败')
       result.warnings.push(error instanceof Error ? error.message : String(error))
       result.status = 'degraded'

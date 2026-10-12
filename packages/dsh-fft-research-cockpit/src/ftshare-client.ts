@@ -1,6 +1,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js'
+import type { Logger } from '@deepseek-ai/cordis'
 
 import type { JsonRecord } from './types.js'
 import type { PermissionNotice } from './types.js'
@@ -34,7 +35,7 @@ export interface FtShareCallResult {
   downgraded: boolean
 }
 
-function readableMcpError(value: string): ParsedMcpError {
+function readableMcpError(value: string, tool?: string, logger?: Logger): ParsedMcpError {
   try {
     const parsed: unknown = JSON.parse(value)
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
@@ -55,6 +56,7 @@ function readableMcpError(value: string): ParsedMcpError {
     }
   } catch {
     // Keep the upstream text when it is not JSON.
+    logger?.warn('ftshare.invalid_response', { tool, errorType: 'invalid_response' })
   }
   return { message: value }
 }
@@ -293,8 +295,10 @@ export async function callWithSubscriptionFallback(
   session: FtShareSession,
   candidates: FtShareCallCandidate[],
   signal: AbortSignal,
+  logger?: Logger,
 ): Promise<FtShareCallResult> {
   if (candidates.length === 0) throw new FtShareError('FTShare 没有可用的数据接口候选')
+  const startedAt = Date.now()
   const attemptedTools: string[] = []
   const permissions: PermissionNotice[] = []
   const orderedCandidates = candidates
@@ -332,6 +336,14 @@ export async function callWithSubscriptionFallback(
       if (isUnsupportedToolFailure(error) && position < orderedCandidates.length - 1) continue
       if (permissions.length > 0) {
         const last = permissions[permissions.length - 1]
+        logger?.warn('ftshare.permission_denied', {
+          tools: attemptedTools,
+          tool: last.tool,
+          code: last.code,
+          requiredPlan: last.requiredPlan,
+          durationMs: Date.now() - startedAt,
+          errorType: 'permission_denied',
+        })
         throw new FtSharePermissionError(
           `${last.message}; 兼容接口失败：${error instanceof Error ? error.message : String(error)}`,
           last, { tool: last.tool, code: last.code }, permissions,
@@ -344,6 +356,14 @@ export async function callWithSubscriptionFallback(
   const uniquePermissions = [...new Map(permissions.map(item => [`${item.tool}:${item.requiredPlan}`, item])).values()]
   const last = uniquePermissions.at(-1)
   if (last) {
+    logger?.warn('ftshare.permission_denied', {
+      tools: attemptedTools,
+      tool: last.tool,
+      code: last.code,
+      requiredPlan: last.requiredPlan,
+      durationMs: Date.now() - startedAt,
+      errorType: 'permission_denied',
+    })
     throw new FtSharePermissionError(
       last.message,
       last,
@@ -351,6 +371,12 @@ export async function callWithSubscriptionFallback(
       uniquePermissions,
     )
   }
+  logger?.error('ftshare.candidates_failed', {
+    tools: attemptedTools,
+    attempts: attemptedTools.length,
+    durationMs: Date.now() - startedAt,
+    errorType: 'candidates_exhausted',
+  })
   throw new FtShareError(`FTShare 所有候选接口调用失败：${attemptedTools.join('、')}`)
 }
 
@@ -358,6 +384,7 @@ export class FtShareClient {
   constructor(
     private readonly endpoint: string,
     configuredApiKey?: string,
+    private readonly logger?: Logger,
   ) {
     const headers: Record<string, string> = {}
     // Prefer the Harness credential seam value (which may come from the
@@ -399,7 +426,7 @@ export class FtShareClient {
                 .map(block => block.text)
                 .join('\n')
               : `${tool} returned an MCP error`
-            const parsed = readableMcpError(message || `${tool} returned an MCP error`)
+            const parsed = readableMcpError(message || `${tool} returned an MCP error`, tool, this.logger)
             if (isPermissionFailure(parsed.code, parsed.message)) {
               const permission = permissionNotice(tool, parsed)
               throw new FtSharePermissionError(permission.message, permission, { code: parsed.code, tool })

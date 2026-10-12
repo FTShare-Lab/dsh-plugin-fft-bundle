@@ -19,5 +19,8 @@ export type {
 } from './portfolio-recommendation.js'
 
 export function apply(ctx: Context, config: Config): void {
-  registerReportTool(ctx, config)
+  // 具名 logger 只创建一次，再显式注入到各服务/函数：不使用模块级单例，
+  // 免得插件重载后残留上一个 fiber 的 logger。
+  const logger = ctx.logger('ft-research-cockpit')
+  registerReportTool(ctx, config, logger)
 }

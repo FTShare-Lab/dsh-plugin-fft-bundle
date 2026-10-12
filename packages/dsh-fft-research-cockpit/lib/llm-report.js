@@ -243,7 +243,7 @@ const ROUND_SPECS = [
         jsonShape: '{"risks":[{"category":"...","description":"...","severity":"..."},{"category":"...","description":"...","severity":"..."},{"category":"...","description":"...","severity":"..."},{"category":"...","description":"...","severity":"..."},{"category":"...","description":"...","severity":"..."}],"key_observation_points":[{"dimension":"...","signal":"...","meaning":"...","invalidation_condition":"..."},{"dimension":"...","signal":"...","meaning":"...","invalidation_condition":"..."},{"dimension":"...","signal":"...","meaning":"...","invalidation_condition":"..."},{"dimension":"...","signal":"...","meaning":"...","invalidation_condition":"..."}],"validation_framework":{"description":"...","items":[{"dimension":"...","hypothesis":"...","evidence":"...","invalidation":"..."},{"dimension":"...","hypothesis":"...","evidence":"...","invalidation":"..."},{"dimension":"...","hypothesis":"...","evidence":"...","invalidation":"..."}]},"conclusion":{"rating":"...","rationale":"...","suitable_investors":"..."}}',
     },
 ];
-export async function generateStructuredReport(llm, snapshot, technical, config, signal) {
+export async function generateStructuredReport(llm, snapshot, technical, config, signal, logger) {
     const base = buildBasePrompt(snapshot, technical);
     const deterministic = emptyDeepReadReport();
     // 五轮独立章节生成；市场轮次不启用 web_search，确保 FTShare-only 边界。
@@ -257,6 +257,13 @@ export async function generateStructuredReport(llm, snapshot, technical, config,
         }
         catch (error) {
             failures.push(error instanceof Error ? error.message : String(error));
+            logger?.warn('llm.section_failed', {
+                reportType: 'deep_read',
+                section: spec.name,
+                count: failures.length,
+                first: failures[0].slice(0, 160),
+                errorType: error instanceof Error ? error.name : typeof error,
+            });
         }
     }
     // A partial result is still more useful than an all-or-nothing fallback:
@@ -283,6 +290,7 @@ export async function generateStructuredReport(llm, snapshot, technical, config,
     }
     catch {
         // Fall through to the deterministic valid shell below.
+        logger?.warn('llm.repair_failed', { reportType: 'deep_read', fallback: 'deterministic-shell' });
     }
     const partial = mergeIntoValidDeepReadReport(parts, deterministic);
     if (partial)
@@ -1454,7 +1462,11 @@ function promptForTemplate(facts, requestedShape) {
     const spec = TEMPLATE_PROMPT_SPECS[reportType];
     return `请基于输入的真实数据，为 ${facts.reportType} 报告生成可直接渲染到模板的结构化 LLM 分析。当前阶段是“${facts.request.phase === 'midday' ? '午盘点评' : '收盘后'}”；只返回合法 JSON 对象，不要 Markdown、代码围栏或额外解释。\n\n【统一事实边界】\n1. 允许使用的事实仅来自输入 JSON；缺失数据必须说明无法验证哪项判断，不得猜测、联网或补造价格、收益、估值、资金和公司信息。\n2. 保留用户输入与原始数值，不要重新计算或修改数值数组。\n3. 正文直接陈述事实与判断，不要反复使用“根据 FTShare 数据”“FTShare 数据显示”“FTShare 提供”等来源前缀；数据源仅在元数据、来源标签或数据边界中说明一次。\n4. 不要输出目标价、收益承诺或投资保证。\n5. 只有 permissions 中明确的订阅/权限拒绝才可写成“需要升级”；普通空值、未覆盖字段和暂无样本保持中性缺失标记，不得把整章或整张报告写成不可用。若同一模块存在可用降级数据，必须继续陈述可用字段，只对仍受限字段保留缺失标记。\n6. ${spec.requirements}\n7. 必须满足以下 JSON 骨架，字段名和嵌套路径不可改变；可以增加同级解释字段，但不要返回骨架之外的业务数据。\n${requestedShape ? JSON.stringify(requestedShape) : spec.shape}\n\n【输入 JSON】\n${JSON.stringify(reportType === 'sector_analysis' ? { request: facts.request, asOf: facts.asOf, sectorEvidence: sectorEvidence(fallbackContext(facts)), factualReport: clearAnalysis(fallbackContext(facts), JSON.parse(spec.shape)).report, permissions: facts.blockedPermissions } : { ...compactFacts(facts), factualContext: clearAnalysis(fallbackContext(facts), JSON.parse(spec.shape)) })}`;
 }
-async function generateTemplateReportBase(llm, reportType, facts, config, signal) {
+/** 修复循环里异常的分类：模型输出不是 JSON 记为语法问题，其余记为调用问题。 */
+function repairFailureKind(error) {
+    return error instanceof SyntaxError ? 'syntax' : 'call';
+}
+async function generateTemplateReportBase(llm, reportType, facts, config, signal, logger) {
     const fallback = fallbackContext(facts);
     if (reportType === 'deep_read')
         return { context: fallback, attempted: false, used: false, rounds: 0, error: 'deep_read 必须走五轮结构化生成链路' };
@@ -1513,6 +1525,11 @@ async function generateTemplateReportBase(llm, reportType, facts, config, signal
         }
         catch (error) {
             repair = error instanceof Error ? error.message : String(error);
+            logger?.warn('llm.repair_call_failed', {
+                reportType,
+                repair: repairFailureKind(error),
+                errorType: error instanceof Error ? error.name : typeof error,
+            });
         }
     }
     context = mergeAnalysis(context, accepted);
@@ -1538,8 +1555,8 @@ async function generateTemplateReportBase(llm, reportType, facts, config, signal
     return { context, attempted: true, used: Number(meta.generated) > 0, rounds, error: meta.status === 'generated' ? undefined : `部分 AI 分析未生成：${repair}` };
 }
 /** Generate homepage analysis independently from the complete report, using only scoped evidence. */
-export async function generateTemplateReport(llm, reportType, facts, config, signal) {
-    const result = await generateTemplateReportBase(llm, reportType, facts, config, signal);
+export async function generateTemplateReport(llm, reportType, facts, config, signal, logger) {
+    const result = await generateTemplateReportBase(llm, reportType, facts, config, signal, logger);
     if (reportType !== 'sector_analysis')
         return result;
     const evidence = sectorEvidence(fallbackContext(facts));
@@ -1580,6 +1597,11 @@ ${repair ? `上次校验问题：${repair}` : ''}`;
         }
         catch (error) {
             repair = error instanceof Error ? error.message : String(error);
+            logger?.warn('llm.repair_call_failed', {
+                reportType,
+                repair: repairFailureKind(error),
+                errorType: error instanceof Error ? error.name : typeof error,
+            });
         }
     }
     ;

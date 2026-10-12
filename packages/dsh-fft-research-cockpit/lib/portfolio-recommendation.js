@@ -152,15 +152,22 @@ function addPermission(state, permission) {
     state.dataGaps.push(permission.message);
     state.warnings.push(permission.message);
 }
-async function callOptional(session, tool, args, signal, state) {
+async function callOptional(session, tool, args, signal, state, logger) {
     try {
         const result = await session.call(tool, args, signal);
         addSource(state, tool, result);
         return result;
     }
     catch (error) {
-        if (isFtSharePermissionError(error))
+        if (isFtSharePermissionError(error)) {
             addPermission(state, error.permission);
+            logger?.warn('ftshare.permission_denied', {
+                step: tool,
+                code: error.permission.code,
+                requiredPlan: error.permission.requiredPlan,
+                errorType: 'permission_denied',
+            });
+        }
         return null;
     }
 }
@@ -176,7 +183,7 @@ function constituentRows(source) {
 function constituentCode(row) {
     return text(row, 'constituent_code', 'component_code', 'stock_code', 'symbol', 'ts_code', 'code', 'security_code');
 }
-async function collectIndexRows(session, tool, indexCode, date, asOf, signal, state) {
+async function collectIndexRows(session, tool, indexCode, date, asOf, signal, state, logger) {
     let cursor;
     const collected = [];
     let succeeded = false;
@@ -185,7 +192,7 @@ async function collectIndexRows(session, tool, indexCode, date, asOf, signal, st
         const args = isWeightTool
             ? { index_code: indexCode, ...(date ? { date } : {}), page: page + 1, page_size: 100 }
             : { index_code: indexCode, included_date_to: asOf, limit: 200, page: page + 1, page_size: 200, ...(cursor ? { cursor } : {}) };
-        const result = await callOptional(session, tool, args, signal, state);
+        const result = await callOptional(session, tool, args, signal, state, logger);
         if (!result)
             break;
         succeeded = true;
@@ -215,8 +222,8 @@ function currentIndexSymbols(sourceRows, asOf) {
         .map(canonicalSymbol)
         .filter(Boolean), bareSymbol);
 }
-async function effectiveWeightDate(session, indexCode, asOf, signal, state) {
-    const summary = await callOptional(session, 'ft_v1_index_index_weight_summary', { index_code: indexCode, page: 1, page_size: 100 }, signal, state);
+async function effectiveWeightDate(session, indexCode, asOf, signal, state, logger) {
+    const summary = await callOptional(session, 'ft_v1_index_index_weight_summary', { index_code: indexCode, page: 1, page_size: 100 }, signal, state, logger);
     if (!summary)
         return undefined;
     const periods = constituentRows(summary).flatMap(row => Array.isArray(row.periods) ? row.periods.filter(isRecord) : [row]);
@@ -226,15 +233,15 @@ async function effectiveWeightDate(session, indexCode, asOf, signal, state) {
         .sort((left, right) => right.localeCompare(left))[0]
         ?.replaceAll('-', '');
 }
-async function loadIndexSymbols(session, indexCode, asOf, signal, state) {
+async function loadIndexSymbols(session, indexCode, asOf, signal, state, logger) {
     for (const tool of INDEX_CONSTITUENT_TOOLS) {
         const isWeightTool = tool === 'ft_v1_index_index_weight';
-        let collected = await collectIndexRows(session, tool, indexCode, isWeightTool ? asOf.replaceAll('-', '') : undefined, asOf, signal, state);
+        let collected = await collectIndexRows(session, tool, indexCode, isWeightTool ? asOf.replaceAll('-', '') : undefined, asOf, signal, state, logger);
         let filtered = currentIndexSymbols(collected.rows, asOf);
         if (isWeightTool && collected.succeeded && !filtered.length) {
-            const fallbackDate = await effectiveWeightDate(session, indexCode, asOf, signal, state);
+            const fallbackDate = await effectiveWeightDate(session, indexCode, asOf, signal, state, logger);
             if (fallbackDate) {
-                collected = await collectIndexRows(session, tool, indexCode, fallbackDate, asOf, signal, state);
+                collected = await collectIndexRows(session, tool, indexCode, fallbackDate, asOf, signal, state, logger);
                 filtered = currentIndexSymbols(collected.rows, asOf);
             }
         }
@@ -244,14 +251,14 @@ async function loadIndexSymbols(session, indexCode, asOf, signal, state) {
     state.dataGaps.push(`FTShare 未返回 ${indexCode} 在 ${asOf} 的可用指数成分`);
     return [];
 }
-async function loadDirectory(session, signal, state) {
+async function loadDirectory(session, signal, state, logger) {
     const values = [];
     let pages = 1;
     for (let page = 1; page <= Math.min(30, pages); page += 1) {
         const result = await callOptional(session, 'ft_v1_company_list', {
             page,
             page_size: 200,
-        }, signal, state);
+        }, signal, state, logger);
         if (!result)
             break;
         values.push(...rows(result));
@@ -600,19 +607,19 @@ function sampleSymbols(symbols, limit) {
     }
     return unique(result, bareSymbol);
 }
-async function loadCandidates(session, args, input, asOf, signal, state) {
+async function loadCandidates(session, args, input, asOf, signal, state, logger) {
     const requestedSymbols = args.poolSource === 'custom'
         ? unique(input.symbols?.map(canonicalSymbol).filter(Boolean) ?? [], bareSymbol)
-        : await loadIndexSymbols(session, args.indexCode, asOf, signal, state);
+        : await loadIndexSymbols(session, args.indexCode, asOf, signal, state, logger);
     if (args.poolSource === 'custom' && requestedSymbols.length === 0)
         throw new Error('custom 股票池需要提供非空 symbols');
     const directoryRows = args.poolSource === 'csi1000'
-        ? await loadDirectory(session, signal, state)
+        ? await loadDirectory(session, signal, state, logger)
         : (await Promise.all(requestedSymbols.map(symbol => callOptional(session, 'ft_v1_company_list', {
             stock_code: bareSymbol(symbol),
             page: 1,
             page_size: 1,
-        }, signal, state)))).flatMap(result => result ? rows(result) : []);
+        }, signal, state, logger)))).flatMap(result => result ? rows(result) : []);
     const directoryBySymbol = new Map(directoryRows.map(row => [bareSymbol(directorySymbol(row) ?? ''), row]));
     const requested = requestedSymbols.length;
     const requestedSet = new Set(requestedSymbols.map(bareSymbol));
@@ -635,7 +642,7 @@ async function loadCandidates(session, args, input, asOf, signal, state) {
                 const snapshot = await loadSnapshot(session, symbol, asOf, 120, signal, 30, {
                     includeAnnouncements: false,
                     includeResearch: false,
-                });
+                }, logger);
                 state.permissions.push(...snapshot.permissions);
                 state.dataGaps.push(...snapshot.dataGaps);
                 state.warnings.push(...snapshot.warnings);
@@ -643,8 +650,16 @@ async function loadCandidates(session, args, input, asOf, signal, state) {
                 return { symbol, snapshot };
             }
             catch (error) {
-                if (isFtSharePermissionError(error))
+                if (isFtSharePermissionError(error)) {
                     addPermission(state, error.permission);
+                    logger?.warn('ftshare.permission_denied', {
+                        step: 'candidate_snapshot',
+                        symbol,
+                        code: error.permission.code,
+                        requiredPlan: error.permission.requiredPlan,
+                        errorType: 'permission_denied',
+                    });
+                }
                 else
                     state.warnings.push(`${symbol}：${error instanceof Error ? error.message : String(error)}`);
                 return { symbol, snapshot: null };
@@ -711,14 +726,14 @@ function losslessJson(value) {
     }
     return value;
 }
-export async function generatePortfolioRecommendation(ctx, input, signal, config) {
+export async function generatePortfolioRecommendation(ctx, input, signal, config, logger) {
     const args = normalizeParameters(input);
     const asOf = validAsOf(input.asOf);
     const state = { permissions: [], dataGaps: [], warnings: [], provenance: [] };
     const settings = ctx.ftshareSettings;
     const resolvedCredential = await settings.apiKey.resolve();
-    const client = new FtShareClient(config.ftshareUrl, resolvedCredential);
-    const loaded = await client.withSession(signal, session => loadCandidates(session, args, input, asOf, signal, state));
+    const client = new FtShareClient(config.ftshareUrl, resolvedCredential, logger);
+    const loaded = await client.withSession(signal, session => loadCandidates(session, args, input, asOf, signal, state, logger));
     const sorted = [...loaded.candidates].sort((left, right) => right.score - left.score || left.symbol.localeCompare(right.symbol));
     const enoughForTheme = sorted.some(candidate => sorted.filter(item => item.industry === candidate.industry).length >= Math.min(3, args.portfolioSize));
     let strategyUsed = args.strategy;
@@ -801,12 +816,17 @@ export async function generatePortfolioRecommendation(ctx, input, signal, config
                 reportType: 'portfolio_stocks',
                 symbols: recommendations[0].holdings.map(holding => holding.symbol),
                 asOf,
-            }, signal, config);
+            }, signal, config, logger);
             result.report = report;
             if (report.status !== 'complete')
                 result.status = 'degraded';
         }
         catch (error) {
+            logger?.warn('portfolio.report_failed', {
+                fallback: 'partial-report',
+                reportType: 'portfolio_stocks',
+                errorType: error instanceof Error ? error.name : typeof error,
+            });
             result.dataGaps.push('组合已生成，但后续股票组合报告生成失败');
             result.warnings.push(error instanceof Error ? error.message : String(error));
             result.status = 'degraded';

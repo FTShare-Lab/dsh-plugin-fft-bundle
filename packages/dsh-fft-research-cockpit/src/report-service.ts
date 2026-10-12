@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { Context } from '@deepseek-ai/cordis'
+import type { Context, Logger } from '@deepseek-ai/cordis'
 import type { FtshareSettingsService } from '@ft/dsh-fft-settings/contract'
 
 import { calculateTechnicalSignals } from './indicators.js'
@@ -14,39 +14,58 @@ import { emptyDeepReadReport, generateStructuredReport, generateTemplateReport }
 import type { Config } from './config.js'
 import type { PermissionNotice, ReportRequest, ReportToolResult, ReportType } from './types.js'
 
-async function runChromeUntilFile(executable: string, args: string[], output: string, timeoutMs: number): Promise<void> {
+/** 同一浏览器候选只报一次失败：打印进程已经失败后，不再补一条误导性的「超时」。 */
+function chromeFailureReporter(logger: Logger | undefined, executable: string, timeoutMs: number): (errorType: string) => void {
+  let reported = false
+  return (errorType: string) => {
+    if (reported) return
+    reported = true
+    logger?.warn('report.chrome_failed', { executable, timeoutMs, errorType })
+  }
+}
+
+async function runChromeUntilFile(executable: string, args: string[], output: string, timeoutMs: number, logger?: Logger): Promise<void> {
   await new Promise<void>((resolve) => {
     const child = spawn(executable, args, { stdio: 'ignore', detached: false })
     const started = Date.now()
+    const reportFailure = chromeFailureReporter(logger, executable, timeoutMs)
     const poll = () => {
       readFile(output).then(() => {
         child.kill('SIGKILL')
         resolve()
       }).catch(() => {
         if (Date.now() - started >= timeoutMs) {
+          reportFailure('timeout')
           child.kill('SIGKILL')
           resolve()
         } else setTimeout(poll, 250)
       })
     }
-    child.once('error', () => resolve())
+    child.once('error', () => {
+      reportFailure('spawn_error')
+      resolve()
+    })
     poll()
   })
 }
 
-async function measureChromeHeight(executable: string, inputUrl: string, profile: string, timeoutMs: number): Promise<number | null> {
+async function measureChromeHeight(executable: string, inputUrl: string, profile: string, timeoutMs: number, logger?: Logger): Promise<number | null> {
   return await new Promise<number | null>((resolve) => {
     const child = spawn(executable, ['--headless=new', '--disable-gpu', '--no-sandbox', '--hide-scrollbars', '--run-all-compositor-stages-before-draw', '--virtual-time-budget=3000', '--window-size=1440,900', `--user-data-dir=${profile}`, '--dump-dom', inputUrl], { stdio: ['ignore', 'pipe', 'ignore'] })
     let output = ''
     const started = Date.now()
     let settled = false
+    const reportFailure = chromeFailureReporter(logger, executable, timeoutMs)
     const finish = (value: number | null) => {
       if (settled) return
       settled = true
       child.kill('SIGKILL')
       resolve(value)
     }
-    child.once('error', () => finish(null))
+    child.once('error', () => {
+      reportFailure('spawn_error')
+      finish(null)
+    })
     child.stdout.on('data', chunk => {
       output += String(chunk)
       const marker = 'FTAI_HEIGHT_'
@@ -60,6 +79,7 @@ async function measureChromeHeight(executable: string, inputUrl: string, profile
       const marker = 'FTAI_HEIGHT_'
       const index = output.indexOf(marker)
       const digits = index >= 0 ? output.slice(index + marker.length).match(/[0-9]+/)?.[0] : undefined
+      if (!digits) reportFailure('timeout')
       finish(digits ? Number(digits) : null)
     }, Math.max(timeoutMs, Date.now() - started))
   })
@@ -73,7 +93,7 @@ function chromeCandidates(): string[] {
       : ['google-chrome', 'chromium', 'chromium-browser']
 }
 
-async function renderExportArtifacts(html: string): Promise<{ pdf?: string; png?: string }> {
+async function renderExportArtifacts(html: string, logger?: Logger): Promise<{ pdf?: string; png?: string }> {
   const root = await mkdtemp(join(tmpdir(), 'ftai-report-'))
   const input = join(root, 'report.html')
   const measureInput = join(root, 'measure.html')
@@ -114,14 +134,19 @@ async function renderExportArtifacts(html: string): Promise<{ pdf?: string; png?
     for (const executable of chromeCandidates()) {
       try {
         const common = ['--headless=new', '--disable-gpu', '--no-sandbox', '--no-first-run', '--no-default-browser-check', '--hide-scrollbars', '--run-all-compositor-stages-before-draw', '--virtual-time-budget=3000', `--user-data-dir=${profile}`]
-        await runChromeUntilFile(executable, [...common, '--no-pdf-header-footer', `--print-to-pdf=${pdf}`, inputUrl], pdf, 60_000)
-        const measured = await measureChromeHeight(executable, `file://${measureInput.replaceAll('\\', '/')}`, `${profile}-measure`, 20_000)
+        await runChromeUntilFile(executable, [...common, '--no-pdf-header-footer', `--print-to-pdf=${pdf}`, inputUrl], pdf, 60_000, logger)
+        const measured = await measureChromeHeight(executable, `file://${measureInput.replaceAll('\\', '/')}`, `${profile}-measure`, 20_000, logger)
         const screenshotHeight = Math.min(24000, Math.max(900, (measured ?? 12000) + 32))
-        await runChromeUntilFile(executable, [...common, `--window-size=1440,${screenshotHeight}`, `--screenshot=${png}`, inputUrl], png, 60_000)
+        await runChromeUntilFile(executable, [...common, `--window-size=1440,${screenshotHeight}`, `--screenshot=${png}`, inputUrl], png, 60_000, logger)
         const [pdfBytes, pngBytes] = await Promise.all([readFile(pdf), readFile(png)])
         return { pdf: pdfBytes.toString('base64'), png: pngBytes.toString('base64') }
-      } catch {
+      } catch (error) {
         // Try the next installed browser candidate. Export remains optional.
+        logger?.warn('report.browser_fallback', {
+          fallback: 'next-browser',
+          executable,
+          errorType: error instanceof Error ? error.name : typeof error,
+        })
       }
     }
     return {}
@@ -182,20 +207,21 @@ function losslessJson(value: unknown): unknown {
   return value
 }
 
-async function ftshareClient(ctx: Context, config: Config): Promise<FtShareClient> {
+async function ftshareClient(ctx: Context, config: Config, logger?: Logger): Promise<FtShareClient> {
   const credential = await (ctx as FtshareSettingsContext).ftshareSettings.apiKey.resolve()
-  return new FtShareClient(config.ftshareUrl, credential)
+  return new FtShareClient(config.ftshareUrl, credential, logger)
 }
 
 function uniqueStrings(values: string[]): string[] { return [...new Set(values.map(value => value.trim()).filter(Boolean))] }
 
 export interface DeepReadArgs { symbol: string; asOf?: string }
 
-export async function generateDeepReadReport(ctx: Context, args: DeepReadArgs, signal: AbortSignal, config: Config): Promise<ReportToolResult> {
+export async function generateDeepReadReport(ctx: Context, args: DeepReadArgs, signal: AbortSignal, config: Config, logger?: Logger): Promise<ReportToolResult> {
+  const startedAt = Date.now()
   const symbol = args.symbol.trim()
   if (!symbol) throw new Error('symbol 不能为空')
   const asOf = normalizeAsOf(args.asOf)
-  const client = await ftshareClient(ctx, config)
+  const client = await ftshareClient(ctx, config, logger)
   const snapshot = await client.withSession(signal, session => loadSnapshot(
     session,
     symbol,
@@ -204,6 +230,7 @@ export async function generateDeepReadReport(ctx: Context, args: DeepReadArgs, s
     signal,
     config.announcementLookbackDays,
     { includeExtendedFacts: true, includeRiskFacts: false },
+    logger,
   ))
   const technical = calculateTechnicalSignals(snapshot.ohlcv, config.maxKlineDays)
   let structuredReport = null
@@ -211,7 +238,7 @@ export async function generateDeepReadReport(ctx: Context, args: DeepReadArgs, s
   const warnings = [...snapshot.warnings]
   const dataGaps = [...snapshot.dataGaps]
   try {
-    structuredReport = await generateStructuredReport(ctx.llm, snapshot, technical, { provider: config.llmProvider, model: config.llmModel, maxAttempts: config.llmMaxAttempts }, signal)
+    structuredReport = await generateStructuredReport(ctx.llm, snapshot, technical, { provider: config.llmProvider, model: config.llmModel, maxAttempts: config.llmMaxAttempts }, signal, logger)
     llmUsed = true
     if (structuredReport.analysis_meta && (structuredReport.analysis_meta as Record<string, unknown>).status !== 'generated') {
       dataGaps.push('部分 AI 分析未生成，已保留成功生成的章节')
@@ -220,6 +247,11 @@ export async function generateDeepReadReport(ctx: Context, args: DeepReadArgs, s
     // Keep the report useful even when the optional LLM layer is unavailable.
     // The deterministic fallback is built from the same FTShare snapshot and
     // technical signals, so it never fabricates missing prices or events.
+    logger?.warn('report.llm_fallback', {
+      fallback: 'deterministic',
+      reportType: 'deep_read',
+      errorType: error instanceof Error ? error.name : typeof error,
+    })
     structuredReport = emptyDeepReadReport()
     dataGaps.push('结构化 LLM 报告生成失败，当前 HTML 仅包含 FTShare 数据和确定性指标')
     warnings.push(error instanceof Error ? error.message : String(error))
@@ -237,7 +269,7 @@ export async function generateDeepReadReport(ctx: Context, args: DeepReadArgs, s
   // fallback; that notice is retained in warnings/provenance, but must not
   // hide data that the current subscription actually returned.
   const html = await renderReportHtml({ ...viewModel, data_gaps: renderDataGaps }, blockedPermissions)
-  const exports = await renderExportArtifacts(html)
+  const exports = await renderExportArtifacts(html, logger)
   if (!exports.pdf || !exports.png) warnings.push('PDF/PNG 导出资产未能在服务端预渲染；网页端将提供打印或兼容降级路径')
   const reportFilename = `FtAi-${safeSymbol(symbol)}-${asOf}-deep-read.html`
   const permissions = snapshot.permissions
@@ -253,6 +285,12 @@ export async function generateDeepReadReport(ctx: Context, args: DeepReadArgs, s
     provenance: snapshot.provenance, freshness: { asOf, retrievedAt: new Date().toISOString(), provider: 'ftshare' }, dataGaps, warnings, permissions,
     llm: { attempted: true, used: llmUsed, rounds: 5, provider: config.llmProvider, model: config.llmModel },
   }
+  logger?.info('report.generated', {
+    reportType: 'deep_read',
+    durationMs: Date.now() - startedAt,
+    bytes: Buffer.byteLength(html, 'utf8'),
+    status: result.status,
+  })
   return losslessJson(result) as ReportToolResult
 }
 
@@ -280,25 +318,26 @@ function contextReport(context: TemplateContext): unknown { return context.repor
 
 export interface InvestmentReportArgs extends ReportRequest {}
 
-export async function generateInvestmentReport(ctx: Context, args: InvestmentReportArgs, signal: AbortSignal, config: Config): Promise<ReportToolResult> {
+export async function generateInvestmentReport(ctx: Context, args: InvestmentReportArgs, signal: AbortSignal, config: Config, logger?: Logger): Promise<ReportToolResult> {
+  const startedAt = Date.now()
   const reportType = args.reportType
   if (!reportType) throw new Error('reportType 不能为空')
   const asOf = normalizeAsOf(args.asOf)
   if (reportType === 'deep_read') {
     if (!args.symbol) throw new Error('deep_read 报告需要 symbol')
-    return generateDeepReadReport(ctx, { symbol: args.symbol, asOf }, signal, config)
+    return generateDeepReadReport(ctx, { symbol: args.symbol, asOf }, signal, config, logger)
   }
   if (!args.symbol && !(args.symbols?.length) && !(args.holdings?.length) && !args.sectorCode && !args.sectorName && reportType !== 'market_commentary' && reportType !== 'limit_up_attribution') {
     throw new Error(`${reportType} 报告需要 symbol、symbols、holdings 或 sectorCode/sectorName`)
   }
   const request: ReportRequest = { ...args, reportType, symbols: args.symbols, holdings: args.holdings }
-  const client = await ftshareClient(ctx, config)
-  let facts = await client.withSession(signal, session => loadReportFacts(session, request, asOf, config, signal))
+  const client = await ftshareClient(ctx, config, logger)
+  let facts = await client.withSession(signal, session => loadReportFacts(session, request, asOf, config, signal, undefined, logger))
   // Retry an incomplete sector snapshot on a new gateway session and retain
   // successful facts from both attempts; one failing source must not erase another.
   for (let retry = 0; retry < 3 && reportType === 'sector_analysis' && (!facts.sectors.some(row => row.close != null) || !facts.flows.length || !facts.constituents.length || !Array.isArray(facts.raw.sector_classifications) || !facts.raw.sector_classifications.length || facts.raw.sector_classifications_complete !== true || (Array.isArray(facts.raw.sector_member_history) && new Set(facts.raw.sector_member_history.map(row => String(row.symbol))).size < facts.constituents.length))
       && facts.warnings.some(message => message.includes('上游服务暂时不可用')); retry++) {
-    const refreshed = await client.withSession(signal, session => loadReportFacts(session, request, asOf, config, signal, facts))
+    const refreshed = await client.withSession(signal, session => loadReportFacts(session, request, asOf, config, signal, facts, logger))
     const distinct = <T>(items: T[], key: (item: T) => string): T[] => [...new Map(items.map(item => [key(item), item])).values()]
     facts = {
       ...facts,
@@ -315,7 +354,7 @@ export async function generateInvestmentReport(ctx: Context, args: InvestmentRep
     }
     facts.dataGaps = facts.dataGaps.filter(gap => !facts.provenance.some(source => gap === `FTShare 工具调用失败：${source.tool}` || gap === `FTShare 数据为空：${source.tool}`))
   }
-  const generated = await generateTemplateReport(ctx.llm, reportType, facts, { provider: config.llmProvider, model: config.llmModel, maxAttempts: config.llmMaxAttempts }, signal)
+  const generated = await generateTemplateReport(ctx.llm, reportType, facts, { provider: config.llmProvider, model: config.llmModel, maxAttempts: config.llmMaxAttempts }, signal, logger)
   const context = generated.context
   const reportPathName = `FtAi-${safeSymbol(args.symbol ?? args.sectorCode ?? args.sectorName ?? symbolsFor(request)[0] ?? reportType)}-${asOf}-${reportType}.html`
   const renderDataGaps = renderableDataGaps(facts.dataGaps, facts.permissions, facts.blockedPermissions)
@@ -323,7 +362,7 @@ export async function generateInvestmentReport(ctx: Context, args: InvestmentRep
   // Successful lower-tier fallbacks remain visible; their permission notices
   // stay available in the result metadata and warnings for transparency.
   const html = await renderReportTemplate(reportType, context, facts.blockedPermissions, renderDataGaps)
-  const exports = await renderExportArtifacts(html)
+  const exports = await renderExportArtifacts(html, logger)
   const warnings = [...facts.warnings]
   if (!exports.pdf || !exports.png) warnings.push('PDF/PNG 导出资产未能在服务端预渲染；网页端将提供打印或兼容降级路径')
   if (!generated.used) warnings.push('LLM 未返回可用结构化内容，已使用确定性 FTShare 数据上下文降级渲染')
@@ -344,5 +383,11 @@ export async function generateInvestmentReport(ctx: Context, args: InvestmentRep
     provenance: facts.provenance, freshness: { asOf, retrievedAt: new Date().toISOString(), provider: 'ftshare' }, dataGaps: dedupe(dataGaps), warnings: dedupe(warnings), permissions,
     llm: { attempted: generated.attempted, used: generated.used, rounds: generated.rounds, provider: config.llmProvider, model: config.llmModel },
   }
+  logger?.info('report.generated', {
+    reportType,
+    durationMs: Date.now() - startedAt,
+    bytes: Buffer.byteLength(html, 'utf8'),
+    status: result.status,
+  })
   return losslessJson(result) as ReportToolResult
 }

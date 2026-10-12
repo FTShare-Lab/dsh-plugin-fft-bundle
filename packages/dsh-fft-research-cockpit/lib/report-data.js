@@ -124,7 +124,7 @@ function currentSymbol(value) {
     const candidate = value.symbol ?? value.stock_code ?? value.ts_code ?? value.code;
     return typeof candidate === 'string' && candidate.trim() ? candidate.trim() : null;
 }
-async function optionalCall(session, toolOrCandidates, arguments_, signal, state) {
+async function optionalCall(session, toolOrCandidates, arguments_, signal, state, logger) {
     const candidates = typeof toolOrCandidates === 'string'
         ? [{ tool: toolOrCandidates, arguments_: arguments_ ?? {} }]
         : toolOrCandidates;
@@ -132,7 +132,7 @@ async function optionalCall(session, toolOrCandidates, arguments_, signal, state
         const result = await (async () => {
             for (let attempt = 0;; attempt++) {
                 try {
-                    return await callWithSubscriptionFallback(session, candidates, signal);
+                    return await callWithSubscriptionFallback(session, candidates, signal, logger);
                 }
                 catch (error) {
                     if (!(error instanceof FtShareError) || error.code !== 'UPSTREAM_UNAVAILABLE' || attempt >= 2 || signal.aborted)
@@ -159,6 +159,13 @@ async function optionalCall(session, toolOrCandidates, arguments_, signal, state
     catch (error) {
         if (isFtSharePermissionError(error)) {
             const notices = permissionNotices(error);
+            logger?.warn('ftshare.permission_denied', {
+                section: state.reportType,
+                tools: candidates.map(item => item.tool),
+                code: notices[0]?.code,
+                requiredPlan: notices[0]?.requiredPlan,
+                errorType: 'permission_denied',
+            });
             state.permissions.push(...notices);
             state.blockedPermissions.push(...notices);
             state.dataGaps.push(...notices.map(item => item.message));
@@ -171,11 +178,11 @@ async function optionalCall(session, toolOrCandidates, arguments_, signal, state
         return null;
     }
 }
-async function loadStockSnapshots(session, symbols, asOf, config, signal, state) {
+async function loadStockSnapshots(session, symbols, asOf, config, signal, state, logger) {
     const normalized = unique(symbols.map(value => value.trim()).filter(Boolean), value => value);
     const loaded = await Promise.all(normalized.slice(0, 30).map(async (symbol) => {
         try {
-            const snapshot = await loadSnapshot(session, symbol, asOf, config.maxKlineDays, signal, config.announcementLookbackDays, { includeExtendedFacts: true });
+            const snapshot = await loadSnapshot(session, symbol, asOf, config.maxKlineDays, signal, config.announcementLookbackDays, { includeExtendedFacts: true }, logger);
             state.permissions.push(...snapshot.permissions);
             state.blockedPermissions.push(...(snapshot.blockedPermissions ?? []));
             state.dataGaps.push(...snapshot.dataGaps);
@@ -186,6 +193,13 @@ async function loadStockSnapshots(session, symbols, asOf, config, signal, state)
         catch (error) {
             if (isFtSharePermissionError(error)) {
                 const notices = permissionNotices(error);
+                logger?.warn('ftshare.permission_denied', {
+                    section: state.reportType,
+                    symbol,
+                    code: notices[0]?.code,
+                    requiredPlan: notices[0]?.requiredPlan,
+                    errorType: 'permission_denied',
+                });
                 state.permissions.push(...notices);
                 state.blockedPermissions.push(...notices);
                 state.dataGaps.push(...notices.map(item => item.message));
@@ -200,7 +214,7 @@ async function loadStockSnapshots(session, symbols, asOf, config, signal, state)
     }));
     return loaded.filter((value) => value !== null);
 }
-async function loadMarketFacts(session, asOf, phase, signal, state) {
+async function loadMarketFacts(session, asOf, phase, signal, state, logger) {
     const day = date8(asOf);
     const range = dateRange(asOf, 30);
     const calls = [
@@ -224,8 +238,8 @@ async function loadMarketFacts(session, asOf, phase, signal, state) {
             ? await optionalCall(session, [
                 { tool: 'ft_v3_announcements_stock_announcements', plan: 'Basic', arguments_: args },
                 { tool: 'ft_v1_report_announcements_list', plan: 'Free', arguments_: { date: day, page: 1, page_size: 100 } },
-            ], undefined, signal, state)
-            : await optionalCall(session, tool, args, signal, state),
+            ], undefined, signal, state, logger)
+            : await optionalCall(session, tool, args, signal, state, logger),
     })));
     for (const result of results) {
         if (!result.value)
@@ -246,14 +260,14 @@ async function loadMarketFacts(session, asOf, phase, signal, state) {
     };
     const hasAggregate = state.market.some(row => ['up_count', 'down_count', 'flat_count', 'limit_up_count', 'limit_down_count'].some(key => row[key] !== undefined));
     if (!hasAggregate) {
-        const snapshot = await optionalCall(session, 'ft_v1_daec_market_snapshot', { trade_date: fallbackDay }, signal, state);
+        const snapshot = await optionalCall(session, 'ft_v1_daec_market_snapshot', { trade_date: fallbackDay }, signal, state, logger);
         if (snapshot) {
             state.market.push(...flattenRows(snapshot));
             clearEmpty('ft_v1_daec_market_snapshot');
         }
     }
     if (!state.indices.length) {
-        const indices = await optionalCall(session, 'ft_v1_eastmoney_market_valuation', { trade_date: fallbackDay, page: 1, page_size: 100 }, signal, state);
+        const indices = await optionalCall(session, 'ft_v1_eastmoney_market_valuation', { trade_date: fallbackDay, page: 1, page_size: 100 }, signal, state, logger);
         if (indices) {
             state.indices.push(...flattenRows(indices));
             clearEmpty('ft_v1_eastmoney_market_valuation');
@@ -261,8 +275,8 @@ async function loadMarketFacts(session, asOf, phase, signal, state) {
     }
     if (!state.flows.length) {
         const [stockFlows, marketFlows] = await Promise.all([
-            optionalCall(session, 'ft_v1_stock_capital_flows', { date: fallbackDay, page: 1, page_size: 100 }, signal, state),
-            optionalCall(session, 'ft_v2_eastmoney_dapan_flow', { start_date: fallbackDay, end_date: fallbackDay, page: 1, page_size: 100 }, signal, state),
+            optionalCall(session, 'ft_v1_stock_capital_flows', { date: fallbackDay, page: 1, page_size: 100 }, signal, state, logger),
+            optionalCall(session, 'ft_v2_eastmoney_dapan_flow', { start_date: fallbackDay, end_date: fallbackDay, page: 1, page_size: 100 }, signal, state, logger),
         ]);
         if (stockFlows) {
             state.flows.push(...flattenRows(stockFlows));
@@ -274,7 +288,7 @@ async function loadMarketFacts(session, asOf, phase, signal, state) {
         }
     }
     if (!state.limits.length) {
-        const limits = await optionalCall(session, 'ft_v1_limit_list', { limit_type: 'up', trade_date: fallbackDay }, signal, state);
+        const limits = await optionalCall(session, 'ft_v1_limit_list', { limit_type: 'up', trade_date: fallbackDay }, signal, state, logger);
         if (limits) {
             state.limits.push(...flattenRows(limits));
             clearEmpty('ft_v1_limit_list');
@@ -288,11 +302,11 @@ async function loadMarketFacts(session, asOf, phase, signal, state) {
     // resolve today's quote/candle facts so the ETF section is populated from
     // FTShare instead of silently rendering an empty shell.
     if (phase === 'midday' || phase === 'after_close' || phase == null) {
-        await loadMarketEtfFacts(session, asOf, signal, state);
+        await loadMarketEtfFacts(session, asOf, signal, state, logger);
     }
 }
-async function loadMarketEtfFacts(session, asOf, signal, state) {
-    const descriptions = await optionalCall(session, 'ft_v2_etf_description_all', { page: 1, page_size: 80 }, signal, state);
+async function loadMarketEtfFacts(session, asOf, signal, state, logger) {
+    const descriptions = await optionalCall(session, 'ft_v2_etf_description_all', { page: 1, page_size: 80 }, signal, state, logger);
     if (!descriptions)
         return;
     const descriptionRows = flattenRows(descriptions);
@@ -305,7 +319,7 @@ async function loadMarketEtfFacts(session, asOf, signal, state) {
         .filter(Boolean), value => value).slice(0, 20);
     if (symbols.length === 0)
         return;
-    const realtime = await optionalCall(session, 'ft_v4_etf_realtime_day_kline', { symbols }, signal, state);
+    const realtime = await optionalCall(session, 'ft_v4_etf_realtime_day_kline', { symbols }, signal, state, logger);
     if (realtime) {
         state.raw.ft_v4_etf_realtime_day_kline = realtime;
         state.market.push(...flattenRows(realtime).map(row => ({ ...row, asset_type: 'etf' })));
@@ -323,19 +337,19 @@ async function loadMarketEtfFacts(session, asOf, signal, state) {
             until_ts_millis: timestampForDate(range.until, true),
             adjust_kind: 'Forward',
             limit: 60,
-        }, signal, state);
+        }, signal, state, logger);
         return value ? flattenRows(value).map(row => ({ ...row, symbol, asset_type: 'etf' })) : [];
     }));
     state.market.push(...candleRows.flat());
 }
-async function loadSectorFacts(session, request, asOf, signal, state) {
+async function loadSectorFacts(session, request, asOf, signal, state, logger) {
     const day = date8(asOf);
     const sectorName = request.sectorName?.trim();
     const sectorCode = request.sectorCode?.trim();
     // Resolve the THS industry code first.  The report request uses an
     // Eastmoney BK code, while the historical board K-line endpoint uses a THS
     // numeric code (for example 电力 -> 881145).
-    const boardList = await optionalCall(session, 'ft_v1_ths_board_list', {}, signal, state);
+    const boardList = await optionalCall(session, 'ft_v1_ths_board_list', {}, signal, state, logger);
     const boardRows = flattenRows(boardList);
     const normalizeLabel = (value) => String(value ?? '').trim().toLowerCase().replace(/[\s_-]+/g, '');
     const requestedNames = new Set([sectorName, sectorCode].filter(Boolean).map(normalizeLabel));
@@ -368,8 +382,8 @@ async function loadSectorFacts(session, request, asOf, signal, state) {
         tool,
         bucket,
         value: tool === klineCandidates[0]?.tool
-            ? await optionalCall(session, klineCandidates, undefined, signal, state)
-            : await optionalCall(session, tool, args, signal, state),
+            ? await optionalCall(session, klineCandidates, undefined, signal, state, logger)
+            : await optionalCall(session, tool, args, signal, state, logger),
     })));
     for (const result of results) {
         if (!result.value)
@@ -406,8 +420,8 @@ async function loadSectorFacts(session, request, asOf, signal, state) {
     };
     if (!state.flows.some(row => row.sector_name || row.sector_code)) {
         const [thsFlow, eastmoneyFlow] = await Promise.all([
-            optionalCall(session, 'ft_v1_ths_industry_daily_flow', { start_date: fallbackDay, end_date: fallbackDay, sector_name: sectorName, page: 1, page_size: 500 }, signal, state),
-            optionalCall(session, 'ft_v1_eastmoney_sector_flow', { sector_code: sectorCode, sector_type: 'industry', trade_date: fallbackDay, page: 1, page_size: 200 }, signal, state),
+            optionalCall(session, 'ft_v1_ths_industry_daily_flow', { start_date: fallbackDay, end_date: fallbackDay, sector_name: sectorName, page: 1, page_size: 500 }, signal, state, logger),
+            optionalCall(session, 'ft_v1_eastmoney_sector_flow', { sector_code: sectorCode, sector_type: 'industry', trade_date: fallbackDay, page: 1, page_size: 200 }, signal, state, logger),
         ]);
         if (thsFlow) {
             state.flows.push(...flattenRows(thsFlow));
@@ -421,7 +435,7 @@ async function loadSectorFacts(session, request, asOf, signal, state) {
             state.warnings.push(`FTShare ${day} 尚无已发布板块资金快照，已使用 ${fallbackDay} 最近可用数据。`);
     }
     if (!state.sectors.some(row => row.industryName || row.industryCode || row.industry_name || row.industry_code || row.sector_name || row.sector_code)) {
-        const overview = await optionalCall(session, 'ft_v1_sw_industry_overview', { date: fallbackDay, level: 2, page: 1, page_size: 200 }, signal, state);
+        const overview = await optionalCall(session, 'ft_v1_sw_industry_overview', { date: fallbackDay, level: 2, page: 1, page_size: 200 }, signal, state, logger);
         if (overview) {
             state.sectors.push(...flattenRows(overview));
             clearEmptyNotice('ft_v1_sw_industry_overview');
@@ -435,7 +449,7 @@ async function loadSectorFacts(session, request, asOf, signal, state) {
     const classifications = Array.isArray(state.raw.sector_classifications) ? [...state.raw.sector_classifications] : [];
     if (parentCode && state.raw.sector_classifications_complete !== true) {
         for (let page = Number(state.raw.sector_classifications_next_page ?? 1); page <= 50; page++) {
-            const value = await optionalCall(session, 'ft_v1_sw_industry_constituent_history', { industry_code: parentCode, page, page_size: 100 }, signal, state);
+            const value = await optionalCall(session, 'ft_v1_sw_industry_constituent_history', { industry_code: parentCode, page, page_size: 100 }, signal, state, logger);
             const found = flattenRows(value);
             classifications.push(...found);
             const metadata = value?.metadata;
@@ -461,7 +475,7 @@ async function loadSectorFacts(session, request, asOf, signal, state) {
         return;
     // Request the highest tier, but historical breadth always uses a common
     // closing date. Fetch every constituent with bounded concurrency.
-    const realtime = await optionalCall(session, 'ft_v4_stock_realtime_day_kline', { symbols: memberSymbols }, signal, state);
+    const realtime = await optionalCall(session, 'ft_v4_stock_realtime_day_kline', { symbols: memberSymbols }, signal, state, logger);
     const historyRows = Array.isArray(state.raw.sector_member_history) ? [...state.raw.sector_member_history] : [];
     const loadedSymbols = new Set(historyRows.map(row => String(row.symbol)));
     const pendingSymbols = memberSymbols.filter(symbol => !loadedSymbols.has(symbol));
@@ -473,10 +487,10 @@ async function loadSectorFacts(session, request, asOf, signal, state) {
             const symbol = pendingSymbols[next++];
             const history = await optionalCall(session, 'ft_v1_stock_candlesticks', {
                 symbol, interval_unit: 'Day', since_ts_millis: timestampForDate(range.since), until_ts_millis: timestampForDate(asOf, true), adjust_kind: 'Forward', limit: 65,
-            }, signal, state);
+            }, signal, state, logger);
             historyRows.push(...flattenKlineRows(history, 'stock').map(row => ({ ...row, symbol })));
             if (!history) {
-                const company = await optionalCall(session, 'ft_v1_company_list', { stock_code: symbol.split('.')[0], page: 1, page_size: 1 }, signal, state);
+                const company = await optionalCall(session, 'ft_v1_company_list', { stock_code: symbol.split('.')[0], page: 1, page_size: 1 }, signal, state, logger);
                 companyRows.push(...flattenRows(company));
             }
         }
@@ -484,7 +498,7 @@ async function loadSectorFacts(session, request, asOf, signal, state) {
     state.raw.sector_member_history = historyRows;
     state.raw.sector_member_quotes = realtime ?? { data: companyRows };
 }
-async function loadLimitFacts(session, asOf, signal, state) {
+async function loadLimitFacts(session, asOf, signal, state, logger) {
     const day = date8(asOf);
     const calls = [
         ['ft_v1_limit_list', { limit_type: 'up', trade_date: day }, 'limits'],
@@ -500,8 +514,8 @@ async function loadLimitFacts(session, asOf, signal, state) {
             ? await optionalCall(session, [
                 { tool: 'ft_v3_announcements_stock_announcements', plan: 'Basic', arguments_: args },
                 { tool: 'ft_v1_report_announcements_list', plan: 'Free', arguments_: { date: day, page: 1, page_size: 200 } },
-            ], undefined, signal, state)
-            : await optionalCall(session, tool, args, signal, state),
+            ], undefined, signal, state, logger)
+            : await optionalCall(session, tool, args, signal, state, logger),
     })));
     for (const result of results) {
         if (!result.value)
@@ -510,16 +524,16 @@ async function loadLimitFacts(session, asOf, signal, state) {
         state[result.bucket].push(...flattenRows(result.value));
     }
 }
-async function loadEtfFacts(session, symbols, asOf, config, signal, state) {
+async function loadEtfFacts(session, symbols, asOf, config, signal, state, logger) {
     const range = dateRange(asOf, config.maxKlineDays);
     const normalized = unique(symbols.map(normalizeStockSymbol), value => value).slice(0, 30);
-    const descriptions = await optionalCall(session, 'ft_v2_etf_description_all', { page: 1, page_size: 50 }, signal, state);
+    const descriptions = await optionalCall(session, 'ft_v2_etf_description_all', { page: 1, page_size: 50 }, signal, state, logger);
     if (descriptions) {
         state.raw.ft_v2_etf_description_all = descriptions;
         state.market.push(...flattenRows(descriptions).map(row => ({ ...row, asset_type: 'etf' })));
     }
     if (asOf === new Date().toISOString().slice(0, 10) && normalized.length > 0) {
-        const realtime = await optionalCall(session, 'ft_v4_etf_realtime_day_kline', { symbols: normalized }, signal, state);
+        const realtime = await optionalCall(session, 'ft_v4_etf_realtime_day_kline', { symbols: normalized }, signal, state, logger);
         if (realtime) {
             state.raw.ft_v4_etf_realtime_day_kline = realtime;
             state.indices.push(...flattenKlineRows(realtime, 'etf'));
@@ -535,7 +549,7 @@ async function loadEtfFacts(session, symbols, asOf, config, signal, state) {
             until_ts_millis: timestampForDate(range.until, true),
             adjust_kind: 'Forward',
             limit: 500,
-        }, signal, state),
+        }, signal, state, logger),
     })));
     for (const result of results) {
         if (!result.value)
@@ -544,7 +558,7 @@ async function loadEtfFacts(session, symbols, asOf, config, signal, state) {
         state.indices.push(...flattenRows(result.value).map(row => ({ ...row, symbol: result.symbol, asset_type: 'etf' })));
     }
 }
-export async function loadReportFacts(session, request, asOf, config, signal, previous) {
+export async function loadReportFacts(session, request, asOf, config, signal, previous, logger) {
     const state = {
         reportType: request.reportType,
         asOf,
@@ -571,19 +585,19 @@ export async function loadReportFacts(session, request, asOf, config, signal, pr
         ...(request.holdings ?? []).map(item => item.symbol),
     ].map(value => value.trim()).filter(Boolean), value => value);
     if (['deep_read', 'holding_analysis', 'portfolio_stocks', 'review'].includes(request.reportType)) {
-        state.snapshots = await loadStockSnapshots(session, symbols, asOf, config, signal, state);
+        state.snapshots = await loadStockSnapshots(session, symbols, asOf, config, signal, state, logger);
     }
     if (request.reportType === 'portfolio_etfs') {
-        await loadEtfFacts(session, symbols, asOf, config, signal, state);
+        await loadEtfFacts(session, symbols, asOf, config, signal, state, logger);
     }
     if (['market_commentary', 'review', 'limit_up_attribution'].includes(request.reportType)) {
-        await loadMarketFacts(session, asOf, request.phase, signal, state);
+        await loadMarketFacts(session, asOf, request.phase, signal, state, logger);
     }
     if (request.reportType === 'sector_analysis') {
-        await loadSectorFacts(session, request, asOf, signal, state);
+        await loadSectorFacts(session, request, asOf, signal, state, logger);
     }
     if (request.reportType === 'limit_up_attribution') {
-        await loadLimitFacts(session, asOf, signal, state);
+        await loadLimitFacts(session, asOf, signal, state, logger);
     }
     state.permissions = unique(state.permissions, item => `${item.tool}:${item.requiredPlan}`);
     state.blockedPermissions = unique(state.blockedPermissions.map(notice => ({

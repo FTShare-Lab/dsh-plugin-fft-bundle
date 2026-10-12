@@ -197,7 +197,7 @@ function normalizeValuation(row) {
         total_market_cap: number(row, 'total_market_cap', 'totalMarketCap', 'market_cap', 'marketCap'),
     };
 }
-async function loadRecentAnnouncements(session, symbol, asOf, lookbackDays, signal) {
+async function loadRecentAnnouncements(session, symbol, asOf, lookbackDays, signal, logger) {
     const days = Math.max(1, Math.min(90, Math.trunc(lookbackDays)));
     const end = new Date(`${asOf}T12:00:00Z`);
     const dates = Array.from({ length: days }, (_, offset) => {
@@ -224,7 +224,7 @@ async function loadRecentAnnouncements(session, symbol, asOf, lookbackDays, sign
                     plan: 'Free',
                     arguments_: { date, sec_code: bareStockSymbol(symbol), page: 1, page_size: 30 },
                 },
-            ], signal);
+            ], signal, logger);
             permissions.push(...result.permissions);
             downgraded ||= result.downgraded;
             selectedTool = result.tool;
@@ -288,7 +288,7 @@ const TOOLS = {
     announcementsPreferred: 'ft_v3_announcements_stock_announcements',
     research: 'ft_v3_report_stock_reports',
 };
-export async function loadSnapshot(session, symbol, asOf, maxKlineDays, signal, announcementLookbackDays = 30, options = {}) {
+export async function loadSnapshot(session, symbol, asOf, maxKlineDays, signal, announcementLookbackDays = 30, options = {}, logger) {
     const range = dateRange(asOf, maxKlineDays);
     const includeAnnouncements = options.includeAnnouncements ?? true;
     const includeResearch = options.includeResearch ?? true;
@@ -330,7 +330,7 @@ export async function loadSnapshot(session, symbol, asOf, maxKlineDays, signal, 
         {
             label: '公告',
             invoke: includeAnnouncements
-                ? () => loadRecentAnnouncements(session, symbol, asOf, announcementLookbackDays, signal)
+                ? () => loadRecentAnnouncements(session, symbol, asOf, announcementLookbackDays, signal, logger)
                 : () => Promise.resolve({ data: [], metadata: { source: 'ftshare', skipped: true } }),
         },
         {
@@ -361,7 +361,7 @@ export async function loadSnapshot(session, symbol, asOf, maxKlineDays, signal, 
                 : [],
             downgraded: isRecord(value.metadata) && value.metadata.downgraded === true,
         }))
-        : callWithSubscriptionFallback(session, spec.candidates ?? [], signal)));
+        : callWithSubscriptionFallback(session, spec.candidates ?? [], signal, logger)));
     const dataGaps = [];
     const warnings = [];
     const permissions = [];
@@ -415,6 +415,13 @@ export async function loadSnapshot(session, symbol, asOf, maxKlineDays, signal, 
         catch (error) {
             if (isFtSharePermissionError(error)) {
                 const notices = permissionNotices(error);
+                logger?.warn('ftshare.permission_denied', {
+                    section: 'security_quote',
+                    tools: [TOOLS.securityPreferred, TOOLS.security],
+                    code: notices[0]?.code,
+                    requiredPlan: notices[0]?.requiredPlan,
+                    errorType: 'permission_denied',
+                });
                 permissions.push(...notices);
                 blockedPermissions.push(...notices);
                 dataGaps.push(...notices.map(item => item.message));
@@ -522,6 +529,13 @@ export async function loadSnapshot(session, symbol, asOf, maxKlineDays, signal, 
         catch (error) {
             if (isFtSharePermissionError(error)) {
                 const notices = permissionNotices(error);
+                logger?.warn('ftshare.permission_denied', {
+                    section: 'margin',
+                    tools: ['ft_v1_margin_trading_details'],
+                    code: notices[0]?.code,
+                    requiredPlan: notices[0]?.requiredPlan,
+                    errorType: 'permission_denied',
+                });
                 permissions.push(...notices);
                 blockedPermissions.push(...notices);
                 dataGaps.push(...notices.map(item => item.message));

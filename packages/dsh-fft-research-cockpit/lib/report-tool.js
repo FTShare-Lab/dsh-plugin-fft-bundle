@@ -117,7 +117,7 @@ function renderRecommendation(value) {
         lines.push('已附带第一个推荐组合的股票组合报告结果。');
     return [{ type: 'text', text: lines.join('\n') }];
 }
-function register(ctx, config, name, fixedType) {
+function register(ctx, config, name, logger, fixedType) {
     const parameters = fixedType
         ? Object.fromEntries(Object.entries(commonParameters).filter(([key]) => key !== 'reportType'))
         : commonParameters;
@@ -134,15 +134,15 @@ function register(ctx, config, name, fixedType) {
             const input = args;
             const request = fixedType ? { ...input, reportType: fixedType } : input;
             if (fixedType === 'deep_read')
-                return generateDeepReadReport(ctx, request, exec.signal, config);
-            return generateInvestmentReport(ctx, request, exec.signal, config);
+                return generateDeepReadReport(ctx, request, exec.signal, config, logger);
+            return generateInvestmentReport(ctx, request, exec.signal, config, logger);
         },
     }));
 }
-export function registerReportTool(ctx, config) {
-    register(ctx, config, 'generate_investment_report');
+export function registerReportTool(ctx, config, logger) {
+    register(ctx, config, 'generate_investment_report', logger);
     for (const reportType of REPORT_TYPES)
-        register(ctx, config, `generate_${reportType}_report`, reportType);
+        register(ctx, config, `generate_${reportType}_report`, logger, reportType);
     ctx.tools.register(defineTool({
         name: 'generate_portfolio_recommendation',
         description: '从中证1000或用户自定义股票池中构建可解释的股票组合推荐；先筛选候选，再按主题/分散/风险权重生成组合，可选继续生成股票组合报告。',
@@ -158,7 +158,7 @@ export function registerReportTool(ctx, config) {
             },
         },
         async execute(args, exec) {
-            return generatePortfolioRecommendation(ctx, args, exec.signal, config);
+            return generatePortfolioRecommendation(ctx, args, exec.signal, config, logger);
         },
     }));
 }

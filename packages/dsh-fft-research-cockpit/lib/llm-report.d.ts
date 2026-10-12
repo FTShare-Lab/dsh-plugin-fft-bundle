@@ -1,4 +1,5 @@
 import type { GenerateOptions, StreamChunk } from '@deepseek-ai/dsh-llm';
+import type { Logger } from '@deepseek-ai/cordis';
 import type { Snapshot, TechnicalSignals, JsonRecord } from './types.js';
 import type { DeepReadReport } from './report-schema.js';
 export interface LlmConfig {
@@ -15,7 +16,7 @@ export interface LlmLike {
  * a transient failure does not erase analysis that was already produced.
  */
 export declare function emptyDeepReadReport(): DeepReadReport;
-export declare function generateStructuredReport(llm: LlmLike, snapshot: Snapshot, technical: TechnicalSignals, config: LlmConfig, signal: AbortSignal): Promise<DeepReadReport>;
+export declare function generateStructuredReport(llm: LlmLike, snapshot: Snapshot, technical: TechnicalSignals, config: LlmConfig, signal: AbortSignal, logger?: Logger): Promise<DeepReadReport>;
 import type { ReportFacts } from './report-data.js';
 import type { ReportType } from './types.js';
 export interface TemplateLlmResult {
@@ -51,6 +52,6 @@ export declare function marketBreadthFromFacts(facts: ReportFacts): MarketBreadt
 };
 declare function fallbackContext(facts: ReportFacts): JsonRecord;
 /** Generate homepage analysis independently from the complete report, using only scoped evidence. */
-export declare function generateTemplateReport(llm: LlmLike, reportType: ReportType, facts: ReportFacts, config: LlmConfig, signal: AbortSignal): Promise<TemplateLlmResult>;
+export declare function generateTemplateReport(llm: LlmLike, reportType: ReportType, facts: ReportFacts, config: LlmConfig, signal: AbortSignal, logger?: Logger): Promise<TemplateLlmResult>;
 export { fallbackContext };
 //# sourceMappingURL=llm-report.d.ts.map
