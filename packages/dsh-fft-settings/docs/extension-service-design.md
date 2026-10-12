@@ -1,6 +1,6 @@
 # 设置扩展服务设计（方案 A2）：让任何插件注册自己的设置
 
-> 状态：**设计稿，未实现**。README 描述的行为仍是当前行为；本文只定架构、公开接口、能力范围、接入方式与验收口径，落地时按第 8 节清单开工，内置 apiKey 特性的归位按第 10 节顺序执行。
+> 状态：**已实现，未合并未发布**。A2 两条缝与第 10 节的 apiKey 归位已落在 `feat/settings-extension` 分支（三步：落缝、归位与分家、立规矩）；版本 `0.3.0`、发布说明与 ER 重绘仍待发布提交。
 >
 > 基线：DSH 0.2.0-rc.2；`@ft/dsh-fft-settings` 0.2.0 → 目标 0.3.0；`FTSHARE_SETTINGS_API_VERSION` 保持 `1`（路由与 envelope 不变）。
 >
@@ -115,7 +115,7 @@ settings 客户端半注册 `settings.section` 条目时声明该子槽位，并
 | --- | --- |
 | `name` | 固定 `'ftshare.settings.card'`（槽位键由本包声明，第三方只需 `import type {} from '@ft/dsh-fft-settings/client'` 拿到 SlotMap 合并） |
 | `id` | 必填、全局唯一；同 id 同 priority 在装载时抛错 |
-| `order` | 升序排列，缺省 100；内置 API Key 为 10 |
+| `order` | 升序排列。省略时由 DSH 槽位决定：0.2.0-rc.2 的 ui-slots 把缺省当 `0`（section 只调 `renderSlot`，补不了默认值）；内置 API Key 为 `10`，要排在它之后必须显式给更大的值 |
 | `label` | `string \| (() => string)`，section 内做分组标题用；缺省不显示 |
 | `priority` | **不对外公开**：槽位的遮蔽语义是"同 id 不同 priority 静默遮蔽、低者渲染"，第三方能用它顶掉我们的卡片；文档与示例只给 `id`/`order` |
 
