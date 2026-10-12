@@ -14,7 +14,7 @@ dsh plugin --profile desktop add git+ssh://git@github.com/FTShare-Lab/dsh-plugin
 
 DSH 官网：<https://deepseek-harness.github.io/deepseek-harness/>
 
-「插件管理」里粘贴同一条 spec：
+「插件管理」→「添加插件」，在输入框里粘贴同一条 spec：
 
 ```
 git+ssh://git@github.com/FTShare-Lab/dsh-plugin-fft-bundle.git#path:packages/dsh-fft-bundle
