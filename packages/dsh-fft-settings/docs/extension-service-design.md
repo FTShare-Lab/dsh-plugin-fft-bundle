@@ -300,7 +300,7 @@ L2  consumers（cockpit / kline / internal-plugin）
 ```
 src/core/{contract,module-registry,rpc-core,transport,client-transport}.ts
 src/core/shell.tsx        // section 外壳 + 槽位声明 + CSS 变量
-src/features/api-key/{contract,host,rpc,client-api,card.tsx,model.ts,probe.ts,service.ts,styles.ts,index.ts}
+src/features/api-key/{contract,host,rpc,client-api,card.tsx,model.ts,probe.ts,service.ts,logging.ts,styles.ts,index.ts}
 src/index.ts              // 只装配：provide 服务 + 注册内置 feature
 src/client.tsx            // 只装配：声明槽位 + 注册内置卡片
 ```
@@ -318,7 +318,7 @@ src/client.tsx            // 只装配：声明槽位 + 注册内置卡片
 | `src/modules/api-key/*` | `features/api-key/*` |
 | 卡片 CSS 在核心 `src/styles.ts` | 卡片自带 `<style>`（见 4.1）；核心只留 CSS 变量与外壳样式 |
 | `src/rpc.ts` 导出 `createApiKeyClient` | 移出 `/client-api`；通用入口只留 `createSettingsTransport`/`callSettingsRpc`/类型 |
-| `src/modules.ts` / `src/cards.ts` 清单 | 删除；`src/index.ts` 直接 `ctx.ftshareSettings.modules.register(apiKeyModule, ctx)` |
+| `src/modules.ts` / `src/cards.ts` 清单 | 删除；`src/index.ts` 直接 `ctx.ftshareSettings.modules.register(createApiKeyModule(logger), ctx)`（`logger = ctx.logger()`，无参 = 插件名） |
 
 **对外契约一律不动**：`ctx.ftshareSettings.apiKey.*`（含 `resolve()`）、RPC 前缀 `apiKey/*`、`/api/ftshare-settings`、envelope、`apiVersion = 1`。`/contract` 退化为**再导出汇总**（通用 + 内置特性契约），cockpit 现有的两处 `apiKey.resolve()` 与 `FtshareSettingsService` 类型导入零改动；同时把它的定位从"浏览器安全"改写为"无 Node 运行时依赖"，并在 README 写明 host/browser 两套类型各自的来源——现在"浏览器安全入口里放 host 类型"正是 10.1 第 1 条的根源。
 

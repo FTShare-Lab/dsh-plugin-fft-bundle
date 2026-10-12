@@ -1,7 +1,15 @@
 import { normalizeApiKey, untested, FTSHARE_API_KEY_REF } from './contract.js';
 import { probeApiKey } from './probe.js';
-/** One Host instance owns validation state; the DSH provider owns all secrets. */
-export function createApiKeySettings(store, validator = probeApiKey) {
+/**
+ * One Host instance owns validation state; the DSH provider owns all secrets.
+ *
+ * `logger` is optional so a directly constructed instance (tests, embeddings)
+ * stays silent: the plugin entry passes `ctx.logger()` in through
+ * `createApiKeyModule`. Fields never carry the Key or any token value.
+ */
+export function createApiKeySettings(store, validator, logger) {
+    // 默认校验器 = 真实探测：只有这条路径才需要把 logger 传进 probe 记请求级失败。
+    const validate = validator ?? ((key, signal) => probeApiKey(key, signal, fetch, Date.now(), logger));
     let revision = 0;
     let fingerprint;
     let validation = untested();
@@ -73,9 +81,10 @@ export function createApiKeySettings(store, validator = probeApiKey) {
         run.promise = (async () => {
             let result;
             try {
-                result = await validator(key, controller.signal);
+                result = await validate(key, controller.signal);
             }
             catch {
+                logger?.warn('FTShare 验证服务异常', { stage: 'validate', code: 'validator_failed' });
                 result = { ...untested('not_run', '验证服务异常，请重试'), status: 'failed' };
             }
             try {
@@ -83,6 +92,7 @@ export function createApiKeySettings(store, validator = probeApiKey) {
                     await current();
             }
             catch {
+                logger?.warn('FTShare 凭据不可确认', { stage: 'resolve', code: 'credential_unavailable' });
                 return { ...untested('not_run', '无法确认当前凭据，请重新测试'), status: 'failed' };
             }
             if (disposed || controller.signal.aborted || revision !== run.revision)
@@ -142,6 +152,7 @@ export function createApiKeySettings(store, validator = probeApiKey) {
                     await write(value);
                 }
                 catch {
+                    logger?.warn('FTShare API Key 保存失败', { code: 'save_failed' });
                     return { code: 'save_failed' };
                 }
                 // Reading/testing can fail after a committed save. Preserve that fact.

@@ -7,6 +7,6 @@
  * here (a browser half must never pull credential or probe code).
  */
 export * from './contract.js';
-export { apiKeyModule } from './host.js';
+export { createApiKeyModule } from './host.js';
 export { createApiKeySettings } from './service.js';
 export { createApiKeyRpcMethods, createApiKeyRpcHandler } from './rpc.js';

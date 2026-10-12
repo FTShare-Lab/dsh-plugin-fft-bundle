@@ -1,4 +1,5 @@
 import { type ApiKeySettings, type CredentialStatus, type ConfigureResult, type ValidationResult, normalizeApiKey, untested, FTSHARE_API_KEY_REF } from './contract.js'
+import type { FeatureLogger } from './logging.js'
 import { probeApiKey } from './probe.js'
 
 export interface CredentialStore {
@@ -9,8 +10,16 @@ export interface CredentialStore {
 }
 export type Validator = (key: string | undefined, signal: AbortSignal) => Promise<ValidationResult>
 
-/** One Host instance owns validation state; the DSH provider owns all secrets. */
-export function createApiKeySettings(store: CredentialStore, validator: Validator = probeApiKey) {
+/**
+ * One Host instance owns validation state; the DSH provider owns all secrets.
+ *
+ * `logger` is optional so a directly constructed instance (tests, embeddings)
+ * stays silent: the plugin entry passes `ctx.logger()` in through
+ * `createApiKeyModule`. Fields never carry the Key or any token value.
+ */
+export function createApiKeySettings(store: CredentialStore, validator?: Validator, logger?: FeatureLogger) {
+  // 默认校验器 = 真实探测：只有这条路径才需要把 logger 传进 probe 记请求级失败。
+  const validate: Validator = validator ?? ((key, signal) => probeApiKey(key, signal, fetch, Date.now(), logger))
   let revision = 0
   let fingerprint: string | undefined
   let validation = untested()
@@ -68,10 +77,12 @@ export function createApiKeySettings(store: CredentialStore, validator: Validato
     const run = { revision, controller, promise: Promise.resolve(untested()) }
     run.promise = (async () => {
       let result: ValidationResult
-      try { result = await validator(key, controller.signal) } catch {
+      try { result = await validate(key, controller.signal) } catch {
+        logger?.warn('FTShare 验证服务异常', { stage: 'validate', code: 'validator_failed' })
         result = { ...untested('not_run', '验证服务异常，请重试'), status: 'failed' }
       }
       try { if (!disposed) await current() } catch {
+        logger?.warn('FTShare 凭据不可确认', { stage: 'resolve', code: 'credential_unavailable' })
         return { ...untested('not_run', '无法确认当前凭据，请重新测试'), status: 'failed' as const }
       }
       if (disposed || controller.signal.aborted || revision !== run.revision) return untested('superseded', '凭据已变化，旧测试结果已丢弃')
@@ -121,7 +132,10 @@ export function createApiKeySettings(store: CredentialStore, validator: Validato
         try {
           if (!(await store.describe()).writable) return { code: 'read_only' as const }
           await write(value)
-        } catch { return { code: 'save_failed' as const } }
+        } catch {
+          logger?.warn('FTShare API Key 保存失败', { code: 'save_failed' })
+          return { code: 'save_failed' as const }
+        }
         // Reading/testing can fail after a committed save. Preserve that fact.
         try {
           const key = await current()

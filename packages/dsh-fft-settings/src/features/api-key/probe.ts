@@ -1,4 +1,5 @@
 import { type ProbeResult, type ValidationResult } from './contract.js'
+import type { FeatureLogger } from './logging.js'
 
 const ORIGIN = 'https://market.ft.tech/gateway/'
 const MAX_RESPONSE_BYTES = 128 * 1024
@@ -46,11 +47,23 @@ async function readBoundedJson(response: Response): Promise<unknown> {
   return JSON.parse(new TextDecoder().decode(bytes))
 }
 
-async function probe(path: string, params: Record<string, string>, key: string | undefined, parent: AbortSignal, fetcher: typeof fetch): Promise<ProbeResult> {
+/**
+ * 一次固定探测。失败（发出过请求且没有通过）写一条 `warn`：
+ * 字段固定 `{ target, status, durationMs }` —— `target` 由是否携带 Key 决定；
+ * 未发请求的 `not_run` 不是探测失败，成功也不记（规格 §6/§7）。
+ */
+async function probe(path: string, params: Record<string, string>, key: string | undefined, parent: AbortSignal, fetcher: typeof fetch, now: number, logger?: FeatureLogger): Promise<ProbeResult> {
   const url = new URL(path, ORIGIN)
   url.search = new URLSearchParams(params).toString()
   const timeout = AbortSignal.timeout(PROBE_TIMEOUT_MS)
   const signal = AbortSignal.any([parent, timeout])
+  const started = Date.now()
+  const finish = (outcome: ProbeResult): ProbeResult => {
+    if (outcome.status !== 'available' && outcome.status !== 'not_run') {
+      logger?.warn('FTShare 探测未通过', { target: key === undefined ? 'remote' : 'apiKey', status: outcome.status, durationMs: Date.now() - started })
+    }
+    return outcome
+  }
   try {
     // Never forward a credential across a redirect.
     const headers: Record<string, string> = { Accept: 'application/json' }
@@ -61,30 +74,30 @@ async function probe(path: string, params: Record<string, string>, key: string |
     let payload: unknown
     try { payload = await readBoundedJson(response) } catch (error) {
       if (signal.aborted) throw error
-      if (!response.ok) return failure(response.status, '')
-      return result('invalid_response', '接口未返回有效 JSON 数据')
+      if (!response.ok) return finish(failure(response.status, ''))
+      return finish(result('invalid_response', '接口未返回有效 JSON 数据'))
     }
     const text = isRecord(payload) ? String(payload.message ?? payload.msg ?? '') : ''
-    if (!response.ok) return failure(response.status, text)
-    if (!isRecord(payload) || typeof payload.code !== 'number') return result('invalid_response', '接口响应格式异常')
-    if (payload.code !== 200) return failure(payload.code, text)
-    if (!Array.isArray(payload.data)) return result('invalid_response', '接口未返回 K 线数组')
+    if (!response.ok) return finish(failure(response.status, text))
+    if (!isRecord(payload) || typeof payload.code !== 'number') return finish(result('invalid_response', '接口响应格式异常'))
+    if (payload.code !== 200) return finish(failure(payload.code, text))
+    if (!Array.isArray(payload.data)) return finish(result('invalid_response', '接口未返回 K 线数组'))
     // This checks service/authentication success, not market-data availability.
     // Empty holiday or post-close windows are successful responses too.
-    return result('available', key === undefined ? '远端服务正常' : 'API Key 验证通过')
+    return finish(result('available', key === undefined ? '远端服务正常' : 'API Key 验证通过'))
   } catch {
-    if (parent.aborted) return result('not_run', '测试已取消或凭据已变化')
-    if (timeout.aborted) return result('timeout', '连接超时，请稍后重试')
-    return result('network_error', '连接失败，请检查网络后重试')
+    if (parent.aborted) return finish(result('not_run', '测试已取消或凭据已变化'))
+    if (timeout.aborted) return finish(result('timeout', '连接超时，请稍后重试'))
+    return finish(result('network_error', '连接失败，请检查网络后重试'))
   }
 }
 
 /** Two fixed, bounded requests. No SDK, arbitrary URL, retries or stored rows. */
-export async function probeApiKey(key: string | undefined, signal: AbortSignal, fetcher: typeof fetch = fetch, now = Date.now()): Promise<ValidationResult> {
+export async function probeApiKey(key: string | undefined, signal: AbortSignal, fetcher: typeof fetch = fetch, now: number = Date.now(), logger?: FeatureLogger): Promise<ValidationResult> {
   const remote = await probe(PROBE_CONTRACTS.daily, {
     symbol: '600519.SH', interval_unit: 'day', adjust_kind: 'none',
     since_ts_millis: String(now - 30 * DAY), until_ts_millis: String(now), limit: '2',
-  }, undefined, signal, fetcher)
+  }, undefined, signal, fetcher, now, logger)
   let apiKey: ProbeResult
   if (!key) {
     apiKey = result('auth_required', '未配置 API Key')
@@ -96,7 +109,7 @@ export async function probeApiKey(key: string | undefined, signal: AbortSignal, 
     apiKey = await probe(PROBE_CONTRACTS.historicalMinute, {
       symbol: '600519.SH', interval_value: '1', adjust_kind: 'none',
       since_ts_millis: String(now - DAY), until_ts_millis: String(now), limit: '1',
-    }, key, signal, fetcher)
+    }, key, signal, fetcher, now, logger)
   }
   const passed = [remote, apiKey].filter(item => item.status === 'available').length
   return { status: passed === 2 ? 'passed' : passed === 1 ? 'partial' : 'failed', remote, apiKey, testedAt: new Date(now).toISOString() }

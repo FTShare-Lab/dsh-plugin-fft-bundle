@@ -1,6 +1,6 @@
 import z from '@deepseek-ai/schemastery';
 import { createSettingsHost } from './core/module-registry.js';
-import { apiKeyModule } from './features/api-key/index.js';
+import { createApiKeyModule } from './features/api-key/index.js';
 import { DEFAULT_LOGS_CONFIG, logsConfigSchema, resolveLogsConfig } from './features/logs/config.js';
 import { createLogsModule } from './features/logs/index.js';
 import { createSettingsRoute } from './core/transport.js';
@@ -34,8 +34,11 @@ export { DEFAULT_LOGS_CONFIG };
 export function apply(ctx, config) {
     const { service, handler } = createSettingsHost();
     ctx.provide('ftshareSettings', service);
+    // 具名 logger：`ctx.logger()` 无参调用时 logger name = 插件名（cordis 既有语义），
+    // 采集器据此把「是哪个包打的」自动带上。feature 不接受模块级单例。
+    const logger = ctx.logger();
     // Built-in namespaces take the same path a third-party module would take.
-    service.modules.register(apiKeyModule, ctx);
+    service.modules.register(createApiKeyModule(logger), ctx);
     service.modules.register(createLogsModule(resolveLogsConfig(config)), ctx);
     ctx.inject(['connection'], scoped => {
         const connection = scoped.get('connection');
