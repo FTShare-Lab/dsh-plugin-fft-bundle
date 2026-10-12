@@ -21,11 +21,10 @@ import { resolveSourcePath } from './home.js'
 
 const TIMESTAMP_PREFIX = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}[+-]\d{2}:\d{2})\s/
 
-export interface ExportOptions {
-  /** 主日志文件（`current.log`）的绝对路径。 */
-  readonly filePath: string
-  /** 配置里的额外来源（原样，可能带 `~`）。 */
-  readonly sources: readonly string[]
+/**
+ * 单文件导出选项：来源定义（与诊断包共用的 {@link LoadExportOptions}）加上 header 元信息。
+ */
+export interface ExportOptions extends LoadExportOptions {
   readonly homeDisplay: string
   readonly pluginVersion: string
   readonly now?: () => number
@@ -40,9 +39,34 @@ export interface ExportResult {
   readonly summaries: readonly LogsSourceSummary[]
 }
 
-interface LoadedSource {
+/** 读来源只用到这两项；诊断包复用同一加载过程。 */
+export interface LoadExportOptions {
+  /** 主日志文件（`current.log`）的绝对路径。 */
+  readonly filePath: string
+  /** 配置里的额外来源（原样，可能带 `~`）。 */
+  readonly sources: readonly string[]
+}
+
+/** 一次封装后的来源内容；`content` 已按上限截断。 */
+export interface LoadedSource {
   readonly summary: LogsSourceSummary
   readonly content: string
+}
+
+/** 加载结果：来源清单加正文，以及整体是否被截断。 */
+export interface LoadedExport {
+  readonly loaded: readonly LoadedSource[]
+  readonly truncated: boolean
+}
+
+/** 渲染导出文本所需的元信息（时间戳由调用方给定，保证同一份导出只有一个生成时间）。 */
+export interface RenderExportOptions {
+  readonly loaded: readonly LoadedSource[]
+  readonly truncated: boolean
+  readonly generatedAt: number
+  readonly homeDisplay: string
+  readonly pluginVersion: string
+  readonly environment?: string
 }
 
 /** 尾读一个文件，最多 `maxBytes` 字节；超出时丢掉首个不完整行。 */
@@ -125,17 +149,22 @@ export async function describeSources(sources: readonly string[]): Promise<LogsS
   return await Promise.all(sources.map(async source => (await resolveSource(source)).state))
 }
 
-const BLIND_SPOTS = [
+/** 导出物 header 与 manifest 共用的四条覆盖盲区（规格 §5）。 */
+export const LOG_BLIND_SPOTS = [
   '采集器挂载前的极短窗口（毫秒级，只有模块加载期日志）：只回填了 cordis 缓冲里残留的 error/info，warn/debug 不可恢复。',
   '没有桌面壳 log bridge 的环境（纯 dsh web）：MCP/Python 子进程的 stderr 只在启动它的终端里，不含在导出物中。',
   '渲染进程（浏览器）日志：DSH 未提供回传通道，不含。',
   '不走 logger 的失败：直接 console.*、只通过事件或只体现在返回值的失败，logger 通道看不到。',
-].map(line => `#   - ${line}`).join('\n')
+]
 
-/** 拼装导出文本：header（来源清单、条数、时间范围、truncated、盲区）+ 来源段落。 */
-export async function buildLogExport(options: ExportOptions): Promise<ExportResult> {
-  const now = options.now ?? Date.now
-  const generatedAt = now()
+/**
+ * 按规格 §9 的封顶语义读取主日志与额外来源：单来源 2 MiB、合计 8 MiB、目录最多 20 个 `*.log`。
+ *
+ * 单文件导出与诊断包共用这一步，两者的 `truncated` 语义因此完全一致。
+ * @param options - 主日志路径与配置的额外来源。
+ * @returns 每个来源的统计与正文，以及整体是否截断。
+ */
+export async function loadLogExport(options: LoadExportOptions): Promise<LoadedExport> {
   const primaryLabel = 'FT 插件日志（本进程 cordis）'
   const loaded: LoadedSource[] = []
   let truncated = false
@@ -189,37 +218,56 @@ export async function buildLogExport(options: ExportOptions): Promise<ExportResu
     }
     for (const file of files) await push(`额外来源${files.length > 1 ? `（目录 ${basename(state.path)}）` : ''}`, file)
   }
+  return { loaded, truncated }
+}
 
+/** 拼装导出文本：header（来源清单、条数、时间范围、truncated、盲区）+ 来源段落。 */
+export function renderLogExport(options: RenderExportOptions): { text: string; bytes: number } {
   const header = [
     '# ===== FT 运行日志 =====',
-    `# 生成时间：${formatLogTimestamp(generatedAt)}`,
+    `# 生成时间：${formatLogTimestamp(options.generatedAt)}`,
     `# 插件版本：@ft/dsh-fft-settings ${options.pluginVersion}`,
     `# 运行时：${options.environment ?? process.version}`,
     `# 日志目录：${options.homeDisplay}/logs/ft`,
     `# 导出上限：单来源 ${LOGS_SOURCE_MAX_BYTES / 1024 / 1024} MiB、合计 ${LOGS_EXPORT_MAX_BYTES / 1024 / 1024} MiB、目录最多 ${LOGS_MAX_SOURCE_FILES} 个 *${LOGS_FILE_SUFFIX}`,
-    `# truncated=${truncated}`,
+    `# truncated=${options.truncated}`,
     '# 来源：',
-    ...loaded.map((item, index) => {
+    ...options.loaded.map((item, index) => {
       const s = item.summary
       if (s.missing === true) return `#   ${index + 1}. ${s.label} ${s.path}（缺失）`
       const range = s.firstAt === undefined ? '时间范围=空' : `时间范围=${s.firstAt} ~ ${s.lastAt}`
       return `#   ${index + 1}. ${s.label} ${s.path} 条数=${s.lines} 字节=${s.bytes} ${range}${s.truncated ? ' truncated=true' : ''}`
     }),
     '# 覆盖盲区：',
-    BLIND_SPOTS,
+    LOG_BLIND_SPOTS.map(line => `#   - ${line}`).join('\n'),
     '',
   ].join('\n')
 
-  const body = loaded
+  const body = options.loaded
     .filter(item => item.summary.missing !== true)
     .map(item => `${LOGS_SECTION_RULE} ${item.summary.label}: ${item.summary.path} ${LOGS_SECTION_RULE}\n${item.content.replace(/\n?$/, '\n')}`)
     .join('\n')
 
   const text = `${header}${body}`
+  return { text, bytes: byteLength(text) }
+}
+
+/** 单文件导出：加载 + 渲染，附文件名与各来源统计。 */
+export async function buildLogExport(options: ExportOptions): Promise<ExportResult> {
+  const generatedAt = (options.now ?? Date.now)()
+  const { loaded, truncated } = await loadLogExport(options)
+  const { text, bytes } = renderLogExport({
+    loaded,
+    truncated,
+    generatedAt,
+    homeDisplay: options.homeDisplay,
+    pluginVersion: options.pluginVersion,
+    environment: options.environment,
+  })
   return {
     text,
     fileName: formatDownloadFileName(generatedAt),
-    bytes: byteLength(text),
+    bytes,
     truncated,
     summaries: loaded.map(item => item.summary),
   }

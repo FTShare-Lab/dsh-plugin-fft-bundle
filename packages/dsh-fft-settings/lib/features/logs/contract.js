@@ -50,5 +50,18 @@ export const LOGS_EXPORT_MAX_BYTES = 8 * 1024 * 1024;
 export const LOGS_MAX_SOURCE_FILES = 20;
 export const LOGS_EXPORT_FILE_PREFIX = 'ft-runtime-';
 export const LOGS_SECRET_TTL_MS = 5_000;
+/**
+ * 诊断包路由（规格 §9 / §12 决策 3）：`/api` 载体上的第二条精确路由，归 `logs` feature 所有。
+ *
+ * 卡片用 `<a download>` 直接指向它：浏览器同源 GET 自带凭据，不需要 fetch/Blob，
+ * `/api` 前缀的鉴权由载体负责，本 feature 不重复鉴权、也不读任何请求参数。
+ * 它随 owner fiber 释放（`ctx.effect` + `register` 返回的 disposer）。
+ */
+export const LOGS_ARCHIVE_ROUTE = '/api/ftshare-settings/logs.zip';
+/** 归档内固定条目名（`manifest.json` 永远排第一）。 */
+export const LOGS_ARCHIVE_MANIFEST = 'manifest.json';
+export const LOGS_ARCHIVE_LOG = 'ft-runtime.log';
+/** 额外来源原文的目录前缀：`sources/<n>-<basename>`。 */
+export const LOGS_ARCHIVE_SOURCE_DIR = 'sources/';
 /** 导出 header 里的来源段落分隔标记。 */
 export const LOGS_SECTION_RULE = '=====';

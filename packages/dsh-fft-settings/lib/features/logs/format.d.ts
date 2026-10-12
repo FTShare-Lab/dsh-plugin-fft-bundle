@@ -13,6 +13,8 @@ export declare function formatCompactStamp(ts: number): string;
 export declare function formatRotationStamp(ts: number): string;
 /** 导出物文件名：`ft-runtime-<yyyyMMdd-HHmmss>.log`。 */
 export declare function formatDownloadFileName(ts: number): string;
+/** 诊断包文件名：`ft-runtime-<yyyyMMdd-HHmmss>.zip`（与单文件导出同一时间戳口径）。 */
+export declare function formatArchiveFileName(ts: number): string;
 /** 轮转文件名：`ft-<ISO时间戳>.log`（与当前文件名 `current.log` 不冲突）。 */
 export declare function formatRotationFileName(ts: number): string;
 /** 文本 UTF-8 字节数（不依赖 Buffer，浏览器可用）。 */

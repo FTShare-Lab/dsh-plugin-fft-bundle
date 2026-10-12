@@ -46,6 +46,10 @@ export function formatRotationStamp(ts) {
 export function formatDownloadFileName(ts) {
     return `${LOGS_EXPORT_FILE_PREFIX}${formatCompactStamp(ts)}.log`;
 }
+/** 诊断包文件名：`ft-runtime-<yyyyMMdd-HHmmss>.zip`（与单文件导出同一时间戳口径）。 */
+export function formatArchiveFileName(ts) {
+    return `${LOGS_EXPORT_FILE_PREFIX}${formatCompactStamp(ts)}.zip`;
+}
 /** 轮转文件名：`ft-<ISO时间戳>.log`（与当前文件名 `current.log` 不冲突）。 */
 export function formatRotationFileName(ts) {
     return `${LOGS_ROTATED_PREFIX}${formatRotationStamp(ts)}.log`;

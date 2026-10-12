@@ -421,6 +421,14 @@ window.__ModuleLoader__.load({
 		* order 20 排在 API Key 卡（10）之后。
 		*/
 		const LOGS_CARD_ID = "logs";
+		/**
+		* 诊断包路由（规格 §9 / §12 决策 3）：`/api` 载体上的第二条精确路由，归 `logs` feature 所有。
+		*
+		* 卡片用 `<a download>` 直接指向它：浏览器同源 GET 自带凭据，不需要 fetch/Blob，
+		* `/api` 前缀的鉴权由载体负责，本 feature 不重复鉴权、也不读任何请求参数。
+		* 它随 owner fiber 释放（`ctx.effect` + `register` 返回的 disposer）。
+		*/
+		const LOGS_ARCHIVE_ROUTE = "/api/ftshare-settings/logs.zip";
 		//#endregion
 		//#region src/features/logs/client-api.ts
 		/** 浏览器适配器：只读，且不暴露本地路径以外的任何 Host 能力（刷盘与释放句柄）。 */
@@ -444,6 +452,7 @@ window.__ModuleLoader__.load({
 		*/
 		const LOGS_CARD_CSS = `
 .ftshare-settings select { height:44px; border:1px solid #696c77; border-radius:7px; padding:0 10px; background:var(--ftshare-input,#1d1e23); color:inherit; font:inherit; }
+.ftshare-settings .ftshare-download { display:inline-flex; align-items:center; min-height:44px; padding:8px 14px; border:1px solid #696c77; border-radius:7px; color:inherit; text-decoration:none; cursor:pointer; }
 .ftshare-settings .ftshare-log-preview { max-height:320px; overflow:auto; margin:0 0 12px; padding:12px; background:var(--ftshare-input,#1d1e23); border:1px solid var(--ftshare-border,#44464f); border-radius:7px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px; line-height:1.5; white-space:pre-wrap; overflow-wrap:anywhere; }
 `;
 		//#endregion
@@ -586,6 +595,12 @@ window.__ModuleLoader__.load({
 										disabled: busy,
 										children: "导出日志"
 									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("a", {
+										className: "ftshare-download",
+										href: LOGS_ARCHIVE_ROUTE,
+										download: "",
+										children: "导出诊断包（.zip）"
+									}),
 									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 										type: "button",
 										onClick: () => void refresh(),
@@ -636,6 +651,7 @@ window.__ModuleLoader__.load({
 								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: "不弹保存对话框" }),
 								"，文件落在系统下载目录；浏览器端是否询问取决于浏览器设置。"
 							] }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("small", { children: "「导出诊断包（.zip）」= 同一份 ft-runtime.log + manifest.json（生成时间、版本、上限、各来源统计、盲区）+ 额外来源原文；桌面端同样不弹保存对话框、落在系统下载目录。若浏览器没有开始下载，改用「导出日志」。" }),
 							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("small", { children: "日志可能含本地路径、插件名与标识，发送给他人前请自行检查内容。" }),
 							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("small", { children: "覆盖盲区：采集器挂载前的 warn/debug 不可恢复；纯 Web 环境下 MCP/Python 子进程 stderr 不在其中；浏览器渲染进程日志没有回传通道；直接 console.* 或只体现在返回值的失败看不到。" })
 						]

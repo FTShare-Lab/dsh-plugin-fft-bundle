@@ -7,5 +7,6 @@
  * collector, the file system or the config schema).
  */
 export * from './contract.js';
+export { buildLogArchive, createLogsArchiveRoute } from './archive.js';
 export { createLogsModule } from './host.js';
 export { createLogsRpcMethods } from './rpc.js';

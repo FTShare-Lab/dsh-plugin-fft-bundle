@@ -12,6 +12,7 @@
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import { FTSHARE_API_KEY_REF } from '../api-key/contract.js'
 import { defineSettingsModule, type SettingsModule } from '../../core/module-registry.js'
+import { createLogsArchiveRoute, type LogsArchiveRouteRegistry } from './archive.js'
 import { FtLogCollector } from './collector.js'
 import {
   LOGS_DEFAULT_PREVIEW_LINES,
@@ -36,6 +37,14 @@ async function readPluginVersion(): Promise<string> {
   } catch {
     return 'unknown'
   }
+}
+
+/**
+ * 运行时描述串：header 与 manifest 共用一个口径。
+ * @returns 形如 `node v22.19.0 darwin arm64`。
+ */
+function runtimeDescription(): string {
+  return `node ${process.version} ${process.platform} ${process.arch}`
 }
 
 /**
@@ -104,11 +113,25 @@ export function createLogsModule(config: LogsConfig): SettingsModule<'logs', Log
             sources: config.sources,
             homeDisplay: displayDshHome(home),
             pluginVersion: await version,
-            environment: `node ${process.version} ${process.platform} ${process.arch}`,
+            environment: runtimeDescription(),
           })
           return { fileName: result.fileName, text: result.text, bytes: result.bytes, truncated: result.truncated, sources: result.summaries }
         },
       }
+
+      // 诊断包由本 feature 自己挂路由（core 不认识 /logs.zip）：与插件入口同一条惯用法，
+      // register 返回的 disposer 交给 scoped.effect，owner fiber 释放时路由随之撤销。
+      ctx.inject(['connection'], scoped => {
+        const connection = scoped.get('connection') as { fetch: LogsArchiveRouteRegistry }
+        scoped.effect(() => connection.fetch.register(createLogsArchiveRoute({
+          filePath: collector.filePath,
+          sources: config.sources,
+          homeDisplay: displayDshHome(home),
+          pluginVersion: version,
+          environment: runtimeDescription(),
+          flush: () => collector.flush(),
+        })), 'ftshare-settings: /logs.zip route')
+      })
 
       const disposeExporter = ctx.logger.exporter({
         // levels 是接收上限：warn=2 收 error/info/warn，debug=3 全收。
