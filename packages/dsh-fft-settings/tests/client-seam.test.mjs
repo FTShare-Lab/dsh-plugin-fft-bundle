@@ -11,7 +11,8 @@ import { test } from 'node:test'
 import { SlotCore } from '@deepseek-ai/dsh-client-ui-slots'
 import { registerSettingsSection } from '../lib/core/shell.js'
 import { registerApiKeyCard } from '../lib/features/api-key/card.js'
-import { FTSHARE_API_KEY_REF, FTSHARE_SETTINGS_CARD_SLOT, FTSHARE_SETTINGS_SECTION } from '../lib/contract.js'
+import { registerLogsCard } from '../lib/features/logs/card.js'
+import { FTSHARE_API_KEY_REF, FTSHARE_SETTINGS_CARD_SLOT, FTSHARE_SETTINGS_SECTION, LOGS_CARD_ID, LOGS_CARD_ORDER } from '../lib/contract.js'
 
 /** Renderer-shaped slots service over a real SlotCore. */
 function createSlots() {
@@ -142,5 +143,30 @@ test('the built-in card registers late, sorts by order and keeps its invalidatio
 
   disposeCard()
   assert.deepEqual(slots.renderSlot(FTSHARE_SETTINGS_CARD_SLOT, {}), ['no-order-card', 'cockpit-card'])
+  disposeSection()
+})
+
+test('both built-in cards register through the same slot and sort by ascending order', async () => {
+  const slots = createSlots()
+  declareSettingsShell(slots)
+  const ctx = createContext(slots)
+
+  // Both built-in cards may arrive before the section declares the child slot.
+  const disposeLogs = registerLogsCard(ctx)
+  const disposeApiKey = registerApiKeyCard(ctx)
+  assert.deepEqual(slots.core.entries(FTSHARE_SETTINGS_CARD_SLOT), [])
+
+  const disposeSection = registerSettingsSection(ctx)
+  const entries = slots.core.entriesOfSlot(FTSHARE_SETTINGS_CARD_SLOT)
+  assert.deepEqual(entries.map(entry => entry.options.id), ['apiKey', LOGS_CARD_ID])
+  assert.deepEqual(entries.map(entry => entry.options.order), [10, LOGS_CARD_ORDER])
+  assert.deepEqual(entries[1].options, { id: 'logs', order: 20 })
+  // Both are ordinary list entries: no priority and no privileged options.
+  assert.equal(entries.every(entry => entry.options.label === undefined), true)
+  assert.equal(slots.renderSlot(FTSHARE_SETTINGS_CARD_SLOT, {}).length, 2)
+
+  disposeLogs()
+  assert.deepEqual(slots.core.entriesOfSlot(FTSHARE_SETTINGS_CARD_SLOT).map(entry => entry.options.id), ['apiKey'])
+  disposeApiKey()
   disposeSection()
 })

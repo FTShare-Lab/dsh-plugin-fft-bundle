@@ -59,7 +59,8 @@ test('reads each operation, shares writes, and exposes only safe status', async 
 
 test('the built-in API key namespace is published through the public registry', async t => {
   const { ctx, service } = await boot(t)
-  assert.deepEqual(ctx.ftshareSettings.modules.namespaces(), ['apiKey'])
+  // Both built-in features take the public registry path; apiKey comes first.
+  assert.deepEqual(ctx.ftshareSettings.modules.namespaces(), ['apiKey', 'logs'])
   assert.equal(ctx.ftshareSettings.apiKey, service)
   // Same path as any other module: the namespace is taken, so a second attempt
   // is rejected and the live one keeps working.

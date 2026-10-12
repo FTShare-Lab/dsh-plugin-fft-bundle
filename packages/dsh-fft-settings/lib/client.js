@@ -408,6 +408,242 @@ window.__ModuleLoader__.load({
 			})] });
 		}
 		//#endregion
+		//#region src/features/logs/contract.ts
+		/**
+		* `logs` 命名空间的共享契约：只有常量与类型，浏览器半边可以安全导入。
+		*
+		* 采集器（Host 常驻）与导出器（设置页）通过文件解耦；本文件是两者唯一的共同语言。
+		*/
+		/**
+		* 卡片在 `ftshare.settings.card` 槽位里的 id 与 order。
+		*
+		* 归 feature 所有（与业务契约同一份来源）：卡片组件与浏览器侧的守卫测试都读它，
+		* order 20 排在 API Key 卡（10）之后。
+		*/
+		const LOGS_CARD_ID = "logs";
+		//#endregion
+		//#region src/features/logs/client-api.ts
+		/** 浏览器适配器：只读，且不暴露本地路径以外的任何 Host 能力（刷盘与释放句柄）。 */
+		function createLogsClient(transport) {
+			const call = (method, payload = {}) => callSettingsRpc(transport, "logs", method, payload);
+			return {
+				stats: () => call("stats"),
+				preview: (lines = 80) => call("preview", { lines }),
+				export: () => call("export")
+			};
+		}
+		//#endregion
+		//#region src/features/logs/styles.ts
+		/**
+		* The `logs` card's own styles, rendered by the card component's `<style>`.
+		*
+		* These two rules used to live in the core section stylesheet; a card owns
+		* everything past the section shell, so they moved here with the card. Every
+		* selector stays scoped under `.ftshare-settings`, so a card never styles
+		* another card's markup.
+		*/
+		const LOGS_CARD_CSS = `
+.ftshare-settings select { height:44px; border:1px solid #696c77; border-radius:7px; padding:0 10px; background:var(--ftshare-input,#1d1e23); color:inherit; font:inherit; }
+.ftshare-settings .ftshare-log-preview { max-height:320px; overflow:auto; margin:0 0 12px; padding:12px; background:var(--ftshare-input,#1d1e23); border:1px solid var(--ftshare-border,#44464f); border-radius:7px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px; line-height:1.5; white-space:pre-wrap; overflow-wrap:anywhere; }
+`;
+		//#endregion
+		//#region src/features/logs/card.tsx
+		/** 预览行数候选：上限由 Host 侧校验兜底。 */
+		const PREVIEW_CHOICES = [
+			50,
+			80,
+			200
+		];
+		function displayBytes(bytes) {
+			if (bytes < 1024) return `${bytes} B`;
+			if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KiB`;
+			return `${(bytes / 1024 / 1024).toFixed(2)} MiB`;
+		}
+		/** 把文本包成 Blob，用 a[download] 触发下载（Web 与桌面同一套）。 */
+		function downloadText(fileName, text) {
+			const url = URL.createObjectURL(new Blob([text], { type: "text/plain;charset=utf-8" }));
+			const anchor = document.createElement("a");
+			anchor.href = url;
+			anchor.download = fileName;
+			anchor.rel = "noopener";
+			document.body.appendChild(anchor);
+			anchor.click();
+			anchor.remove();
+			setTimeout(() => URL.revokeObjectURL(url), 0);
+		}
+		/**
+		* Contribute the built-in runtime-log card through the same slot a third-party
+		* card uses. Nothing about it is privileged: same declaration, same options.
+		* @param ctx - client context carrying the renderer's slots service.
+		* @returns idempotent disposer for the card registration.
+		*/
+		function registerLogsCard(ctx) {
+			return ctx.slots.inject(FTSHARE_SETTINGS_CARD_SLOT, () => ctx.slots.register({
+				name: FTSHARE_SETTINGS_CARD_SLOT,
+				id: LOGS_CARD_ID,
+				order: 20
+			}, createLogsCard()));
+		}
+		/** Bind the card's adapter; the component only reads through it. */
+		function createLogsCard() {
+			const api = createLogsClient(createSettingsTransport());
+			return () => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(LogsSection, { api });
+		}
+		function LogsSection({ api }) {
+			const [stats, setStats] = (0, react.useState)();
+			const [preview, setPreview] = (0, react.useState)();
+			const [lines, setLines] = (0, react.useState)(80);
+			const [busy, setBusy] = (0, react.useState)(false);
+			const [message, setMessage] = (0, react.useState)("");
+			const [error, setError] = (0, react.useState)("");
+			const refresh = (0, react.useCallback)(async () => {
+				setBusy(true);
+				setError("");
+				try {
+					setStats(await api.stats());
+					setPreview(await api.preview(lines));
+				} catch (cause) {
+					setError(cause instanceof Error ? cause.message : "读取日志状态失败");
+				} finally {
+					setBusy(false);
+				}
+			}, [api, lines]);
+			(0, react.useEffect)(() => {
+				refresh();
+			}, [refresh]);
+			const doExport = async () => {
+				setBusy(true);
+				setError("");
+				setMessage("");
+				try {
+					const result = await api.export();
+					downloadText(result.fileName, result.text);
+					setMessage(`已导出 ${result.fileName}（${displayBytes(result.bytes)}${result.truncated ? "，已达体积上限并截断" : ""}）`);
+				} catch (cause) {
+					setError(cause instanceof Error ? cause.message : "导出日志失败");
+				} finally {
+					setBusy(false);
+				}
+			};
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("style", { children: LOGS_CARD_CSS }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+				className: "ftshare-settings",
+				"aria-label": "FT 运行日志",
+				"aria-busy": busy,
+				children: [
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("header", { children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+						className: "ftshare-eyebrow",
+						children: "FTSHARE / LOGS"
+					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("h2", { children: "运行日志" })] }) }),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: "ftshare-card",
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", { children: "采集状态" }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("dl", { children: [
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: "ftshare-result",
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("dt", { children: "日志文件" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("dd", { children: stats?.file ?? "读取中…" })]
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: "ftshare-result",
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("dt", { children: "记录 / 时间范围" }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("dd", { children: [stats === void 0 ? "读取中…" : `${stats.records} 条`, stats?.firstAt !== void 0 && `（${stats.firstAt} ~ ${stats.lastAt}）`] })]
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: "ftshare-result",
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("dt", { children: "文件大小 / 上限" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("dd", { children: stats === void 0 ? "读取中…" : `${displayBytes(stats.fileBytes)} / ${displayBytes(stats.maxBytes)}（保留 ${stats.keep} 份轮转）` })]
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: "ftshare-result",
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("dt", { children: "丢弃 / 轮转 / 写失败" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("dd", { children: stats === void 0 ? "读取中…" : `${stats.dropped} / ${stats.rotations} / ${stats.writeFailures}` })]
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: "ftshare-result",
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("dt", { children: "当前级别" }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("dd", { children: [stats?.level ?? "读取中…", "（warn 收 error+info+warn，debug 收全部）"] })]
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: "ftshare-result",
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("dt", { children: "可选级别" }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("dd", { children: [
+										"warn / debug —— 级别是",
+										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: "接收上限" }),
+										"，info 会把 warn 一起丢掉，与「失败日志不低于 warn」冲突，故不提供 info 档"
+									] })]
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: "ftshare-result",
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("dt", { children: "各来源条数" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("dd", { children: stats === void 0 || Object.keys(stats.byName).length === 0 ? "本次进程尚无记录" : Object.entries(stats.byName).map(([name, count]) => `${name}=${count}`).join("、") })]
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: "ftshare-result",
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("dt", { children: "额外来源" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("dd", { children: stats === void 0 || stats.sources.length === 0 ? "未配置（logs.sources）" : stats.sources.map((source) => `${source.path}（${source.kind}${source.bytes === void 0 ? "" : ` ${displayBytes(source.bytes)}`}）`).join("；") })]
+								})
+							] }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: "ftshare-actions",
+								children: [
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+										className: "primary",
+										type: "button",
+										onClick: () => void doExport(),
+										disabled: busy,
+										children: "导出日志"
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+										type: "button",
+										onClick: () => void refresh(),
+										disabled: busy,
+										children: "刷新"
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("label", {
+										htmlFor: "ftshare-log-lines",
+										children: "预览行数"
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("select", {
+										id: "ftshare-log-lines",
+										value: lines,
+										onChange: (e) => setLines(Number(e.target.value)),
+										disabled: busy,
+										children: PREVIEW_CHOICES.map((choice) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("option", {
+											value: choice,
+											children: choice
+										}, choice))
+									})
+								]
+							}),
+							busy && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+								role: "status",
+								children: "正在处理，请稍候…"
+							}),
+							message && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+								role: "status",
+								children: message
+							}),
+							error && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+								className: "ftshare-error",
+								role: "alert",
+								children: error
+							})
+						]
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: "ftshare-card",
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("h3", { children: ["最近日志", preview?.truncated === true ? "（已截断）" : ""] }),
+							preview === void 0 || preview.lines.length === 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: "还没有日志。采集器随插件启动，出现警告后这里就会有内容。" }) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("pre", {
+								className: "ftshare-log-preview",
+								children: preview.lines.join("\n")
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("small", { children: [
+								"桌面端点「导出日志」由 Electron 直接下载，",
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: "不弹保存对话框" }),
+								"，文件落在系统下载目录；浏览器端是否询问取决于浏览器设置。"
+							] }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("small", { children: "日志可能含本地路径、插件名与标识，发送给他人前请自行检查内容。" }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("small", { children: "覆盖盲区：采集器挂载前的 warn/debug 不可恢复；纯 Web 环境下 MCP/Python 子进程 stderr 不在其中；浏览器渲染进程日志没有回传通道；直接 console.* 或只体现在返回值的失败看不到。" })
+						]
+					})
+				]
+			})] });
+		}
+		//#endregion
 		//#region src/core/styles.ts
 		/**
 		* Section shell styles plus the theme variables the section promises.
@@ -471,6 +707,7 @@ window.__ModuleLoader__.load({
 		function registerFtshareSettings(ctx) {
 			registerSettingsSection(ctx);
 			registerApiKeyCard(ctx);
+			registerLogsCard(ctx);
 		}
 		//#endregion
 		exports.FtshareSettingsSection = FtshareSettingsSection;

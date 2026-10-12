@@ -51,7 +51,8 @@
     }
   },
   "dependencies": {
-    "@deepseek-ai/dsh-credentials": ">=0.2.0-rc.2"
+    "@deepseek-ai/dsh-credentials": ">=0.2.0-rc.2",
+    "@deepseek-ai/schemastery": ">=3.18.4"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
@@ -64,7 +65,8 @@
     "tsdown": "^0.22.2",
     "typescript": "^5.8.3",
     "react": "^18.3.1",
-    "@types/react": "^18.3.24"
+    "@types/react": "^18.3.24",
+    "@types/node": "^22.15.0"
   },
   "engines": {
     "node": ">=22.19.0"
