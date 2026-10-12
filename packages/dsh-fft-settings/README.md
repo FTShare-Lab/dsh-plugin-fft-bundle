@@ -1,8 +1,8 @@
 # FTShare Settings：共享设置、远端服务与 API Key 检测
 
-`@ft/dsh-fft-settings`（原 `@ft/dsh-ftshare-settings`，迁移 dsh-fft-bundle 仓时改名）是 DSH 共享设置插件。Host 服务为 **`ctx.ftshareSettings`**，API Key 的所有能力位于 **`apiKey` 命名空间**；未来主题、用户偏好应作为 `theme`、`preferences` 等同级命名空间扩展，不能混入 `apiKey`。
+`@ft/dsh-fft-settings`（原 `@ft/dsh-ftshare-settings`，迁移 dsh-fft-bundle 仓时改名）是 DSH 共享设置插件。Host 服务为 **`ctx.ftshareSettings`**，API Key 的所有能力位于 **`apiKey` 命名空间**，运行日志采集与导出位于 **`logs` 命名空间**；未来主题、用户偏好应作为 `theme`、`preferences` 等同级命名空间扩展，不能混入 `apiKey`。
 
-当前只实现 API Key 管理、远端服务检查与 Key 验证，未实现主题／用户偏好的持久化接口，也不提供行情查询、图表、通用 SDK 代理或 Python 凭据桥。Key 由 DSH `credentials` 服务存储，本插件不保存第二份密钥文件。原未发布的 `ftshareCredentials` 草案已替换，不保留旧服务别名。
+当前只实现 API Key 管理、远端服务检查与 Key 验证，以及**常驻的运行日志采集器**（落盘 `$DSH_HOME/logs/ft/`）与设置页导出卡片；未实现主题／用户偏好的持久化接口，也不提供行情查询、图表、通用 SDK 代理或 Python 凭据桥。Key 由 DSH `credentials` 服务存储，本插件不保存第二份密钥文件。原未发布的 `ftshareCredentials` 草案已替换，不保留旧服务别名。
 
 ## 给开发者和 agent 的接入约定
 
@@ -13,7 +13,7 @@
 - `apiVersion = 1`。新增设置领域应新增命名空间；破坏公开语义的修改需要重新评估协议版本。
 - 本仓没有修改 dsh_kline。下面的 kline 代码是接入示例，不代表消费者已经完成适配。
 - 不读取 `.credentials.yaml`、不解析 kline 的旧 JSON 文件、不把 Key 写入普通 settings 或 localStorage，不通过修改全局 `process.env` 同步运行中消费者。
-- 设置页只有访问凭据一张卡；本插件不展示应用版本，也不提供检查更新入口。
+- 设置页有访问凭据与运行日志两张卡；本插件不展示应用版本，也不提供检查更新入口。
 - 核心 `src/core/` 不得出现特性词汇或依赖 `src/features/`（由 `tests/architecture.test.mjs` 守护）；内置 API Key 与第三方走同一套注册路径，没有内部后门。
 
 
@@ -118,12 +118,40 @@ Host 在 DSH `connection` 出现时把设置调用注册成 `/api` 下的一条�
 | `apiKey/configureAndTest` | `{ value: string }` |
 | `apiKey/testConnection` | `{}` |
 | `apiKey/getValidationStatus` | `{}` |
+| `logs/stats` | `{}` |
+| `logs/preview` | `{ lines?: number }`（1–200，默认 80） |
+| `logs/export` | `{}` |
+
+每个命名空间只派发自己显式登记的方法：`logs` 只有上面三个只读方法，`flush()`、`dispose()`、`filePath` 仅 Host 可用。
 
 Connection 返回 `{ ok: true, value }` 或 `{ ok: false, error: { code, message, details } }`；适配器解包为对应结果，传输失败抛出通用错误。业务上的“保存成功、验证失败”仍是一次成功的 RPC，必须检查 `value.save` 与 `value.validation`，不能只看 `ok`。
 
 不接受任意 URL、请求参数或方法名称。`resolve`、`createEnvironment`、`subscribe` 不对 RPC 暴露。HTTP 直接调用需要 Connection 的完整 envelope 与认证，优先使用适配器，不要对 URL 裸 POST 业务参数。
 
 设置页自带样式，支持只读来源、加载反馈、保存结果、远端服务／API Key 分项结果、手动读取与凭据事件刷新。“测试当前连接”不会使用输入框中的草稿。另一个页面完成测试后，可点击“重新读取状态”读取其结果；当前没有独立的验证完成推送事件。核心只声明 `--ftshare-text`、`--ftshare-muted`、`--ftshare-panel`、`--ftshare-border`、`--ftshare-input`、`--ftshare-link`、`--ftshare-error` 的默认值（写在 `:where(:root)` 上，宿主主题任何规则都能覆盖）与 section 外壳样式；卡片自己的 CSS 随卡片组件渲染，见「新增一种设置」。这不是主题设置 API。
+
+## 运行日志（`logs` 命名空间）
+
+设置页第二张卡「运行日志」：常驻采集器把本进程的 cordis 日志落到 `$DSH_HOME/logs/ft/`，卡片显示采集状态与最近若干行，并提供两个导出入口——「导出日志」得到单个 `.log`，「导出诊断包」得到含 manifest 与额外来源原文的 `.zip`。采集器随插件启动，**设置插件被禁用或未安装时没有日志采集**。
+
+```yaml
+# profiles/<p>/cordis.patch.yml
+- id: dsh-fft-settings
+  config:
+    logs:
+      level: warn            # warn（默认）｜debug；不提供 info（它会连 warn 一起丢掉）
+      maxBytes: 8388608      # 单文件上限，超过即轮转（默认 8 MiB）
+      keep: 3                # 轮转保留份数
+      sources:               # 导出时一并打包的额外来源：文件路径或目录
+        - ~/.dsh/logs/plugins.log
+        - ~/Library/Logs/DSH Desktop/harness.log
+```
+
+四个字段都有安全默认值，不写 `config.logs` 也能挂载。**配置写错会让整个插件不加载**（`level` 不是 `warn`/`debug`，或 `maxBytes`/`keep` 越界，cordis 在校验阶段抛 `ValidationError`）；改回合法值即恢复。
+
+使用注意：桌面端（Electron）下载**不弹保存对话框**，文件落在系统下载目录；日志可能含本地路径与标识，外发前请自查。
+
+文件与行格式、节流与脱敏、导出上限、诊断包结构与路由契约、覆盖范围与盲区、已补齐的日志点清单，统一见 [日志系统设计](../../docs/specs/logging/design.md)。
 
 ## dsh_kline 接入示例与改动清单
 
@@ -214,7 +242,7 @@ pnpm typecheck
 pnpm test
 ```
 
-Node >=22.19。`test` 先构建，再运行 Node 测试：Cordis 服务生命周期、命名空间注册表的先校验后写入与撤销、存储来源与事件、远端／Key 独立验证、节假日空数据成功、业务错误与网络错误、响应限额、并发与旧结果隔离、RPC 白名单、页面状态模型、槽位声明与卡片注册、以及核心不含特性词汇的架构守护。默认全部使用模拟凭据／响应，不发真实 FTShare 请求，不读取用户真实 Key。发布前若需真实联调，应使用明确授权的 Key，记录已验证接口及时间，不输出 Key。
+Node >=22.19。`test` 先构建，再运行 Node 测试：Cordis 服务生命周期、命名空间注册表的先校验后写入与撤销、存储来源与事件、远端／Key 独立验证、节假日空数据成功、业务错误与网络错误、响应限额、并发与旧结果隔离、RPC 白名单、页面状态模型、槽位声明与卡片注册、日志采集器的级别门槛／节流合并／脱敏／轮转／启动回填／导出体积封顶、配置 Schema 的原生 Schemastery 判定与「配置写错则不挂载」、接缝直挂（`createSettingsHost` + `modules.register`）、以及核心不含特性词汇与浏览器产物隔离的架构守护。默认全部使用模拟凭据／响应，不发真实 FTShare 请求，不读取用户真实 Key。发布前若需真实联调，应使用明确授权的 Key，记录已验证接口及时间，不输出 Key。
 
 代码分层（`src/core/` 不得 import `src/features/`）：
 
@@ -222,12 +250,13 @@ Node >=22.19。`test` 先构建，再运行 Node 测试：Cordis 服务生命周
 | --- | --- |
 | `src/core/` | 缝：`contract.ts` 通用契约、`module-registry.ts` 活注册表、`rpc-core.ts` 活路由表、`transport.ts`/`client-transport.ts` 两侧传输、`shell.tsx` section 外壳与槽位声明、`styles.ts` 变量与外壳样式 |
 | `src/features/api-key/` | 第一个 feature：契约、Host 模块、RPC 方法、浏览器适配器、卡片、状态模型、探测、凭据协调、卡片样式 |
-| `src/index.ts` / `src/client.tsx` | 只装配：Host 侧 provide 服务并注册内置模块，浏览器侧注册 section 与内置卡片 |
+| `src/features/logs/` | 第二个 feature：常驻日志采集器（`collector.ts`/`format.ts`/`export.ts`/`home.ts`）、`logs` 子配置 schema、Host 模块工厂、RPC 方法、浏览器适配器、卡片与卡片样式 |
+| `src/index.ts` / `src/client.tsx` | 只装配：Host 侧提供 `Config`、provide 服务并注册内置模块，浏览器侧注册 section 与内置卡片 |
 | `src/contract.ts` / `src/rpc.ts` | 对外入口的再导出汇总（`/contract`、`/client-api`） |
 
 ### 新增一种设置：写一个 feature，经公开缝注册
 
-其他插件**不改本包源码**即可登记一项设置：本包自己的 API Key 就是 `src/features/api-key/` 这个 feature，走与第三方完全相同的一条路。完整设计记录见[服务化扩展设计](docs/extension-service-design.md)与配套[架构/时序图](docs/extension-service-sequences.html)。
+其他插件**不改本包源码**即可登记一项设置：本包自己的 API Key 与运行日志就是 `src/features/api-key/`、`src/features/logs/` 这两个 feature，走与第三方完全相同的一条路。完整设计记录见[服务化扩展设计](docs/extension-service-design.md)与配套[架构/时序图](docs/extension-service-sequences.html)。
 
 两条缝各管一半：行为跨包走 Cordis 服务，UI 位置跨包走槽位。
 
@@ -299,7 +328,7 @@ export function apply(ctx: Context): void {
 | 注册项 | 规则 |
 | --- | --- |
 | `id` | 必填、全局唯一；同 id 同 priority 在装载期抛错 |
-| `order` | 升序排列。省略的 `order` 按 DSH 0.2.0-rc.2 的 ui-slots 语义当作 0，内置 API Key 卡为 10 —— 要排在它之后必须显式给更大的 `order` |
+| `order` | 升序排列。省略的 `order` 按 DSH 0.2.0-rc.2 的 ui-slots 语义当作 0，内置 API Key 卡为 10、运行日志卡为 20 —— 要排在它们之后必须显式给更大的 `order` |
 | `label` | `string \| (() => string)`，section 内作分组标题用；缺省不显示 |
 | `priority` | **不对外公开**：它能静默顶掉别人的卡片；文档与示例只用 `id`/`order`/`label` |
 
