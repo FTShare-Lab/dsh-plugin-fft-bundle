@@ -1,4 +1,4 @@
-import { createSettingsRpcHandler } from '../../rpc-core.js';
+import { createSettingsRpcHandler } from '../../core/rpc-core.js';
 const record = (value) => typeof value === 'object' && value !== null && !Array.isArray(value);
 const empty = (value) => record(value) && Object.keys(value).length === 0;
 const keyValue = (value) => record(value) && Object.keys(value).length === 1 && Object.keys(value)[0] === 'value' && typeof value.value === 'string' && value.value.length <= 1024;

@@ -1,9 +1,20 @@
 import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
-import { FTSHARE_API_KEY_REF, FTSHARE_CREDENTIAL_EVENTS, FTSHARE_SETTINGS_CARD_SLOT, type SubscribeChanges, type ApiKeyPublicApi } from '../../contract.js'
-import { FtshareSettingsModel } from '../../settings-model.js'
+import { FTSHARE_API_KEY_REF, FTSHARE_CREDENTIAL_EVENTS, type SubscribeChanges, type ApiKeyPublicApi } from './contract.js'
+import { FTSHARE_SETTINGS_CARD_SLOT } from '../../core/contract.js'
+import { FtshareSettingsModel } from './model.js'
 import { createApiKeyClient } from './client-api.js'
-import { createSettingsTransport } from '../../client-transport.js'
-import type { FtshareSettingsClientContext } from '../../shell.js'
+import { createSettingsTransport } from '../../core/client-transport.js'
+import type { FtshareSettingsShellContext } from '../../core/shell.js'
+import { API_KEY_CARD_CSS } from './styles.js'
+
+/**
+ * Browser context this card requires: the shell's slots service plus the
+ * invalidations that make a cached credential status stale.
+ */
+export interface ApiKeyCardContext extends FtshareSettingsShellContext {
+  remote: { $on(event: string, listener: (ref: string) => void): () => void }
+  on(event: 'connection/reset', listener: () => void): () => void
+}
 
 /**
  * Contribute the built-in API Key card through the same slot a third-party
@@ -11,7 +22,7 @@ import type { FtshareSettingsClientContext } from '../../shell.js'
  * @param ctx - client context carrying the renderer's slots service.
  * @returns idempotent disposer for the card registration.
  */
-export function registerApiKeyCard(ctx: FtshareSettingsClientContext): () => void {
+export function registerApiKeyCard(ctx: ApiKeyCardContext): () => void {
   return ctx.slots.inject(FTSHARE_SETTINGS_CARD_SLOT, () => ctx.slots.register(
     { name: FTSHARE_SETTINGS_CARD_SLOT, id: 'apiKey', order: 10 },
     createApiKeyCard(ctx),
@@ -19,7 +30,7 @@ export function registerApiKeyCard(ctx: FtshareSettingsClientContext): () => voi
 }
 
 /** Bind the card's adapters; subscriptions are acquired in the component's effect. */
-function createApiKeyCard(ctx: FtshareSettingsClientContext): () => ReactNode {
+function createApiKeyCard(ctx: ApiKeyCardContext): () => ReactNode {
   const api = createApiKeyClient(createSettingsTransport())
   const subscribeChanges: SubscribeChanges = listener => {
     const disposers = FTSHARE_CREDENTIAL_EVENTS.map(event => ctx.remote.$on(event, ref => { if (ref === FTSHARE_API_KEY_REF) listener() }))
@@ -36,7 +47,9 @@ export function ApiKeyCard({ api, subscribeChanges }: { readonly api: ApiKeyPubl
   useEffect(() => model.connect(subscribeChanges), [model, subscribeChanges])
   const disabled = busy || !status?.writable
   const configure = async () => { if (await model.configureAndTest(draft)) setDraft('') }
-  return <section className="ftshare-settings" aria-label="FTShare 设置" aria-busy={busy}>
+  return <>
+    <style>{API_KEY_CARD_CSS}</style>
+    <section className="ftshare-settings" aria-label="FTShare 设置" aria-busy={busy}>
     <header><div><span className="ftshare-eyebrow">FTSHARE / API KEY</span><h2>访问凭据</h2></div></header>
     {status && !status.writable && <p>当前来源为只读，可测试连接；修改密钥请到对应来源操作。</p>}
     <div className="ftshare-card"><label htmlFor="ftshare-api-key">FTShare API Key</label>
@@ -58,5 +71,6 @@ export function ApiKeyCard({ api, subscribeChanges }: { readonly api: ApiKeyPubl
       {status?.validation.testedAt && <div className="ftshare-result"><dt>测试时间</dt><dd>{new Date(status.validation.testedAt).toLocaleString()}</dd></div>}
     </dl><small>节假日或收盘后的空数据不影响验证。</small></div>
     {message && <p role="status">{message}</p>}{statusError && <p className="ftshare-error" role="alert">{statusError}</p>}
-  </section>
+    </section>
+  </>
 }

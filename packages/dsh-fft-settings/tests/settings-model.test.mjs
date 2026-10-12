@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { FtshareSettingsModel } from '../lib/settings-model.js'
+import { FtshareSettingsModel } from '../lib/features/api-key/model.js'
 import { untested } from '../lib/contract.js'
 const empty = { configured: false, writable: true, revision: 0, validation: untested() }
 const tick = () => new Promise(r => setImmediate(r))

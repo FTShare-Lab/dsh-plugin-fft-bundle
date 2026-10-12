@@ -1,7 +1,7 @@
 import { credentialRef, type CredentialRef } from '@deepseek-ai/dsh-credentials'
-import { FTSHARE_API_KEY_REF, FTSHARE_CREDENTIAL_EVENTS, type ApiKeySettings } from '../../contract.js'
-import { createApiKeySettings } from '../../api-key.js'
-import { defineSettingsModule } from '../../module-registry.js'
+import { FTSHARE_API_KEY_REF, FTSHARE_CREDENTIAL_EVENTS, type ApiKeySettings } from './contract.js'
+import { createApiKeySettings } from './service.js'
+import { defineSettingsModule } from '../../core/module-registry.js'
 import { createApiKeyRpcMethods } from './rpc.js'
 declare module '@deepseek-ai/cordis' {
   interface Events {

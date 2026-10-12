@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { createApiKeySettings } from '../lib/api-key.js'
-import { probeApiKey, PROBE_CONTRACTS } from '../lib/probe.js'
-import { createApiKeyRpcHandler, createApiKeyClient } from '../lib/rpc.js'
+import { createApiKeySettings } from '../lib/features/api-key/service.js'
+import { probeApiKey, PROBE_CONTRACTS } from '../lib/features/api-key/probe.js'
+import { createApiKeyRpcHandler } from '../lib/features/api-key/rpc.js'
+import { createApiKeyClient } from '../lib/features/api-key/client-api.js'
 import { untested } from '../lib/contract.js'
 const row = { open: '10', high: '12', low: '9', close: '11', ts_millis: 1720000000000 }
 const response = (data = [row], code = 200, message = 'success', status = 200) => new Response(JSON.stringify({ code, message, data }), { status })

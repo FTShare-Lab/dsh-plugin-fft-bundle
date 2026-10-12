@@ -1,7 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis';
 import { type FtshareSettingsService } from './contract.js';
 export * from './contract.js';
-export { defineSettingsModule } from './module-registry.js';
+export { defineSettingsModule } from './core/module-registry.js';
 export declare const name = "@ft/dsh-fft-settings";
 /**
  * Host services this plugin's own built-in modules resolve at registration.

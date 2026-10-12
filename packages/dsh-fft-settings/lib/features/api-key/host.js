@@ -1,7 +1,7 @@
 import { credentialRef } from '@deepseek-ai/dsh-credentials';
-import { FTSHARE_API_KEY_REF, FTSHARE_CREDENTIAL_EVENTS } from '../../contract.js';
-import { createApiKeySettings } from '../../api-key.js';
-import { defineSettingsModule } from '../../module-registry.js';
+import { FTSHARE_API_KEY_REF, FTSHARE_CREDENTIAL_EVENTS } from './contract.js';
+import { createApiKeySettings } from './service.js';
+import { defineSettingsModule } from '../../core/module-registry.js';
 import { createApiKeyRpcMethods } from './rpc.js';
 export const apiKeyModule = defineSettingsModule({
     namespace: 'apiKey', inject: ['credentials'],

@@ -1,5 +1,5 @@
-import type { ApiKeyPublicApi } from '../../contract.js'
-import { createSettingsRpcHandler, type SettingsRpcMethods } from '../../rpc-core.js'
+import type { ApiKeyPublicApi } from './contract.js'
+import { createSettingsRpcHandler, type SettingsRpcMethods } from '../../core/rpc-core.js'
 const record = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value)
 const empty = (value: unknown) => record(value) && Object.keys(value).length === 0
 const keyValue = (value: unknown) => record(value) && Object.keys(value).length === 1 && Object.keys(value)[0] === 'value' && typeof value.value === 'string' && value.value.length <= 1024

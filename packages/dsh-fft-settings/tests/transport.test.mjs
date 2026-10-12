@@ -7,9 +7,9 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
 import { FTSHARE_SETTINGS_MAX_BODY_BYTES, FTSHARE_SETTINGS_ROUTE } from '../lib/contract.js'
-import { createSettingsRoute } from '../lib/transport.js'
-import { createSettingsTransport } from '../lib/client-transport.js'
-import { createSettingsRpcHandler } from '../lib/rpc-core.js'
+import { createSettingsRoute } from '../lib/core/transport.js'
+import { createSettingsTransport } from '../lib/core/client-transport.js'
+import { createSettingsRpcHandler } from '../lib/core/rpc-core.js'
 
 const empty = payload => payload !== null && typeof payload === 'object' && !Array.isArray(payload) && Object.keys(payload).length === 0
 const handler = createSettingsRpcHandler([{

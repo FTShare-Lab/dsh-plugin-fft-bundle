@@ -6,6 +6,16 @@ window.__ModuleLoader__.load({
 		Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
 		let react = require("react");
 		let react_jsx_runtime = require("react/jsx-runtime");
+		const FTSHARE_CREDENTIAL_EVENTS = ["credentials/reference-updated"];
+		/** Local syntax validation, never an assertion of upstream validity. */
+		function normalizeApiKey(input) {
+			const value = input.trim();
+			if (!value) throw new Error("请输入 API Key");
+			if (value.length > 512 || /[\x00-\x1f\x7f]/.test(value)) throw new Error("API Key 长度不能超过 512 个字符，且不能包含控制字符");
+			return value;
+		}
+		//#endregion
+		//#region src/core/contract.ts
 		/**
 		* Identity of the settings section that carries this plugin's cards.
 		*
@@ -25,7 +35,6 @@ window.__ModuleLoader__.load({
 		* `order` (ascending, default 100) decides the card's position.
 		*/
 		const FTSHARE_SETTINGS_CARD_SLOT = "ftshare.settings.card";
-		const FTSHARE_CREDENTIAL_EVENTS = ["credentials/reference-updated"];
 		/**
 		* Browser-facing route for this plugin's settings calls.
 		*
@@ -34,15 +43,8 @@ window.__ModuleLoader__.load({
 		* the call itself.
 		*/
 		const FTSHARE_SETTINGS_ROUTE = "/api/ftshare-settings";
-		/** Local syntax validation, never an assertion of upstream validity. */
-		function normalizeApiKey(input) {
-			const value = input.trim();
-			if (!value) throw new Error("请输入 API Key");
-			if (value.length > 512 || /[\x00-\x1f\x7f]/.test(value)) throw new Error("API Key 长度不能超过 512 个字符，且不能包含控制字符");
-			return value;
-		}
 		//#endregion
-		//#region src/settings-model.ts
+		//#region src/features/api-key/model.ts
 		var FtshareSettingsModel = class {
 			api;
 			state = {
@@ -177,14 +179,14 @@ window.__ModuleLoader__.load({
 			}[status] ?? "请查看分项结果";
 		}
 		//#endregion
-		//#region src/rpc-core.ts
+		//#region src/core/rpc-core.ts
 		async function callSettingsRpc(transport, namespace, method, payload = {}) {
 			const result = await transport.call(`${namespace}/${method}`, payload);
 			if (!result.ok) throw new Error("FTShare 设置操作失败，请重试");
 			return result.value;
 		}
 		//#endregion
-		//#region src/modules/api-key/client-api.ts
+		//#region src/features/api-key/client-api.ts
 		/** Browser adapter deliberately has no resolve/createEnvironment method. */
 		function createApiKeyClient(transport) {
 			async function call(method, payload = {}) {
@@ -200,7 +202,7 @@ window.__ModuleLoader__.load({
 			};
 		}
 		//#endregion
-		//#region src/client-transport.ts
+		//#region src/core/client-transport.ts
 		/**
 		* Browser half of the settings transport.
 		*
@@ -229,7 +231,34 @@ window.__ModuleLoader__.load({
 			} };
 		}
 		//#endregion
-		//#region src/modules/api-key/card.tsx
+		//#region src/features/api-key/styles.ts
+		/**
+		* The API Key card's own styles, rendered by the card component's `<style>`.
+		*
+		* A card owns everything past the section shell: the core provides the
+		* `--ftshare-*` variables and the section container, never card internals.
+		* Every selector stays scoped under `.ftshare-settings`, so a card never
+		* styles another card's markup.
+		*/
+		const API_KEY_CARD_CSS = `
+.ftshare-settings .ftshare-eyebrow { color:#e8bf35; font-size:11px; letter-spacing:.12em; }
+.ftshare-settings .ftshare-badge { padding:5px 12px; border:1px solid #585b66; border-radius:20px; white-space:nowrap; }
+.ftshare-settings .ftshare-card { padding:22px; background:var(--ftshare-panel,#292a30); border:1px solid var(--ftshare-border,#44464f); border-radius:12px; margin-top:16px; }
+.ftshare-settings label { display:block; font-weight:600; }
+.ftshare-settings input { width:100%; height:44px; border:1px solid #696c77; border-radius:7px; padding:0 12px; background:var(--ftshare-input,#1d1e23); color:inherit; font:inherit; }
+.ftshare-settings input::placeholder { color:var(--ftshare-muted,#aeb2bd); opacity:1; }
+.ftshare-settings .ftshare-actions { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:16px; }
+.ftshare-settings button { min-height:44px; border:1px solid #696c77; border-radius:7px; padding:8px 14px; font:inherit; background:transparent; color:inherit; cursor:pointer; }
+.ftshare-settings button.primary { background:#f0c433; color:#171717; border-color:#f0c433; font-weight:600; }
+.ftshare-settings button:disabled { opacity:.5; cursor:not-allowed; }
+.ftshare-settings dl { margin:0; }
+.ftshare-settings .ftshare-result { display:grid; grid-template-columns:130px 1fr; gap:12px; padding:10px 0; border-top:1px solid var(--ftshare-border,#44464f); }
+.ftshare-settings dd { margin:0; overflow-wrap:anywhere; }
+.ftshare-settings .ftshare-error { color:var(--ftshare-error,#ffb5ad); }
+@media(max-width:540px) { .ftshare-settings .ftshare-card { padding:16px; } .ftshare-settings .ftshare-result { grid-template-columns:1fr; gap:4px; } }
+`;
+		//#endregion
+		//#region src/features/api-key/card.tsx
 		/**
 		* Contribute the built-in API Key card through the same slot a third-party
 		* card uses. Nothing about it is privileged: same declaration, same options.
@@ -269,7 +298,7 @@ window.__ModuleLoader__.load({
 			const configure = async () => {
 				if (await model.configureAndTest(draft)) setDraft("");
 			};
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("style", { children: API_KEY_CARD_CSS }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
 				className: "ftshare-settings",
 				"aria-label": "FTShare 设置",
 				"aria-busy": busy,
@@ -376,39 +405,34 @@ window.__ModuleLoader__.load({
 						children: statusError
 					})
 				]
-			});
+			})] });
 		}
 		//#endregion
-		//#region src/styles.ts
-		/** Owned by this plugin; does not depend on Kpan being loaded. */
+		//#region src/core/styles.ts
+		/**
+		* Section shell styles plus the theme variables the section promises.
+		*
+		* The shell owns the container, typography, focus ring and link rules every
+		* card sits inside, and declares the `--ftshare-*` defaults. Declaring them
+		* under `:where(:root)` keeps specificity at zero, so any host theme rule wins
+		* while an unthemed host still gets this plugin's values. A card owns its own
+		* CSS and renders it from its own component; core never styles card internals.
+		*/
 		const SETTINGS_CSS = `
+:where(:root) { --ftshare-text:#f4f4f5; --ftshare-muted:#aeb2bd; --ftshare-panel:#292a30; --ftshare-border:#44464f; --ftshare-input:#1d1e23; --ftshare-link:#d8c4fc; --ftshare-error:#ffb5ad; }
 .ftshare-settings { color:var(--ftshare-text,#f4f4f5); max-width:760px; font-size:14px; line-height:1.6; }
 .ftshare-settings * { box-sizing:border-box; }
 .ftshare-settings h2 { font-size:26px; margin:4px 0 8px; }
 .ftshare-settings h3 { font-size:15px; margin:0 0 12px; }
 .ftshare-settings p { margin:8px 0; color:var(--ftshare-muted,#aeb2bd); }
-.ftshare-settings .ftshare-eyebrow { color:#e8bf35; font-size:11px; letter-spacing:.12em; }
 .ftshare-settings header { display:flex; justify-content:space-between; align-items:flex-start; gap:20px; margin-bottom:20px; }
-.ftshare-settings .ftshare-badge { padding:5px 12px; border:1px solid #585b66; border-radius:20px; white-space:nowrap; }
-.ftshare-settings .ftshare-card { padding:22px; background:var(--ftshare-panel,#292a30); border:1px solid var(--ftshare-border,#44464f); border-radius:12px; margin-top:16px; }
-.ftshare-settings label { display:block; font-weight:600; }
 .ftshare-settings small { display:block; color:var(--ftshare-muted,#aeb2bd); font-size:12px; margin:5px 0 12px; }
-.ftshare-settings input { width:100%; height:44px; border:1px solid #696c77; border-radius:7px; padding:0 12px; background:var(--ftshare-input,#1d1e23); color:inherit; font:inherit; }
-.ftshare-settings input::placeholder { color:var(--ftshare-muted,#aeb2bd); opacity:1; }
-.ftshare-settings .ftshare-actions { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:16px; }
-.ftshare-settings button { min-height:44px; border:1px solid #696c77; border-radius:7px; padding:8px 14px; font:inherit; background:transparent; color:inherit; cursor:pointer; }
-.ftshare-settings button.primary { background:#f0c433; color:#171717; border-color:#f0c433; font-weight:600; }
-.ftshare-settings button:disabled { opacity:.5; cursor:not-allowed; }
 .ftshare-settings :is(button,input,a):focus-visible { outline:2px solid #e8bf35; outline-offset:3px; }
 .ftshare-settings a { color:var(--ftshare-link,#d8c4fc); }
-.ftshare-settings dl { margin:0; }
-.ftshare-settings .ftshare-result { display:grid; grid-template-columns:130px 1fr; gap:12px; padding:10px 0; border-top:1px solid var(--ftshare-border,#44464f); }
-.ftshare-settings dd { margin:0; overflow-wrap:anywhere; }
-.ftshare-settings .ftshare-error { color:var(--ftshare-error,#ffb5ad); }
-@media(max-width:540px) { .ftshare-settings header { flex-direction:column; gap:10px; } .ftshare-settings .ftshare-card { padding:16px; } .ftshare-settings .ftshare-result { grid-template-columns:1fr; gap:4px; } }
+@media(max-width:540px) { .ftshare-settings header { flex-direction:column; gap:10px; } }
 `;
 		//#endregion
-		//#region src/shell.tsx
+		//#region src/core/shell.tsx
 		/** Section slot this seam contributes into; declared by the settings shell. */
 		const FTSHARE_SETTINGS_SECTION_NAME = "settings.section";
 		/**

@@ -8,9 +8,9 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { readFile } from 'node:fs/promises'
 import { Context } from '@deepseek-ai/cordis'
-import { createSettingsHost } from '../lib/module-registry.js'
-import { createSettingsRpcHandler } from '../lib/rpc-core.js'
-import { createApiKeyRpcMethods } from '../lib/modules/api-key/rpc.js'
+import { createSettingsHost } from '../lib/core/module-registry.js'
+import { createSettingsRpcHandler } from '../lib/core/rpc-core.js'
+import { createApiKeyRpcMethods } from '../lib/features/api-key/rpc.js'
 
 const empty = payload => payload !== null && typeof payload === 'object' && !Array.isArray(payload) && Object.keys(payload).length === 0
 const signal = () => new AbortController().signal
@@ -186,10 +186,10 @@ test('API key module keeps strict payload whitelist after generic dispatch', asy
 
 test('browser bundle excludes Host module assembly and credential probing', async () => {
   const map = JSON.parse(await readFile(new URL('../lib/client.js.map', import.meta.url), 'utf8'))
-  for (const hostFile of ['src/modules.ts', 'src/module-registry.ts', 'src/modules/api-key/host.ts', 'src/api-key.ts', 'src/probe.ts']) {
+  for (const hostFile of ['src/features/api-key/index.ts', 'src/features/api-key/host.ts', 'src/features/api-key/service.ts', 'src/features/api-key/probe.ts', 'src/core/module-registry.ts']) {
     assert.ok(!map.sources.some(source => source.endsWith(hostFile)), hostFile)
   }
-  for (const browserFile of ['src/shell.tsx', 'src/modules/api-key/card.tsx']) {
+  for (const browserFile of ['src/core/shell.tsx', 'src/features/api-key/card.tsx']) {
     assert.ok(map.sources.some(source => source.endsWith(browserFile)), browserFile)
   }
 })

@@ -1,4 +1,4 @@
-import { callSettingsRpc } from '../../rpc-core.js';
+import { callSettingsRpc } from '../../core/rpc-core.js';
 /** Browser adapter deliberately has no resolve/createEnvironment method. */
 export function createApiKeyClient(transport) {
     async function call(method, payload = {}) {

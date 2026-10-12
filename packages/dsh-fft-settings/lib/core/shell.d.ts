@@ -32,16 +32,12 @@ export interface FtshareSettingsSlotsService {
     inject(key: keyof SlotMap & string, callback: () => () => void): () => void;
 }
 /**
- * Browser context this plugin's client half requires. The renderer provides
- * `slots`; `remote` carries credential invalidation and `on` the connection
- * reset that also invalidates a cached status.
+ * Browser context the section shell requires: the renderer's slots service.
+ * A card that needs more (its own services, invalidation events) declares the
+ * extra members on its own context type.
  */
-export interface FtshareSettingsClientContext {
+export interface FtshareSettingsShellContext {
     slots: FtshareSettingsSlotsService;
-    remote: {
-        $on(event: string, listener: (ref: string) => void): () => void;
-    };
-    on(event: 'connection/reset', listener: () => void): () => void;
 }
 /** Composed props of the section entry: the shell's owner share plus its declared child render. */
 export type FtshareSettingsSectionProps = PropsRuntime<typeof FTSHARE_SETTINGS_SECTION_NAME> & PropsRenderSlots<typeof FTSHARE_SETTINGS_CARD_SLOT>;
@@ -59,5 +55,5 @@ export declare function FtshareSettingsSection({ renderSlot }: FtshareSettingsSe
  * @param ctx - client context carrying the renderer's slots service.
  * @returns idempotent disposer for the section and its declaration.
  */
-export declare function registerSettingsSection(ctx: FtshareSettingsClientContext): () => void;
+export declare function registerSettingsSection(ctx: FtshareSettingsShellContext): () => void;
 export {};
