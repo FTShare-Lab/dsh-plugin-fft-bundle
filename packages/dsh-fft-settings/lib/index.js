@@ -26,10 +26,10 @@ export { DEFAULT_LOGS_CONFIG };
  * eagerly, so the log collector starts here, unconditionally, instead of
  * waiting for a settings-page render.
  *
- * The parameter default is deliberately **not** relied on: with no config row
- * cordis passes `{}` (not `undefined`), and `{}` does not trigger a default
- * parameter — so the fallback parse happens in the body and every feature
- * slice is always defined.
+ * The parameter default is deliberately **not** relied on: cordis validates the
+ * raw row through {@link Config} before this call, and a direct `apply(ctx)`
+ * call (tests, hand-built contexts) never triggers one — so the fallback parse
+ * happens in the body and every feature slice is always defined.
  */
 export function apply(ctx, config) {
     const { service, handler } = createSettingsHost();
