@@ -1,6 +1,7 @@
-import type { SettingsServices } from './module-registry.js';
-import type { settingsModules } from './modules.js';
-/** Browser-safe contract. Theme and preferences can become sibling namespaces. */
+import type { FtshareSettingsModuleRegistry } from './module-registry.js';
+export type { FtshareSettingsModuleRegistry, SettingsModule, SettingsRegistration } from './module-registry.js';
+export type { SettingsRpcMethod, SettingsRpcMethods } from './rpc-core.js';
+/** Contract of this plugin's settings service. Theme and preferences can become sibling namespaces. */
 export declare const FTSHARE_SETTINGS_API_VERSION: 1;
 export declare const FTSHARE_API_KEY_REF: "FTSHARE_API_KEY";
 /**
@@ -14,6 +15,14 @@ export declare const FTSHARE_SETTINGS_SECTION: {
     readonly order: 120;
     readonly label: "非凸金融终端";
 };
+/**
+ * Child slot of {@link FTSHARE_SETTINGS_SECTION} that carries its cards.
+ *
+ * The section declares the slot when it registers; every card — ours and a
+ * third party's — contributes through it with `id`/`order`/`label`, and
+ * `order` (ascending, default 100) decides the card's position.
+ */
+export declare const FTSHARE_SETTINGS_CARD_SLOT: "ftshare.settings.card";
 export declare const FTSHARE_CREDENTIAL_EVENTS: readonly ["credentials/reference-updated"];
 /**
  * Browser-facing route for this plugin's settings calls.
@@ -76,6 +85,24 @@ export interface ApiKeySettings extends ApiKeyPublicApi {
     createEnvironment(base?: Readonly<Record<string, string | undefined>>): Promise<Record<string, string | undefined>>;
     subscribe: SubscribeChanges;
 }
-export interface FtshareSettingsService extends SettingsServices<typeof settingsModules> {
-    readonly apiVersion: typeof FTSHARE_SETTINGS_API_VERSION;
+/**
+ * Merge point for namespaces a package reads but does not produce. A producer
+ * gets its type from `register` inference; a consumer that reads someone
+ * else's namespace declares one line, e.g. `cockpit: CockpitSettings`.
+ */
+export interface FtshareSettingsNamespaces {
+    apiKey: ApiKeySettings;
 }
+/**
+ * Host service published as `ctx.ftshareSettings`.
+ *
+ * `apiVersion` and `modules` are permanent; every other member appears only
+ * while its namespace is registered, so consumers must read properties at call
+ * time instead of caching them during their own apply.
+ */
+export type FtshareSettingsService = {
+    readonly apiVersion: typeof FTSHARE_SETTINGS_API_VERSION;
+    readonly modules: FtshareSettingsModuleRegistry;
+} & {
+    readonly [N in keyof FtshareSettingsNamespaces & string]: FtshareSettingsNamespaces[N];
+};

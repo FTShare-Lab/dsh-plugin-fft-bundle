@@ -1,24 +1,35 @@
 import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
-import { FTSHARE_API_KEY_REF, FTSHARE_CREDENTIAL_EVENTS, type SubscribeChanges, type ApiKeyPublicApi } from '../../contract.js'
+import { FTSHARE_API_KEY_REF, FTSHARE_CREDENTIAL_EVENTS, FTSHARE_SETTINGS_CARD_SLOT, type SubscribeChanges, type ApiKeyPublicApi } from '../../contract.js'
 import { FtshareSettingsModel } from '../../settings-model.js'
 import { createApiKeyClient } from './client-api.js'
 import { createSettingsTransport } from '../../client-transport.js'
-import { defineSettingsCard } from '../../card-registry.js'
+import type { FtshareSettingsClientContext } from '../../shell.js'
 
-export const apiKeyCard = defineSettingsCard({
-  id: 'apiKey', order: 10, inject: ['remote'],
-  createComponent(ctx) {
-    const api = createApiKeyClient(createSettingsTransport())
-    const subscribeChanges: SubscribeChanges = listener => {
-      const disposers = FTSHARE_CREDENTIAL_EVENTS.map(event => ctx.remote.$on(event, ref => { if (ref === FTSHARE_API_KEY_REF) listener() }))
-      disposers.push(ctx.on('connection/reset', listener))
-      return () => { for (const dispose of disposers) dispose() }
-    }
-    return () => <FtshareSettingsSection api={api} subscribeChanges={subscribeChanges} />
-  },
-})
+/**
+ * Contribute the built-in API Key card through the same slot a third-party
+ * card uses. Nothing about it is privileged: same declaration, same options.
+ * @param ctx - client context carrying the renderer's slots service.
+ * @returns idempotent disposer for the card registration.
+ */
+export function registerApiKeyCard(ctx: FtshareSettingsClientContext): () => void {
+  return ctx.slots.inject(FTSHARE_SETTINGS_CARD_SLOT, () => ctx.slots.register(
+    { name: FTSHARE_SETTINGS_CARD_SLOT, id: 'apiKey', order: 10 },
+    createApiKeyCard(ctx),
+  ))
+}
 
-export function FtshareSettingsSection({ api, subscribeChanges }: { readonly api: ApiKeyPublicApi; readonly subscribeChanges?: SubscribeChanges }): ReactNode {
+/** Bind the card's adapters; subscriptions are acquired in the component's effect. */
+function createApiKeyCard(ctx: FtshareSettingsClientContext): () => ReactNode {
+  const api = createApiKeyClient(createSettingsTransport())
+  const subscribeChanges: SubscribeChanges = listener => {
+    const disposers = FTSHARE_CREDENTIAL_EVENTS.map(event => ctx.remote.$on(event, ref => { if (ref === FTSHARE_API_KEY_REF) listener() }))
+    disposers.push(ctx.on('connection/reset', listener))
+    return () => { for (const dispose of disposers) dispose() }
+  }
+  return () => <ApiKeyCard api={api} subscribeChanges={subscribeChanges} />
+}
+
+export function ApiKeyCard({ api, subscribeChanges }: { readonly api: ApiKeyPublicApi; readonly subscribeChanges?: SubscribeChanges }): ReactNode {
   const model = useMemo(() => new FtshareSettingsModel(api), [api])
   const { status, busy, message, statusError, save } = useSyncExternalStore(model.subscribe, model.getSnapshot, model.getSnapshot)
   const [draft, setDraft] = useState('')

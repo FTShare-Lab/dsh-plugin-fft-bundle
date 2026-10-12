@@ -1,4 +1,4 @@
-/** Browser-safe contract. Theme and preferences can become sibling namespaces. */
+/** Contract of this plugin's settings service. Theme and preferences can become sibling namespaces. */
 export const FTSHARE_SETTINGS_API_VERSION = 1;
 export const FTSHARE_API_KEY_REF = 'FTSHARE_API_KEY';
 /**
@@ -8,6 +8,14 @@ export const FTSHARE_API_KEY_REF = 'FTSHARE_API_KEY';
  * for itself, independent of any host application name.
  */
 export const FTSHARE_SETTINGS_SECTION = { id: 'dsh-fft', order: 120, label: '非凸金融终端' };
+/**
+ * Child slot of {@link FTSHARE_SETTINGS_SECTION} that carries its cards.
+ *
+ * The section declares the slot when it registers; every card — ours and a
+ * third party's — contributes through it with `id`/`order`/`label`, and
+ * `order` (ascending, default 100) decides the card's position.
+ */
+export const FTSHARE_SETTINGS_CARD_SLOT = 'ftshare.settings.card';
 export const FTSHARE_CREDENTIAL_EVENTS = ['credentials/reference-updated'];
 /**
  * Browser-facing route for this plugin's settings calls.

@@ -6,22 +6,6 @@ window.__ModuleLoader__.load({
 		Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
 		let react = require("react");
 		let react_jsx_runtime = require("react/jsx-runtime");
-		//#region src/card-registry.ts
-		function defineSettingsCard(card) {
-			return card;
-		}
-		function assembleSettingsCards(ctx, cards) {
-			const seen = /* @__PURE__ */ new Set();
-			for (const card of cards) {
-				if (!card.id || seen.has(card.id)) throw new Error(`Invalid or duplicate settings card: ${card.id}`);
-				if (!Number.isFinite(card.order)) throw new Error(`Invalid settings card order: ${card.id}`);
-				seen.add(card.id);
-			}
-			return [...cards].sort((a, b) => a.order - b.order).map((card) => ({
-				id: card.id,
-				Component: card.createComponent(ctx)
-			}));
-		}
 		/**
 		* Identity of the settings section that carries this plugin's cards.
 		*
@@ -33,6 +17,14 @@ window.__ModuleLoader__.load({
 			order: 120,
 			label: "非凸金融终端"
 		};
+		/**
+		* Child slot of {@link FTSHARE_SETTINGS_SECTION} that carries its cards.
+		*
+		* The section declares the slot when it registers; every card — ours and a
+		* third party's — contributes through it with `id`/`order`/`label`, and
+		* `order` (ascending, default 100) decides the card's position.
+		*/
+		const FTSHARE_SETTINGS_CARD_SLOT = "ftshare.settings.card";
 		const FTSHARE_CREDENTIAL_EVENTS = ["credentials/reference-updated"];
 		/**
 		* Browser-facing route for this plugin's settings calls.
@@ -238,28 +230,37 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region src/modules/api-key/card.tsx
-		const apiKeyCard = defineSettingsCard({
-			id: "apiKey",
-			order: 10,
-			inject: ["remote"],
-			createComponent(ctx) {
-				const api = createApiKeyClient(createSettingsTransport());
-				const subscribeChanges = (listener) => {
-					const disposers = FTSHARE_CREDENTIAL_EVENTS.map((event) => ctx.remote.$on(event, (ref) => {
-						if (ref === "FTSHARE_API_KEY") listener();
-					}));
-					disposers.push(ctx.on("connection/reset", listener));
-					return () => {
-						for (const dispose of disposers) dispose();
-					};
+		/**
+		* Contribute the built-in API Key card through the same slot a third-party
+		* card uses. Nothing about it is privileged: same declaration, same options.
+		* @param ctx - client context carrying the renderer's slots service.
+		* @returns idempotent disposer for the card registration.
+		*/
+		function registerApiKeyCard(ctx) {
+			return ctx.slots.inject(FTSHARE_SETTINGS_CARD_SLOT, () => ctx.slots.register({
+				name: FTSHARE_SETTINGS_CARD_SLOT,
+				id: "apiKey",
+				order: 10
+			}, createApiKeyCard(ctx)));
+		}
+		/** Bind the card's adapters; subscriptions are acquired in the component's effect. */
+		function createApiKeyCard(ctx) {
+			const api = createApiKeyClient(createSettingsTransport());
+			const subscribeChanges = (listener) => {
+				const disposers = FTSHARE_CREDENTIAL_EVENTS.map((event) => ctx.remote.$on(event, (ref) => {
+					if (ref === "FTSHARE_API_KEY") listener();
+				}));
+				disposers.push(ctx.on("connection/reset", listener));
+				return () => {
+					for (const dispose of disposers) dispose();
 				};
-				return () => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(FtshareSettingsSection, {
-					api,
-					subscribeChanges
-				});
-			}
-		});
-		function FtshareSettingsSection({ api, subscribeChanges }) {
+			};
+			return () => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ApiKeyCard, {
+				api,
+				subscribeChanges
+			});
+		}
+		function ApiKeyCard({ api, subscribeChanges }) {
 			const model = (0, react.useMemo)(() => new FtshareSettingsModel(api), [api]);
 			const { status, busy, message, statusError, save } = (0, react.useSyncExternalStore)(model.subscribe, model.getSnapshot, model.getSnapshot);
 			const [draft, setDraft] = (0, react.useState)("");
@@ -378,10 +379,6 @@ window.__ModuleLoader__.load({
 			});
 		}
 		//#endregion
-		//#region src/cards.ts
-		/** Browser registration list. Host modules must never be imported here. */
-		const settingsCards = [apiKeyCard];
-		//#endregion
 		//#region src/styles.ts
 		/** Owned by this plugin; does not depend on Kpan being loaded. */
 		const SETTINGS_CSS = `
@@ -411,25 +408,52 @@ window.__ModuleLoader__.load({
 @media(max-width:540px) { .ftshare-settings header { flex-direction:column; gap:10px; } .ftshare-settings .ftshare-card { padding:16px; } .ftshare-settings .ftshare-result { grid-template-columns:1fr; gap:4px; } }
 `;
 		//#endregion
+		//#region src/shell.tsx
+		/** Section slot this seam contributes into; declared by the settings shell. */
+		const FTSHARE_SETTINGS_SECTION_NAME = "settings.section";
+		/**
+		* The settings section shell: core CSS variables, the section chrome, and the
+		* single render site every card appears at. Cards own everything inside it.
+		*/
+		function FtshareSettingsSection({ renderSlot }) {
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("style", { children: SETTINGS_CSS }), renderSlot(FTSHARE_SETTINGS_CARD_SLOT, {})] });
+		}
+		/**
+		* Declare the card slot and contribute the section that renders it.
+		*
+		* Declaring the child slot is what authorizes the render site; a card
+		* registering through {@link FTSHARE_SETTINGS_CARD_SLOT} before this runs waits
+		* for the declaration instead of failing.
+		* @param ctx - client context carrying the renderer's slots service.
+		* @returns idempotent disposer for the section and its declaration.
+		*/
+		function registerSettingsSection(ctx) {
+			return ctx.slots.inject(FTSHARE_SETTINGS_SECTION_NAME, () => ctx.slots.register({
+				name: FTSHARE_SETTINGS_SECTION_NAME,
+				...FTSHARE_SETTINGS_SECTION,
+				children: { [FTSHARE_SETTINGS_CARD_SLOT]: {
+					kind: "list",
+					scope: "root"
+				} }
+			}, FtshareSettingsSection));
+		}
+		//#endregion
 		//#region src/client.tsx
-		const inject = [.../* @__PURE__ */ new Set(["slots", ...settingsCards.flatMap((card) => [...card.inject])])];
+		const inject = ["slots", "remote"];
 		function apply(ctx) {
 			registerFtshareSettings(ctx);
 		}
+		/** Contribute the section shell, then the built-in cards through the slot it declares. */
 		function registerFtshareSettings(ctx) {
-			ctx.slots.inject("settings.section", () => {
-				const cards = assembleSettingsCards(ctx, settingsCards);
-				return ctx.slots.register({
-					name: "settings.section",
-					...FTSHARE_SETTINGS_SECTION
-				}, () => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("style", { children: SETTINGS_CSS }), cards.map(({ id, Component }) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Component, {}, id))] }));
-			});
+			registerSettingsSection(ctx);
+			registerApiKeyCard(ctx);
 		}
 		//#endregion
 		exports.FtshareSettingsSection = FtshareSettingsSection;
 		exports.apply = apply;
 		exports.inject = inject;
 		exports.registerFtshareSettings = registerFtshareSettings;
+		exports.registerSettingsSection = registerSettingsSection;
 		return module.exports;
 	}
 });

@@ -57,6 +57,16 @@ test('reads each operation, shares writes, and exposes only safe status', async 
   assert.equal(await service.resolve(), undefined)
 })
 
+test('the built-in API key namespace is published through the public registry', async t => {
+  const { ctx, service } = await boot(t)
+  assert.deepEqual(ctx.ftshareSettings.modules.namespaces(), ['apiKey'])
+  assert.equal(ctx.ftshareSettings.apiKey, service)
+  // Same path as any other module: the namespace is taken, so a second attempt
+  // is rejected and the live one keeps working.
+  assert.throws(() => ctx.ftshareSettings.modules.register({ namespace: 'apiKey', inject: [], create: () => ({ service: {}, rpcMethods: {} }) }, ctx), /Duplicate settings namespace: apiKey/)
+  assert.equal((await ctx.ftshareSettings.apiKey.describe()).configured, false)
+})
+
 test('environment precedence is read-only; clearing saved values reveals fallback', async t => {
   const { service, inherit, fallback } = await boot(t)
   fallback('test-fallback')
