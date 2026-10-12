@@ -6,13 +6,16 @@
 
 ## 给开发者和 agent 的接入约定
 
-- Host 消费者声明 `inject = ['ftshareSettings']`，通过 `ctx.ftshareSettings.apiKey` 调用；不要依赖插件排列顺序。
+- Host 消费者声明 `inject = ['ftshareSettings']`，通过 `ctx.ftshareSettings.<namespace>` 调用；不要依赖插件排列顺序，也不要解构缓存命名空间属性（它随注册出现与消失）。
 - 包名为 `@ft/dsh-fft-settings`（Host API 服务名 `ftshareSettings`、RPC 路由 `/api/ftshare-settings` 维持不变，旧消费者无需适配），bundle 入口仍为 `cordis.patch.yml`；设置页 ID 为 `dsh-fft`（显示名「非凸金融终端」，`order: 120`），旧 ID `ftshare` 不再注册。
-- 包主入口导出 Host 类型；`/contract` 是浏览器安全的类型、常量和输入校验；`/client-api` 导出 `createApiKeyClient`。
+- 类型来源分两处：包主入口 `@ft/dsh-fft-settings` 是 Host 装配与 Host 类型；`/contract` 是**无 Node 运行时依赖**的汇总入口（纯类型、常量与输入校验），Host 类型来自 `src/core/` 与各 feature 的契约，浏览器 UI 类型来自 `/client`（SlotMap 合并与卡片 props）。`/client-api` 只导出 `createSettingsTransport`、`callSettingsRpc` 与通用类型，不再有特性适配器。
+- 两条公开缝：Host 侧 `ctx.ftshareSettings.modules.register(module, owner)`，浏览器侧槽位 `ftshare.settings.card`。新增设置由插件自己写一个 feature 注册，不需要改本包源码，见「新增一种设置」。
 - `apiVersion = 1`。新增设置领域应新增命名空间；破坏公开语义的修改需要重新评估协议版本。
 - 本仓没有修改 dsh_kline。下面的 kline 代码是接入示例，不代表消费者已经完成适配。
 - 不读取 `.credentials.yaml`、不解析 kline 的旧 JSON 文件、不把 Key 写入普通 settings 或 localStorage，不通过修改全局 `process.env` 同步运行中消费者。
 - 设置页只有访问凭据一张卡；本插件不展示应用版本，也不提供检查更新入口。
+- 核心 `src/core/` 不得出现特性词汇或依赖 `src/features/`（由 `tests/architecture.test.mjs` 守护）；内置 API Key 与第三方走同一套注册路径，没有内部后门。
+
 
 ## Host API v1
 
@@ -95,15 +98,14 @@ const result = await apiKey.configureAndTest(userInput)
 
 浏览器使用类型化适配器，不读取完整明文 Key。`describe().maskedValue` 仅用于展示，例如 `••••••••a1b2`：固定八个掩码字符加生效 Key 的后四位；长度不超过四个字符时全部隐藏，未配置时省略该字段。输入框用其作占位提示，输入新 Key 后仍以密码形式显示，不把掩码当作表单值保存。清除、来源回退和外部变更后重新读取当前掩码。
 
-调用示例：
+调用示例（内置 API Key 卡的适配器在 `src/features/api-key/client-api.ts`，随 feature 走；通用入口只提供传输与信封）：
 
 ```ts
-import { createApiKeyClient } from '@ft/dsh-fft-settings/client-api'
-import { createSettingsTransport } from '@ft/dsh-fft-settings/client-api'
-const apiKey = createApiKeyClient(createSettingsTransport())
-const status = await apiKey.describe()
-const result = await apiKey.configureAndTest(input)
-const validation = await apiKey.testConnection()
+import { callSettingsRpc, createSettingsTransport } from '@ft/dsh-fft-settings/client-api'
+const transport = createSettingsTransport()          // 每个插件建一次，复用
+const status = await callSettingsRpc<ApiKeyStatus>(transport, 'apiKey', 'describe')
+const result = await callSettingsRpc<ConfigureResult>(transport, 'apiKey', 'configureAndTest', { value: input })
+const validation = await callSettingsRpc<ValidationResult>(transport, 'apiKey', 'testConnection')
 ```
 
 Host 在 DSH `connection` 出现时把设置调用注册成 `/api` 下的一条精确 Fetch 路由（`/api/ftshare-settings`）：Host/Origin fence 与浏览器鉴权由共享的 `/api` 载体在分发前完成，插件只处理调用本身。不用 `connection.rpc.handle` 是因为它在核心内部通过属性访问读取 `webServer`，而该解析只沿祖先链，插件与 `webServer` 平级时注册不上。未安装浏览器传输时 Host API 仍可用。它不是自动生成的 `ctx.remote.ftshareSettings` namespace。
@@ -121,7 +123,7 @@ Connection 返回 `{ ok: true, value }` 或 `{ ok: false, error: { code, message
 
 不接受任意 URL、请求参数或方法名称。`resolve`、`createEnvironment`、`subscribe` 不对 RPC 暴露。HTTP 直接调用需要 Connection 的完整 envelope 与认证，优先使用适配器，不要对 URL 裸 POST 业务参数。
 
-设置页自带样式，支持只读来源、加载反馈、保存结果、远端服务／API Key 分项结果、手动读取与凭据事件刷新。“测试当前连接”不会使用输入框中的草稿。另一个页面完成测试后，可点击“重新读取状态”读取其结果；当前没有独立的验证完成推送事件。样式使用 `--ftshare-text`、`--ftshare-muted`、`--ftshare-panel`、`--ftshare-border`、`--ftshare-input`、`--ftshare-link`、`--ftshare-error` 变量，可由宿主主题覆盖；这不是主题设置 API。
+设置页自带样式，支持只读来源、加载反馈、保存结果、远端服务／API Key 分项结果、手动读取与凭据事件刷新。“测试当前连接”不会使用输入框中的草稿。另一个页面完成测试后，可点击“重新读取状态”读取其结果；当前没有独立的验证完成推送事件。核心只声明 `--ftshare-text`、`--ftshare-muted`、`--ftshare-panel`、`--ftshare-border`、`--ftshare-input`、`--ftshare-link`、`--ftshare-error` 的默认值（写在 `:where(:root)` 上，宿主主题任何规则都能覆盖）与 section 外壳样式；卡片自己的 CSS 随卡片组件渲染，见「新增一种设置」。这不是主题设置 API。
 
 ## dsh_kline 接入示例与改动清单
 
@@ -212,81 +214,112 @@ pnpm typecheck
 pnpm test
 ```
 
-Node >=22.19。`test` 先构建，再运行 Node 测试：Cordis 服务生命周期、存储来源与事件、远端／Key 独立验证、节假日空数据成功、业务错误与网络错误、响应限额、并发与旧结果隔离、RPC 白名单、页面状态模型。默认全部使用模拟凭据／响应，不发真实 FTShare 请求，不读取用户真实 Key。发布前若需真实联调，应使用明确授权的 Key，记录已验证接口及时间，不输出 Key。
+Node >=22.19。`test` 先构建，再运行 Node 测试：Cordis 服务生命周期、命名空间注册表的先校验后写入与撤销、存储来源与事件、远端／Key 独立验证、节假日空数据成功、业务错误与网络错误、响应限额、并发与旧结果隔离、RPC 白名单、页面状态模型、槽位声明与卡片注册、以及核心不含特性词汇的架构守护。默认全部使用模拟凭据／响应，不发真实 FTShare 请求，不读取用户真实 Key。发布前若需真实联调，应使用明确授权的 Key，记录已验证接口及时间，不输出 Key。
 
-实现入口：`src/index.ts` 通用 Host 装配；`src/rpc-core.ts` 通用 RPC 白名单分发；`src/client.tsx` 通用设置页；`src/modules.ts` 和 `src/cards.ts` 分别登记 Host 模块与浏览器卡片。API Key 模块位于 `src/modules/api-key/`，复用 `src/api-key.ts` 的凭据协调、`src/probe.ts` 的探测和 `src/settings-model.ts` 的页面状态模型。`src/rpc.ts` 保留现有 `/client-api` 导出的兼容入口。
+代码分层（`src/core/` 不得 import `src/features/`）：
 
-### 新增一种设置：添加模块，再登记条目
+| 目录 | 职责 |
+| --- | --- |
+| `src/core/` | 缝：`contract.ts` 通用契约、`module-registry.ts` 活注册表、`rpc-core.ts` 活路由表、`transport.ts`/`client-transport.ts` 两侧传输、`shell.tsx` section 外壳与槽位声明、`styles.ts` 变量与外壳样式 |
+| `src/features/api-key/` | 第一个 feature：契约、Host 模块、RPC 方法、浏览器适配器、卡片、状态模型、探测、凭据协调、卡片样式 |
+| `src/index.ts` / `src/client.tsx` | 只装配：Host 侧 provide 服务并注册内置模块，浏览器侧注册 section 与内置卡片 |
+| `src/contract.ts` / `src/rpc.ts` | 对外入口的再导出汇总（`/contract`、`/client-api`） |
 
-当前只注册 API Key 一张卡片，没有增加主题设置，也未改变 API Key 的公共方法、RPC 路径或页面操作。
+### 新增一种设置：写一个 feature，经公开缝注册
 
-> 让**其他插件**不改本包源码即可注册设置的服务化扩展（方案 A2：槽位 `ftshare.settings.card` + `ctx.ftshareSettings.modules.register`）目前只有设计稿，见 [服务化扩展设计](docs/extension-service-design.md) 与配套[架构/时序图](docs/extension-service-sequences.html)；实现前以下流程仍是唯一方式。
+其他插件**不改本包源码**即可登记一项设置：本包自己的 API Key 就是 `src/features/api-key/` 这个 feature，走与第三方完全相同的一条路。完整设计记录见[服务化扩展设计](docs/extension-service-design.md)与配套[架构/时序图](docs/extension-service-sequences.html)。
 
-Host 与浏览器必须分别注册。只添加一种设置时，不修改通用入口、通用 RPC、通用页面或已有 API Key 模块：
+两条缝各管一半：行为跨包走 Cordis 服务，UI 位置跨包走槽位。
 
-1. 在 `src/modules/<name>/` 添加自己的类型契约、Host 模块、RPC 参数校验和浏览器卡片／适配器。
-2. 在 `src/modules.ts` 导入模块并添加一个数组条目。
-3. 在 `src/cards.ts` 导入卡片并添加一个数组条目；无需 UI 的设置可以不注册卡片。
-4. 如果引入新的宿主服务或 npm 包，在模块／卡片 `inject` 中声明运行时服务，并按 DSH 加载要求给 `package.json` 增加对应依赖与 `dsh.client.inject` 条目。类型声明扩展放在新模块内。
-5. 为新设置添加测试、更新接口文档。
+| 缝 | 平面 | 形式 | 谁声明 |
+| --- | --- | --- | --- |
+| 命名空间与调用 | Host | `ctx.ftshareSettings.modules.register(module, owner)` | 任意插件的 Host 半 |
+| 卡片位置 | 浏览器 | 槽位 `ftshare.settings.card`（`kind: list`, `scope: root`） | 本包 section 注册时在 `children` 里声明 |
 
-以下 `example` 仅为开发示意，不在生产清单中注册：
+**Host 半**：按形状写一个模块即可，不必 import 本包的运行时导出（`SettingsModule` 是结构化类型）。
 
 ```ts
-// modules/example/host.ts
-import { defineSettingsModule } from '../../module-registry.js'
+import type { Context } from '@deepseek-ai/cordis'
+import type { SettingsModule } from '@ft/dsh-fft-settings/contract'
 
-export const exampleModule = defineSettingsModule({
-  namespace: 'example',
-  inject: [],
+export const klineSettingsModule: SettingsModule<'kline', KlineSettings> = {
+  namespace: 'kline',
+  inject: ['storage'],                 // 模块实际用到的宿主服务
   create(ctx) {
-    const service = { get: () => ({ enabled: true }) }
-    // 如有订阅或资源，在此使用 ctx.on / ctx.effect 绑定模块生命周期。
-    return {
-      service,
-      rpcMethods: {
-        get: {
-          validate: payload => typeof payload === 'object'
-            && payload !== null && !Array.isArray(payload)
-            && Object.keys(payload).length === 0,
-          invoke: () => service.get(),
-        },
-      },
-    }
+    const service = createKlineSettings(ctx)   // 读写在插件自己的代码里
+    return { service, rpcMethods: createKlineRpcMethods(service) }
   },
-})
+}
+
+export const inject = ['ftshareSettings']
+
+export function apply(ctx: Context): void {
+  ctx.inject(['ftshareSettings'], scoped => {
+    const reg = scoped.ftshareSettings.modules.register(klineSettingsModule, scoped)
+    reg.service      // 自己 create() 返回的实例
+    reg.namespace    // 'kline'
+    reg.dispose()    // 幂等；owner fiber 释放时注册表已代为调用
+  })
+}
 ```
 
-登记后自动获得 `ctx.ftshareSettings.example.get()` 类型与 `/ftshare-settings` 通道的 `example/get` 路由。`FtshareSettingsService` 的命名空间类型从 Host 注册清单推导，不需要手工修改中央接口。
+注册是**先校验后写入**，失败不留痕（不写服务属性、不写路由表、不调用 `create`）：
+
+| 项 | 规则 |
+| --- | --- |
+| 命名空间格式 | `^[a-zA-Z][a-zA-Z0-9]*$`，禁路径分隔符 |
+| 保留名 | `apiVersion`、`modules`、`constructor`、`prototype`、`__proto__` |
+| 重复命名空间 | 抛 `Duplicate settings namespace: <ns>`；撤销后可以重试 |
+| 服务依赖 | `module.inject` 声明的服务必须在 `owner` 上可解析，否则抛错且不调用 `create`；settings 不替模块声明任何服务 |
+| 同步性 | `create` 必须同步返回 |
+| 生命周期 | 注册表在 `owner` 上装 effect：owner fiber 释放 → 服务属性与该命名空间的全部 RPC 路由一起消失；返回的 `dispose()` 幂等 |
+| 属性可见性 | 命名空间属性注册后动态出现、撤销后消失；消费方不要在自己 apply 时解构缓存 |
+
+消费者要读别人的命名空间时，自己 merge 一行（生产者靠 `register` 的泛型推断，不需要 merge）：
+
+```ts
+declare module '@ft/dsh-fft-settings/contract' {
+  interface FtshareSettingsNamespaces { cockpit: CockpitSettings }
+}
+```
+
+**浏览器半**：卡片注册进槽位，`import type {} from '@ft/dsh-fft-settings/client'` 只为拿到 SlotMap 合并（type-only，运行时零依赖）。
 
 ```tsx
-// modules/example/card.tsx
-import { defineSettingsCard } from '../../card-registry.js'
+import type {} from '@ft/dsh-fft-settings/client'
 
-export const exampleCard = defineSettingsCard({
-  id: 'example',
-  order: 20,
-  inject: [],
-  createComponent(ctx) {
-    // 可在此创建适配器；订阅在返回组件的 useEffect 中建立并清理。
-    return function ExampleCard() {
-      return <section className="ftshare-settings">示例设置</section>
-    }
-  },
-})
+export function apply(ctx: Context): void {
+  ctx.slots.inject('ftshare.settings.card', () => ctx.slots.register(
+    { name: 'ftshare.settings.card', id: 'kline', order: 40, label: 'K线' },
+    KlineCard,
+  ))
+}
 ```
 
-浏览器适配器可用 `callSettingsRpc(createSettingsTransport(), 'example', 'get', {})`；两个函数都位于 `src/rpc-core.ts` / `src/client-transport.ts`，并从现有 `/client-api` 导出。有写入操作时应由模块提供严格的参数校验与明确的持久化结果，不能仅依赖类型断言。
+| 注册项 | 规则 |
+| --- | --- |
+| `id` | 必填、全局唯一；同 id 同 priority 在装载期抛错 |
+| `order` | 升序排列。省略的 `order` 按 DSH 0.2.0-rc.2 的 ui-slots 语义当作 0，内置 API Key 卡为 10 —— 要排在它之后必须显式给更大的 `order` |
+| `label` | `string \| (() => string)`，section 内作分组标题用；缺省不显示 |
+| `priority` | **不对外公开**：它能静默顶掉别人的卡片；文档与示例只用 `id`/`order`/`label` |
 
-装配规则：
+卡片组件拿到的是槽位标准份额（runtime / renderSlot / store / inject face / locale），**拿不到 settings 的内部状态**：没有服务对象、没有凭据协调、没有验证模型。卡片要的数据走 `/client-api`：
 
-- Host `inject` 和浏览器 `inject` 从各自清单合并；客户端 npm 插件加载依赖仍由 `package.json` 声明。
-- RPC 仅公开 `rpcMethods` 显式登记的方法，不遍历服务对象。`resolve` 等 Host 私有方法不会因为注册了服务就自动开放。
-- 命名空间必须唯一，禁止路径分隔符、`apiVersion` 和原型保留名称；非法或重复命名空间在创建资源前拒绝。
-- 卡片 ID 必须唯一，按 `order` 升序排列；相同顺序保持登记次序。
-- Host 资源由 Cordis 生命周期释放，卡片的订阅由 React effect 释放。
-- 浏览器不能运行时导入 `modules.ts`、Host 模块或凭据探测代码；`cards.ts` 只导入客户端内容。已有模块契约的 `import type` 不会进入浏览器 bundle。
-- API Key 的后端清单和卡片清单独立，不要求每个 Host 模块必须拥有 UI。
+```ts
+import { callSettingsRpc, createSettingsTransport } from '@ft/dsh-fft-settings/client-api'
+const transport = createSettingsTransport()          // 每个插件建一次，复用
+const value = await callSettingsRpc<Value>(transport, 'kline', 'get')
+await callSettingsRpc(transport, 'kline', 'set', { key: 'kline setting 1', value })
+```
+
+**卡片自带样式**：核心只提供 `--ftshare-*` 变量与 section 外壳样式，卡片自己的 CSS 由组件内的 `<style>` 随挂载／卸载增删（槽位注册选项没有放 CSS 的位置）。内置 API Key 卡与第三方卡片遵守同一条规则，不要把卡片 CSS 加回核心。
+
+其它约束：
+
+- RPC 只派发模块 `rpcMethods` 里显式登记的方法，不遍历服务对象；`resolve()`、`createEnvironment()` 这类含秘密的方法不会因为注册了服务而自动开放。
+- 浏览器半不能 import Host 模块、凭据探测或其它卡片的组件；跨命名空间读取只在 Host 侧存在。
+- 需要新的宿主服务或 npm 包时，在模块／卡片自己的作用域里声明，并按 DSH 加载要求给 `package.json` 增加依赖与 `dsh.client.inject` 条目。
+- 新设置要补测试：注册与撤销、白名单、卡片渲染与排列。
 
 
 ### 本地开发时加载最新代码
@@ -300,6 +333,8 @@ export const exampleCard = defineSettingsCard({
 ## 源码逻辑 ER 图
 
 以下是代码实体关系，不是数据库表；图中标注源文件路径、关系数量及当前实现的边界。
+
+> 两张图绘制于 0.2.0 的目录结构（`src/module-registry.ts`、`src/modules.ts`、`src/cards.ts`、`src/card-registry.ts`、`src/api-key.ts`、`src/probe.ts`），尚未按 0.3.0 的 `src/core/` + `src/features/api-key/` 分层重绘：实体与关系仍然成立，文件路径与 `SettingsCard` 一项已过时，请以本节的文字说明为准。
 
 ![模块与接口 ER 图](docs/ftshare-settings-er.svg)
 
