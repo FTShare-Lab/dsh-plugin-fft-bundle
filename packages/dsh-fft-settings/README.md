@@ -332,12 +332,10 @@ await callSettingsRpc(transport, 'kline', 'set', { key: 'kline setting 1', value
 
 ## 源码逻辑 ER 图
 
-以下是代码实体关系，不是数据库表；图中标注源文件路径、关系数量及当前实现的边界。
-
-> 两张图绘制于 0.2.0 的目录结构（`src/module-registry.ts`、`src/modules.ts`、`src/cards.ts`、`src/card-registry.ts`、`src/api-key.ts`、`src/probe.ts`），尚未按 0.3.0 的 `src/core/` + `src/features/api-key/` 分层重绘：实体与关系仍然成立，文件路径与 `SettingsCard` 一项已过时，请以本节的文字说明为准。
+以下是代码实体关系，不是数据库表；图中标注源文件路径、关系数量及当前实现的边界。两张图按 0.3.0 的 `src/core/` + `src/features/api-key/` 分层绘制：核心只留两条缝与外壳，全部业务词汇归特性所有。
 
 ![模块与接口 ER 图](docs/ftshare-settings-er.svg)
 
 ![保存与检测结果 ER 图](docs/ftshare-settings-results-er.svg)
 
-SVG 可直接保存或编辑：[模块与接口](docs/ftshare-settings-er.svg)、[保存与检测结果](docs/ftshare-settings-results-er.svg)。同目录保留 HTML 预览。图使用本地可用字体回退，不依赖外部字体下载；不同系统字体外观可能略有差异。
+SVG 可直接保存或编辑：[模块与接口](docs/ftshare-settings-er.svg)、[保存与检测结果](docs/ftshare-settings-results-er.svg)。同目录保留 HTML 预览（HTML 为源文件，SVG 由 HTML 导出）。图使用本地可用字体回退，不依赖外部字体下载；不同系统字体外观可能略有差异。
