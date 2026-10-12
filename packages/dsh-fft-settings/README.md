@@ -220,6 +220,8 @@ Node >=22.19。`test` 先构建，再运行 Node 测试：Cordis 服务生命周
 
 当前只注册 API Key 一张卡片，没有增加主题设置，也未改变 API Key 的公共方法、RPC 路径或页面操作。
 
+> 让**其他插件**不改本包源码即可注册设置的服务化扩展（方案 A2：槽位 `ftshare.settings.card` + `ctx.ftshareSettings.modules.register`）目前只有设计稿，见 [服务化扩展设计](docs/extension-service-design.md) 与配套[架构/时序图](docs/extension-service-sequences.html)；实现前以下流程仍是唯一方式。
+
 Host 与浏览器必须分别注册。只添加一种设置时，不修改通用入口、通用 RPC、通用页面或已有 API Key 模块：
 
 1. 在 `src/modules/<name>/` 添加自己的类型契约、Host 模块、RPC 参数校验和浏览器卡片／适配器。
