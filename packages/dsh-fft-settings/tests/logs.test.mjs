@@ -21,6 +21,7 @@ import { byteLength, formatDownloadFileName, formatLogLine } from '../lib/featur
 import { resolveDshHome } from '../lib/features/logs/home.js'
 import { buildLogExport } from '../lib/features/logs/export.js'
 import { createLogsModule } from '../lib/features/logs/index.js'
+import { statsPlaceholder } from '../lib/features/logs/card.js'
 import { createLogsRpcMethods } from '../lib/features/logs/rpc.js'
 import { createSettingsHost } from '../lib/core/module-registry.js'
 import { createSettingsRpcHandler } from '../lib/core/rpc-core.js'
@@ -443,4 +444,12 @@ test('$DSH_HOME \u652f\u6301 ~ \u5c55\u5f00\uff0c\u7a7a\u767d\u503c\u89c6\u4e3a\
   assert.equal(resolveDshHome({ DSH_HOME: '   ' }), join(homedir(), '.dsh'))
   assert.equal(resolveDshHome({ DSH_HOME: '/abs/path' }), '/abs/path')
   assert.equal(resolveDshHome({}), join(homedir(), '.dsh'))
+})
+
+test('读取失败后字段不再说「读取中」，且失败文案确实进了浏览器产物', async () => {
+  assert.equal(statsPlaceholder(false), '读取中…')
+  assert.equal(statsPlaceholder(true), '读取失败')
+  // 产物断言：卡片源码改了但没重建时，这里会先红。
+  const bundle = await readFile(new URL('../lib/client.js', import.meta.url), 'utf8')
+  assert.ok(bundle.includes('读取失败'))
 })

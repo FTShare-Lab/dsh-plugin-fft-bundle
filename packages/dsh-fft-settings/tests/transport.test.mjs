@@ -9,7 +9,7 @@ import { test } from 'node:test'
 import { FTSHARE_SETTINGS_MAX_BODY_BYTES, FTSHARE_SETTINGS_ROUTE } from '../lib/contract.js'
 import { createSettingsRoute } from '../lib/core/transport.js'
 import { createSettingsTransport } from '../lib/core/client-transport.js'
-import { createSettingsRpcHandler } from '../lib/core/rpc-core.js'
+import { createSettingsRpcHandler, callSettingsRpc } from '../lib/core/rpc-core.js'
 
 const empty = payload => payload !== null && typeof payload === 'object' && !Array.isArray(payload) && Object.keys(payload).length === 0
 const handler = createSettingsRpcHandler([{
@@ -108,4 +108,28 @@ test('端到端：浏览器调用方 → 宿主路由 → 信封', async () => {
     return route.fetch(new Request(`http://dsh.internal${input}`, init))
   })
   assert.deepEqual(await transport.call('apiKey/describe', {}), { ok: true, value: { configured: true } })
+})
+
+/** 回放一个失败信封的调用方。 */
+function failingTransport(error) {
+  return createSettingsTransport(async () => new Response(JSON.stringify({ ok: false, error }), {
+    status: 200,
+    headers: { 'content-type': 'application/json' },
+  }))
+}
+
+test('失败信封翻译成可执行的原因，而不是一律「请重试」', async () => {
+  // 宿主没有这个命名空间 = 宿主半边还是升级前的版本：必须点名重启，重试没有意义。
+  const missing = failingTransport({ code: 'not_found', message: '接口不存在', details: {} })
+  await assert.rejects(() => callSettingsRpc(missing, 'logs', 'stats'), /logs\/stats/)
+  await assert.rejects(() => callSettingsRpc(missing, 'logs', 'stats'), /重启 DSH/)
+  await assert.rejects(() => callSettingsRpc(missing, 'logs', 'stats'), /宿主插件还是升级前的版本/)
+
+  // 其余失败保留宿主自己的 code 与 message，排障时不必再猜。
+  const failed = failingTransport({ code: 'operation_failed', message: '操作失败，请刷新状态后重试', details: {} })
+  await assert.rejects(() => callSettingsRpc(failed, 'logs', 'stats'), /operation_failed/)
+  await assert.rejects(() => callSettingsRpc(failed, 'logs', 'stats'), /操作失败，请刷新状态后重试/)
+
+  // 畸形信封没有 error 字段时也不能只说「请重试」。
+  await assert.rejects(() => callSettingsRpc(failingTransport(undefined), 'logs', 'stats'), /unknown/)
 })

@@ -180,9 +180,23 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region src/core/rpc-core.ts
+		/**
+		* 把一次失败的信封翻译成调用方能展示的原因。
+		*
+		* `not_found` 是「浏览器半边比宿主半边新」的可观测症状：升级插件后客户端 bundle 由磁盘重新
+		* 加载，而宿主进程仍持有旧包，它没有新命名空间。此时重试永远不会成功，必须点名重启宿主。
+		* @param endpoint - 这次调用的 `<namespace>/<method>`。
+		* @param error - 宿主回传的失败原因，畸形信封下可能缺省。
+		* @returns 面向用户的失败描述。
+		*/
+		function describeSettingsFailure(endpoint, error) {
+			if (error?.code === "not_found") return `FTShare 设置接口 ${endpoint} 不存在：宿主插件还是升级前的版本，重启 DSH 后再试`;
+			return `FTShare 设置操作失败（${error?.code ?? "unknown"}）：${error?.message ?? "宿主未说明原因"}`;
+		}
 		async function callSettingsRpc(transport, namespace, method, payload = {}) {
-			const result = await transport.call(`${namespace}/${method}`, payload);
-			if (!result.ok) throw new Error("FTShare 设置操作失败，请重试");
+			const endpoint = `${namespace}/${method}`;
+			const result = await transport.call(endpoint, payload);
+			if (!result.ok) throw new Error(describeSettingsFailure(endpoint, result.error));
 			return result.value;
 		}
 		//#endregion
@@ -463,6 +477,17 @@ window.__ModuleLoader__.load({
 			80,
 			200
 		];
+		/**
+		* 快照缺失时的占位文案。
+		*
+		* 失败后不能继续写「读取中…」：那会把一次已经结束的失败说成正在进行的读取，掩盖真正的
+		* 原因（例如宿主插件没有这个接口，重试永远不会成功）。
+		* @param failed - 本次读取是否已经失败。
+		* @returns 失败提示，或仍在读取的提示。
+		*/
+		function statsPlaceholder(failed) {
+			return failed ? "读取失败" : "读取中…";
+		}
 		function displayBytes(bytes) {
 			if (bytes < 1024) return `${bytes} B`;
 			if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KiB`;
@@ -505,6 +530,8 @@ window.__ModuleLoader__.load({
 			const [busy, setBusy] = (0, react.useState)(false);
 			const [message, setMessage] = (0, react.useState)("");
 			const [error, setError] = (0, react.useState)("");
+			/** 读取已失败且还没有任何快照时，每个字段都必须说出来，而不是假装还在读。 */
+			const placeholder = statsPlaceholder(error !== "");
 			const refresh = (0, react.useCallback)(async () => {
 				setBusy(true);
 				setError("");
@@ -550,23 +577,23 @@ window.__ModuleLoader__.load({
 							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("dl", { children: [
 								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 									className: "ftshare-result",
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("dt", { children: "日志文件" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("dd", { children: stats?.file ?? "读取中…" })]
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("dt", { children: "日志文件" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("dd", { children: stats?.file ?? placeholder })]
 								}),
 								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 									className: "ftshare-result",
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("dt", { children: "记录 / 时间范围" }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("dd", { children: [stats === void 0 ? "读取中…" : `${stats.records} 条`, stats?.firstAt !== void 0 && `（${stats.firstAt} ~ ${stats.lastAt}）`] })]
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("dt", { children: "记录 / 时间范围" }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("dd", { children: [stats === void 0 ? placeholder : `${stats.records} 条`, stats?.firstAt !== void 0 && `（${stats.firstAt} ~ ${stats.lastAt}）`] })]
 								}),
 								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 									className: "ftshare-result",
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("dt", { children: "文件大小 / 上限" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("dd", { children: stats === void 0 ? "读取中…" : `${displayBytes(stats.fileBytes)} / ${displayBytes(stats.maxBytes)}（保留 ${stats.keep} 份轮转）` })]
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("dt", { children: "文件大小 / 上限" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("dd", { children: stats === void 0 ? placeholder : `${displayBytes(stats.fileBytes)} / ${displayBytes(stats.maxBytes)}（保留 ${stats.keep} 份轮转）` })]
 								}),
 								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 									className: "ftshare-result",
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("dt", { children: "丢弃 / 轮转 / 写失败" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("dd", { children: stats === void 0 ? "读取中…" : `${stats.dropped} / ${stats.rotations} / ${stats.writeFailures}` })]
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("dt", { children: "丢弃 / 轮转 / 写失败" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("dd", { children: stats === void 0 ? placeholder : `${stats.dropped} / ${stats.rotations} / ${stats.writeFailures}` })]
 								}),
 								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 									className: "ftshare-result",
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("dt", { children: "当前级别" }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("dd", { children: [stats?.level ?? "读取中…", "（warn 收 error+info+warn，debug 收全部）"] })]
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("dt", { children: "当前级别" }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("dd", { children: [stats?.level ?? placeholder, "（warn 收 error+info+warn，debug 收全部）"] })]
 								}),
 								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 									className: "ftshare-result",
@@ -578,11 +605,11 @@ window.__ModuleLoader__.load({
 								}),
 								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 									className: "ftshare-result",
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("dt", { children: "各来源条数" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("dd", { children: stats === void 0 || Object.keys(stats.byName).length === 0 ? "本次进程尚无记录" : Object.entries(stats.byName).map(([name, count]) => `${name}=${count}`).join("、") })]
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("dt", { children: "各来源条数" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("dd", { children: stats === void 0 ? placeholder : Object.keys(stats.byName).length === 0 ? "本次进程尚无记录" : Object.entries(stats.byName).map(([name, count]) => `${name}=${count}`).join("、") })]
 								}),
 								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 									className: "ftshare-result",
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("dt", { children: "额外来源" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("dd", { children: stats === void 0 || stats.sources.length === 0 ? "未配置（logs.sources）" : stats.sources.map((source) => `${source.path}（${source.kind}${source.bytes === void 0 ? "" : ` ${displayBytes(source.bytes)}`}）`).join("；") })]
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("dt", { children: "额外来源" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("dd", { children: stats === void 0 ? placeholder : stats.sources.length === 0 ? "未配置（logs.sources）" : stats.sources.map((source) => `${source.path}（${source.kind}${source.bytes === void 0 ? "" : ` ${displayBytes(source.bytes)}`}）`).join("；") })]
 								})
 							] }),
 							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
@@ -642,7 +669,7 @@ window.__ModuleLoader__.load({
 						className: "ftshare-card",
 						children: [
 							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("h3", { children: ["最近日志", preview?.truncated === true ? "（已截断）" : ""] }),
-							preview === void 0 || preview.lines.length === 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: "还没有日志。采集器随插件启动，出现警告后这里就会有内容。" }) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("pre", {
+							preview === void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: error === "" ? "正在读取…" : "日志预览读取失败，见上方提示。" }) : preview.lines.length === 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: "还没有日志。采集器随插件启动，出现警告后这里就会有内容。" }) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("pre", {
 								className: "ftshare-log-preview",
 								children: preview.lines.join("\n")
 							}),

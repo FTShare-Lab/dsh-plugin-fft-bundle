@@ -86,8 +86,22 @@ export function createSettingsRpcHandler(modules: readonly SettingsRpcModule[] =
   for (const module of modules) register(module)
   return handler
 }
+/**
+ * 把一次失败的信封翻译成调用方能展示的原因。
+ *
+ * `not_found` 是「浏览器半边比宿主半边新」的可观测症状：升级插件后客户端 bundle 由磁盘重新
+ * 加载，而宿主进程仍持有旧包，它没有新命名空间。此时重试永远不会成功，必须点名重启宿主。
+ * @param endpoint - 这次调用的 `<namespace>/<method>`。
+ * @param error - 宿主回传的失败原因，畸形信封下可能缺省。
+ * @returns 面向用户的失败描述。
+ */
+function describeSettingsFailure(endpoint: string, error: RpcResult<unknown>['error']): string {
+  if (error?.code === 'not_found') return `FTShare 设置接口 ${endpoint} 不存在：宿主插件还是升级前的版本，重启 DSH 后再试`
+  return `FTShare 设置操作失败（${error?.code ?? 'unknown'}）：${error?.message ?? '宿主未说明原因'}`
+}
 export async function callSettingsRpc<T>(transport: ClientTransport, namespace: string, method: string, payload: unknown = {}): Promise<T> {
-  const result = await transport.call(`${namespace}/${method}`, payload)
-  if (!result.ok) throw new Error('FTShare 设置操作失败，请重试')
+  const endpoint = `${namespace}/${method}`
+  const result = await transport.call(endpoint, payload)
+  if (!result.ok) throw new Error(describeSettingsFailure(endpoint, result.error))
   return result.value as T
 }
