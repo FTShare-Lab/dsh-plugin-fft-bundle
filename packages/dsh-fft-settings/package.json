@@ -41,6 +41,10 @@
       "types": "./lib/contract.d.ts",
       "default": "./lib/contract.js"
     },
+    "./agent": {
+      "types": "./lib/agent.d.ts",
+      "default": "./lib/agent.js"
+    },
     "./client": {
       "types": "./lib/client.d.ts",
       "default": "./lib/client.js"

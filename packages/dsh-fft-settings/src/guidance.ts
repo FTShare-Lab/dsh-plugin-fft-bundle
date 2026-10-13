@@ -115,5 +115,7 @@ export function installGuidance(ctx: Context): void {
     order: FT_SECTION_ORDERS.dataPolicy,
     text: FT_DATA_POLICY_TEXT,
   }), 'dsh-fft-settings: ft:data-policy')
-  installCredentialFact(ctx)
+  // Optional service: the three sections never depend on the settings row, and
+  // a missing provider only means the credential fact renders nothing.
+  ctx.inject(['ftshareSettings'], scope => installCredentialFact(scope))
 }
