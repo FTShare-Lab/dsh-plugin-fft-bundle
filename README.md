@@ -18,7 +18,7 @@ f=~/.dsh/profiles/desktop/pnpm-workspace.yaml; for k in blockExoticSubdeps autoI
 git+ssh://git@github.com/FTShare-Lab/dsh-plugin-fft-bundle.git#path:packages/dsh-fft-bundle
 ```
 
-重贴同一 spec 即更新到默认分支最新提交（默认分支是只前移到发布提交的 `stable`，所以拿到的是稳定版）；装前先卸掉旧的 `link:` 安装。要试开发中的最新版，把 spec 末尾的 `#path:` 换成 `#dev&path:`。
+重贴完全相同的 spec 不会升级：插件管理器靠 profile 依赖项的前后差异定位装进来的包，没有差异就报「无法从依赖变更中确定安装了哪一个包」。升级要先卸载再重装，或贴一条与现有条目不同的 spec（如带版本号的 `#v0.5.2&path:`）。不带 ref 的 spec 落在默认分支——只前移到发布提交的 `stable`，所以拿到的是稳定版；装前先卸掉旧的 `link:` 安装。要试开发中的最新版，把 spec 末尾的 `#path:` 换成 `#dev&path:`。
 
 ## 开发方式
 
