@@ -10,3 +10,5 @@ tmp/
 __pycache__/
 *.pyc
 .worktrees/
+# 发布产物是构建输出：平时放在 releases/ 下（stable 上单独 `git add -f` 归档一份）。
+/releases/
