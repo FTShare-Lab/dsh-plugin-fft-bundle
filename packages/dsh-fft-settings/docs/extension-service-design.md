@@ -1,6 +1,6 @@
 # 设置扩展服务设计（方案 A2）：让任何插件注册自己的设置
 
-> 状态：**已实现并合入 `dev`，未发布**。A2 两条缝与第 10 节的 apiKey 归位分三步落地（落缝、归位与分家、立规矩），包版本已 bump 到 `0.3.0`，两张 ER 图按 `src/core/` + `src/features/api-key/` 分层重绘；组合包的发布说明仍待发布提交。
+> 状态：**已实现并合入 `dev`**；`@ft/dsh-fft-settings` 版本 `0.4.0`（接缝 `0.3.0` + 运行日志），随组合包 `v0.6.0` 发布。A2 两条缝与第 10 节的 apiKey 归位分三步落地（落缝、归位与分家、立规矩），包版本已 bump 到 `0.3.0`，两张 ER 图按 `src/core/` + `src/features/api-key/` 分层重绘；组合包的发布说明仍待发布提交。
 >
 > 基线：DSH 0.2.0-rc.2；`@ft/dsh-fft-settings` 0.2.0 → 目标 0.3.0；`FTSHARE_SETTINGS_API_VERSION` 保持 `1`（路由与 envelope 不变）。
 >
