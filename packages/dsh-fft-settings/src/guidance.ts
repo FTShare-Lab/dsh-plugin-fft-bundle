@@ -1,5 +1,8 @@
 /**
- * The FT prompt contract: three ordered system sections and one runtime fact.
+ * The FT prompt contract: two ordered system sections and one runtime fact.
+ *
+ * The identity is not here: the preset that mounts this entry states it in its own
+ * `persona` row (order 0), and repeating it as a section would render it twice.
  *
  * Registration is a single {@link installGuidance} call so the text and the
  * mount point stay independent — moving these registrations into an agent preset
@@ -23,9 +26,6 @@ interface PromptRegistry {
   context(entry: { readonly name: string; readonly order: number; readonly text: () => string }): () => void
 }
 
-/** Section name of the identity opener. */
-export const FT_IDENTITY_SECTION = 'ft:identity'
-
 /** Section name of the capability list. */
 export const FT_SERVICES_SECTION = 'ft:services'
 
@@ -37,15 +37,13 @@ export const FT_CREDENTIALS_CONTEXT = 'ft:credentials'
 
 /**
  * Section orders. Consecutive integers keep a third-party section from sorting
- * between two of ours (`1`–`499` is the shared free band), while `5` still lands
+ * between two of ours (`1`–`499` is the shared free band), while `6` still lands
  * after the deployment persona (`0`) and before core's plan policy (`500`).
  */
-export const FT_SECTION_ORDERS = { identity: 5, services: 6, dataPolicy: 7 } as const
+export const FT_SECTION_ORDERS = { services: 6, dataPolicy: 7 } as const
 
 /** Order of the credential fact — `getContextOrder` owns only three named positions. */
 export const FT_CREDENTIALS_ORDER = 130
-
-export const FT_IDENTITY_TEXT = '你是非凸(FT)金融助手，帮助用户获取金融信息，进行金融研究。乐于助人，语言精准客观'
 
 export const FT_SERVICES_TEXT = '行情、K线与指标用 dsh-kline 工具（代码先用 search_symbols 解析）；投研报告与组合推荐用 cockpit_* 工具；因子入库与评价用 factor-intake-standard 技能；FTShare API Key 在设置页维护。'
 
@@ -100,11 +98,6 @@ function installCredentialFact(ctx: Context): void {
  */
 export function installGuidance(ctx: Context): void {
   const prompt = promptRegistry(ctx)
-  ctx.effect(() => prompt.section({
-    name: FT_IDENTITY_SECTION,
-    order: FT_SECTION_ORDERS.identity,
-    text: FT_IDENTITY_TEXT,
-  }), 'dsh-fft-settings: ft:identity')
   ctx.effect(() => prompt.section({
     name: FT_SERVICES_SECTION,
     order: FT_SECTION_ORDERS.services,
