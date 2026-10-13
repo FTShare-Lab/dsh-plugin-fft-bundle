@@ -253,7 +253,7 @@ declare module '@ft/dsh-fft-settings' {
 | `README.md` | 「新增一种设置」整段重写为"由插件自己注册"，保留包内模块的说明；接入约定补 `modules.register` 与槽位键 | 文档 |
 | 消费方（各自仓库） | cockpit 全量接入做验收；kline 按 6.2 接入（跨仓，单独排期）；internal-plugin 的 `settings.models.footer` 块可选迁入 | 联调 |
 
-发布口径：本插件 `0.3.0`（新公开缝，向后兼容）；`docs/releases.draft.md` 追加一条；是否需要同步 bump 组合包版本按 `dsh-fft-release-note` 流程判断。
+发布口径：本插件 `0.3.0`（新公开缝，向后兼容）；`docs/releases.draft.md` 追加一条；是否需要同步 bump 组合包版本按 `dsh-fft-release` 流程判断。
 
 ## 9. 决策记录
 

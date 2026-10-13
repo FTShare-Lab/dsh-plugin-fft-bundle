@@ -6,10 +6,10 @@ pnpm workspace 组织，组合包 `@ft/dsh-fft-bundle` 是终端用户的安装�
 
 1. 确认本机能 ssh 访问 GitHub 私有仓；
 2. 安装官方 Deepseek Harness 桌面版：<https://deepseek-harness.github.io/deepseek-harness>
-3. 打开 git 子依赖 
+3. 打开 git 子依赖，并关掉 peer 自动安装加速
 
 ```bash
-f=~/.dsh/profiles/desktop/pnpm-workspace.yaml; [ -f "$f" ] && ! grep -q '^blockExoticSubdeps:' "$f" && echo 'blockExoticSubdeps: false' >> "$f"
+f=~/.dsh/profiles/desktop/pnpm-workspace.yaml; for k in blockExoticSubdeps autoInstallPeers; do grep -q "^$k:" "$f" || echo "$k: false" >> "$f"; done
 ```
 
 4. 「插件管理」→「添加插件」，在输入框里粘贴同一条 spec：
@@ -18,7 +18,7 @@ f=~/.dsh/profiles/desktop/pnpm-workspace.yaml; [ -f "$f" ] && ! grep -q '^blockE
 git+ssh://git@github.com/FTShare-Lab/dsh-plugin-fft-bundle.git#path:packages/dsh-fft-bundle
 ```
 
-重贴同一 spec 即更新到默认分支最新提交；装前先卸掉旧的 `link:` 安装。
+重贴同一 spec 即更新到默认分支最新提交（默认分支是只前移到发布提交的 `stable`，所以拿到的是稳定版）；装前先卸掉旧的 `link:` 安装。要试开发中的最新版，把 spec 末尾的 `#path:` 换成 `#dev&path:`。
 
 ## 开发方式
 
