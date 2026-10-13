@@ -60,9 +60,25 @@ function findKlinePatch() {
   return found
 }
 
+/**
+ * Rows the patch declares, wherever they sit: a top-level insert, a nested
+ * `cordis:group` list, or an agent preset's `plugins` composition. The kline
+ * MCP row lives inside `preset-ft-finance` so that only that mode mounts it.
+ * @param path - patch file to read.
+ * @returns rows keyed by id.
+ */
 function rowsOf(path) {
   const parsed = load(readFileSync(path, 'utf8'), { schema })
-  return new Map(parsed.flatMap(patch => patch.insert ?? []).map(row => [row.id, row]))
+  const rows = []
+  const collect = (list) => {
+    for (const row of list) {
+      rows.push(row)
+      if (Array.isArray(row.config)) collect(row.config)
+      else if (Array.isArray(row.config?.plugins)) collect(row.config.plugins)
+    }
+  }
+  for (const patch of parsed) collect(patch.insert ?? [])
+  return new Map(rows.map(row => [row.id, row]))
 }
 
 describe('kline rows mirrored from the kline package', () => {

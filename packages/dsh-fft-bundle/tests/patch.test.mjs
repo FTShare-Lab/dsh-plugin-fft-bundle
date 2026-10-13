@@ -20,7 +20,11 @@ const patchPath = resolve(root, manifest.dsh.bundle.patch)
  * one without this bundle depending on it. The row's `name` is resolved at
  * boot against the app's own installation first.
  */
-const HOST_PACKAGES = new Set(['@deepseek-ai/dsh-mcp-client'])
+const HOST_PACKAGES = new Set([
+  '@deepseek-ai/dsh-mcp-client',
+  // The finance preset row names the official preset plugin; the app supplies it.
+  '@deepseek-ai/dsh-agent-preset',
+])
 
 describe('dsh-fft-bundle', () => {
   it('declares a parseable patch list through the dsh.bundle.patch manifest field', () => {
