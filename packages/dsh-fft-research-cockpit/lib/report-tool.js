@@ -140,11 +140,11 @@ function register(ctx, config, name, logger, fixedType) {
     }));
 }
 export function registerReportTool(ctx, config, logger) {
-    register(ctx, config, 'generate_investment_report', logger);
+    register(ctx, config, 'cockpit_investment_report', logger);
     for (const reportType of REPORT_TYPES)
-        register(ctx, config, `generate_${reportType}_report`, logger, reportType);
+        register(ctx, config, `cockpit_${reportType}_report`, logger, reportType);
     ctx.tools.register(defineTool({
-        name: 'generate_portfolio_recommendation',
+        name: 'cockpit_portfolio_recommendation',
         description: '从中证1000或用户自定义股票池中构建可解释的股票组合推荐；先筛选候选，再按主题/分散/风险权重生成组合，可选继续生成股票组合报告。',
         parameters: recommendationParameters,
         output: {

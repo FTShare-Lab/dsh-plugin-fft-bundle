@@ -10,7 +10,7 @@
 
 - 运行时金融数据只来自 FTShare Streamable HTTP MCP；
 - 不导入、不修改 `/Users/xzmini24/FtNova_work/stock_rec_stream`；
-- 已提供 8 类报告：`deep_read`、`holding_analysis`、`limit_up_attribution`、`market_commentary`、`portfolio_etfs`、`portfolio_stocks`、`review`、`sector_analysis`；另有独立的 `generate_portfolio_recommendation` 组合构建工具；
+- 已提供 8 类报告：`deep_read`、`holding_analysis`、`limit_up_attribution`、`market_commentary`、`portfolio_etfs`、`portfolio_stocks`、`review`、`sector_analysis`；另有独立的 `cockpit_portfolio_recommendation` 组合构建工具；
 - 报告结果返回 HTML 及结构化结果、证据、来源、新鲜度和数据缺口；Web 对话中显示紧凑报告卡片，点击“打开报告”进入占满会话区的独立阅读视图，也可以切换为全屏阅读；用户点击下载按钮后才保存到本地；
 - 公告默认回看 `30` 个自然日，可通过 `announcementLookbackDays` 调整；
 - T0 等没有被 FTShare 确认提供的数据不会伪造，统一进入 `dataGaps`。
@@ -133,7 +133,7 @@ pnpm dsh web --patch /Users/xzmini24/FtNova_work/dsh-investment-research/cordis.
 
 ```bash
 cd /Users/xzmini24/FtNova_work/deepseek-harness
-pnpm dsh --profile headless '请调用 generate_deep_read_report，对 300750 生成一份深度研读报告。'
+pnpm dsh --profile headless '请调用 cockpit_deep_read_report，对 300750 生成一份深度研读报告。'
 ```
 
 `cordis.local.patch.yml` 仅用于插件尚未安装时的源码 overlay 场景；如果需要覆盖已安装插件的配置，
@@ -155,7 +155,7 @@ export FTSHARE_API_KEY='你的 FTShare key'
 export DEEPSEEK_API_KEY='你的 DeepSeek key'
 cd /Users/xzmini24/FtNova_work/deepseek-harness
 pnpm dsh --profile headless \
-  '请对 300750 做一份深度研读报告，并调用 generate_deep_read_report 工具。'
+  '请对 300750 做一份深度研读报告，并调用 cockpit_deep_read_report 工具。'
 ```
 
 只有在尚未把插件安装进 profile 时，才使用上面的 `--patch` 源码 overlay 命令。
@@ -236,7 +236,7 @@ dsh plugin --profile demo add ./ft-dsh-fft-research-cockpit-0.2.0.tgz
 
 当前实现已经包含：五轮分章节 deep_read LLM 生成、其余 7 类报告逐类型结构化 LLM 合约与字段校验、JSON 上下文降级、8 个完整 HTML 模板、ECharts 图表、FTShare 来源追溯和订阅权限提示。每类报告都会真实调用配置的 LLM；只有 LLM 返回空内容、非法 JSON 或不符合该模板字段合约时，才回退到确定性 FTShare 上下文，并在 `warnings` 中披露原因。由于 FTShare 当前未提供与原项目等价的 T0 回测及 PIT financial_indicator 数据，这些区域会明确显示模块未接入的中性状态，不会伪造。
 
-除统一工具 `generate_investment_report` 外，还注册了 8 个专用工具（如 `generate_holding_analysis_report`、`generate_market_commentary_report`）。持仓分析工具接收结构化 `holdings` 快照；用户可以先上传持仓截图，由 Harness 多模态模型识别为 JSON，经用户确认后再调用该工具。截图适合当前组合快照分析；历史收益曲线、最大回撤和交易归因仍需要交易记录或历史持仓快照。建议上传前遮挡姓名、账号、资产总额等敏感信息。
+除统一工具 `cockpit_investment_report` 外，还注册了 8 个专用工具（如 `cockpit_holding_analysis_report`、`cockpit_market_commentary_report`）。持仓分析工具接收结构化 `holdings` 快照；用户可以先上传持仓截图，由 Harness 多模态模型识别为 JSON，经用户确认后再调用该工具。截图适合当前组合快照分析；历史收益曲线、最大回撤和交易归因仍需要交易记录或历史持仓快照。建议上传前遮挡姓名、账号、资产总额等敏感信息。
 
 `reports/300750-2026-09-02-deep-read-data-only.html` 是之前的 FTShare 数据链路测试产物，`llm_content` 明确为 `null`，不是 LLM 报告。使用 Harness 且配置 `DEEPSEEK_API_KEY` 后生成的正式文件名为 `300750-YYYY-MM-DD-deep-read.html`，会使用本项目自己的完整模板。
 

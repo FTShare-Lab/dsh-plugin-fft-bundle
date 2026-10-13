@@ -124,16 +124,16 @@ div:has(> .ftai-fft-report-tab) { overflow-y: auto; overflow-x: hidden; }
     }
 
     const REPORT_TOOL_NAMES = [
-      'generate_investment_report',
-      'generate_deep_read_report',
-      'generate_holding_analysis_report',
-      'generate_limit_up_attribution_report',
-      'generate_market_commentary_report',
-      'generate_portfolio_etfs_report',
-      'generate_portfolio_stocks_report',
-      'generate_review_report',
-      'generate_sector_analysis_report',
-      'generate_portfolio_recommendation',
+      'cockpit_investment_report',
+      'cockpit_deep_read_report',
+      'cockpit_holding_analysis_report',
+      'cockpit_limit_up_attribution_report',
+      'cockpit_market_commentary_report',
+      'cockpit_portfolio_etfs_report',
+      'cockpit_portfolio_stocks_report',
+      'cockpit_review_report',
+      'cockpit_sector_analysis_report',
+      'cockpit_portfolio_recommendation',
     ]
     const REPORT_VIEW_ID = 'investment-report'
     const REPORT_SELECTION_KEY = 'ft-research-cockpit:last-report:'

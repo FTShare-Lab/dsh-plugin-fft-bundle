@@ -22,7 +22,7 @@ const context = vm.createContext({
   React: { createElement: (...args) => args },
   reportEntriesOf: () => entries,
   reportEntryLabel: entry => entry.symbol,
-  REPORT_TOOL_NAMES: ['generate_sector_analysis_report'], REPORT_VIEW_ID: 'reports',
+  REPORT_TOOL_NAMES: ['cockpit_sector_analysis_report'], REPORT_VIEW_ID: 'reports',
   ReportRow: 'ReportRow', ReportResult: 'ReportResult', ReportView: 'ReportView', ReportDetails: 'ReportDetails',
 })
 const start = source.indexOf('    const FFT_REPORT_TAB =')
