@@ -6,9 +6,9 @@ export * from './contract.js';
 export { defineSettingsModule } from './core/module-registry.js';
 export declare const name = "@ft/dsh-fft-settings";
 /**
- * Host services this plugin's own built-in modules resolve at registration.
- * A consuming plugin declares its own requirement; settings never declares
- * services on a module's behalf.
+ * Host services this plugin resolves: `credentials` for its built-in modules
+ * (a consuming plugin declares its own requirement; settings never declares
+ * services on a module's behalf), and `systemPrompt` for the FT prompt contract.
  */
 export declare const inject: string[];
 export declare const provide: string[];

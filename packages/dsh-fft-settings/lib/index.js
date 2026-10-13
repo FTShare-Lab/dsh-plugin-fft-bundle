@@ -4,15 +4,16 @@ import { createApiKeyModule } from './features/api-key/index.js';
 import { DEFAULT_LOGS_CONFIG, logsConfigSchema, resolveLogsConfig } from './features/logs/config.js';
 import { createLogsModule } from './features/logs/index.js';
 import { createSettingsRoute } from './core/transport.js';
+import { installGuidance } from './guidance.js';
 export * from './contract.js';
 export { defineSettingsModule } from './core/module-registry.js';
 export const name = '@ft/dsh-fft-settings';
 /**
- * Host services this plugin's own built-in modules resolve at registration.
- * A consuming plugin declares its own requirement; settings never declares
- * services on a module's behalf.
+ * Host services this plugin resolves: `credentials` for its built-in modules
+ * (a consuming plugin declares its own requirement; settings never declares
+ * services on a module's behalf), and `systemPrompt` for the FT prompt contract.
  */
-export const inject = ['credentials'];
+export const inject = ['credentials', 'systemPrompt'];
 export const provide = ['ftshareSettings'];
 /**
  * Native Schemastery schema of the whole plugin config: the features own their
@@ -40,6 +41,8 @@ export function apply(ctx, config) {
     // Built-in namespaces take the same path a third-party module would take.
     service.modules.register(createApiKeyModule(logger), ctx);
     service.modules.register(createLogsModule(resolveLogsConfig(config)), ctx);
+    // After the modules: the credential fact reads the apiKey namespace.
+    installGuidance(ctx);
     ctx.inject(['connection'], scoped => {
         const connection = scoped.get('connection');
         scoped.effect(() => connection.fetch.register(createSettingsRoute({ handler })), 'dsh-fft-settings: /api route');
