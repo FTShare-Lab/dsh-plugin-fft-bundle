@@ -585,7 +585,7 @@ window.__ModuleLoader__.load({
 								}),
 								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 									className: "ftshare-result",
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("dt", { children: "文件大小 / 上限" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("dd", { children: stats === void 0 ? placeholder : `${displayBytes(stats.fileBytes)} / ${displayBytes(stats.maxBytes)}（保留 ${stats.keep} 份轮转）` })]
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("dt", { children: "文件大小 / 上限" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("dd", { children: stats === void 0 ? placeholder : `${displayBytes(stats.fileBytes)} / ${displayBytes(stats.maxBytes)}` })]
 								}),
 								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 									className: "ftshare-result",
@@ -593,23 +593,15 @@ window.__ModuleLoader__.load({
 								}),
 								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 									className: "ftshare-result",
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("dt", { children: "当前级别" }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("dd", { children: [stats?.level ?? placeholder, "（warn 收 error+info+warn，debug 收全部）"] })]
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("dt", { children: "日志级别" }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("dd", { children: [stats?.level ?? placeholder, " "] })]
 								}),
 								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 									className: "ftshare-result",
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("dt", { children: "可选级别" }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("dd", { children: [
-										"warn / debug —— 级别是",
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: "接收上限" }),
-										"，info 会把 warn 一起丢掉，与「失败日志不低于 warn」冲突，故不提供 info 档"
-									] })]
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("dt", { children: "统计" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("dd", { children: stats === void 0 ? placeholder : Object.keys(stats.byName).length === 0 ? "暂无" : Object.entries(stats.byName).map(([name, count]) => `${name}=${count}`).join("、") })]
 								}),
 								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 									className: "ftshare-result",
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("dt", { children: "各来源条数" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("dd", { children: stats === void 0 ? placeholder : Object.keys(stats.byName).length === 0 ? "本次进程尚无记录" : Object.entries(stats.byName).map(([name, count]) => `${name}=${count}`).join("、") })]
-								}),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-									className: "ftshare-result",
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("dt", { children: "额外来源" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("dd", { children: stats === void 0 ? placeholder : stats.sources.length === 0 ? "未配置（logs.sources）" : stats.sources.map((source) => `${source.path}（${source.kind}${source.bytes === void 0 ? "" : ` ${displayBytes(source.bytes)}`}）`).join("；") })]
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("dt", { children: "额外来源" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("dd", { children: stats === void 0 ? placeholder : stats.sources.length === 0 ? "暂无" : stats.sources.map((source) => `${source.path}（${source.kind}${source.bytes === void 0 ? "" : ` ${displayBytes(source.bytes)}`}）`).join("；") })]
 								})
 							] }),
 							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
@@ -626,7 +618,7 @@ window.__ModuleLoader__.load({
 										className: "ftshare-download",
 										href: LOGS_ARCHIVE_ROUTE,
 										download: "",
-										children: "导出诊断包（.zip）"
+										children: "导出诊断包"
 									}),
 									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 										type: "button",
@@ -667,21 +659,10 @@ window.__ModuleLoader__.load({
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 						className: "ftshare-card",
-						children: [
-							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("h3", { children: ["最近日志", preview?.truncated === true ? "（已截断）" : ""] }),
-							preview === void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: error === "" ? "正在读取…" : "日志预览读取失败，见上方提示。" }) : preview.lines.length === 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: "还没有日志。采集器随插件启动，出现警告后这里就会有内容。" }) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("pre", {
-								className: "ftshare-log-preview",
-								children: preview.lines.join("\n")
-							}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("small", { children: [
-								"桌面端点「导出日志」由 Electron 直接下载，",
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: "不弹保存对话框" }),
-								"，文件落在系统下载目录；浏览器端是否询问取决于浏览器设置。"
-							] }),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("small", { children: "「导出诊断包（.zip）」= 同一份 ft-runtime.log + manifest.json（生成时间、版本、上限、各来源统计、盲区）+ 额外来源原文；桌面端同样不弹保存对话框、落在系统下载目录。若浏览器没有开始下载，改用「导出日志」。" }),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("small", { children: "日志可能含本地路径、插件名与标识，发送给他人前请自行检查内容。" }),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("small", { children: "覆盖盲区：采集器挂载前的 warn/debug 不可恢复；纯 Web 环境下 MCP/Python 子进程 stderr 不在其中；浏览器渲染进程日志没有回传通道；直接 console.* 或只体现在返回值的失败看不到。" })
-						]
+						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("h3", { children: ["最近日志", preview?.truncated === true ? "（已截断）" : ""] }), preview === void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: error === "" ? "正在读取…" : "日志预览读取失败，见上方提示。" }) : preview.lines.length === 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: "无" }) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("pre", {
+							className: "ftshare-log-preview",
+							children: preview.lines.join("\n")
+						})]
 					})
 				]
 			})] });

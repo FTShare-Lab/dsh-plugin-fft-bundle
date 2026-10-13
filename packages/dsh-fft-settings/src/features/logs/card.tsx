@@ -121,32 +121,31 @@ export function LogsSection({ api }: { readonly api: LogsPublicApi }): ReactNode
           {stats?.firstAt !== undefined && `（${stats.firstAt} ~ ${stats.lastAt}）`}
         </dd></div>
         <div className="ftshare-result"><dt>文件大小 / 上限</dt><dd>
-          {stats === undefined ? placeholder : `${displayBytes(stats.fileBytes)} / ${displayBytes(stats.maxBytes)}（保留 ${stats.keep} 份轮转）`}
+          {stats === undefined ? placeholder : `${displayBytes(stats.fileBytes)} / ${displayBytes(stats.maxBytes)}`}
         </dd></div>
         <div className="ftshare-result"><dt>丢弃 / 轮转 / 写失败</dt><dd>
           {stats === undefined ? placeholder : `${stats.dropped} / ${stats.rotations} / ${stats.writeFailures}`}
         </dd></div>
-        <div className="ftshare-result"><dt>当前级别</dt><dd>{stats?.level ?? placeholder}（warn 收 error+info+warn，debug 收全部）</dd></div>
-        <div className="ftshare-result"><dt>可选级别</dt><dd>warn / debug —— 级别是<strong>接收上限</strong>，info 会把 warn 一起丢掉，与「失败日志不低于 warn」冲突，故不提供 info 档</dd></div>
-        <div className="ftshare-result"><dt>各来源条数</dt><dd>
+        <div className="ftshare-result"><dt>日志级别</dt><dd>{stats?.level ?? placeholder} </dd></div>
+        <div className="ftshare-result"><dt>统计</dt><dd>
           {stats === undefined
             ? placeholder
             : Object.keys(stats.byName).length === 0
-              ? '本次进程尚无记录'
+              ? '暂无'
               : Object.entries(stats.byName).map(([name, count]) => `${name}=${count}`).join('、')}
         </dd></div>
         <div className="ftshare-result"><dt>额外来源</dt><dd>
           {stats === undefined
             ? placeholder
             : stats.sources.length === 0
-              ? '未配置（logs.sources）'
+              ? '暂无'
               : stats.sources.map(source => `${source.path}（${source.kind}${source.bytes === undefined ? '' : ` ${displayBytes(source.bytes)}`}）`).join('；')}
         </dd></div>
       </dl>
       <div className="ftshare-actions">
         <button className="primary" type="button" onClick={() => void doExport()} disabled={busy}>导出日志</button>
         {/* 同源 GET，浏览器自带凭据：直接指向路由，不需要 fetch/Blob。 */}
-        <a className="ftshare-download" href={LOGS_ARCHIVE_ROUTE} download="">导出诊断包（.zip）</a>
+        <a className="ftshare-download" href={LOGS_ARCHIVE_ROUTE} download="">导出诊断包</a>
         <button type="button" onClick={() => void refresh()} disabled={busy}>刷新</button>
         <label htmlFor="ftshare-log-lines">预览行数</label>
         <select id="ftshare-log-lines" value={lines} onChange={e => setLines(Number(e.target.value))} disabled={busy}>
@@ -162,12 +161,8 @@ export function LogsSection({ api }: { readonly api: LogsPublicApi }): ReactNode
       {preview === undefined
         ? <p>{error === '' ? '正在读取…' : '日志预览读取失败，见上方提示。'}</p>
         : preview.lines.length === 0
-          ? <p>还没有日志。采集器随插件启动，出现警告后这里就会有内容。</p>
+          ? <p>无</p>
           : <pre className="ftshare-log-preview">{preview.lines.join('\n')}</pre>}
-      <small>桌面端点「导出日志」由 Electron 直接下载，<strong>不弹保存对话框</strong>，文件落在系统下载目录；浏览器端是否询问取决于浏览器设置。</small>
-      <small>「导出诊断包（.zip）」= 同一份 ft-runtime.log + manifest.json（生成时间、版本、上限、各来源统计、盲区）+ 额外来源原文；桌面端同样不弹保存对话框、落在系统下载目录。若浏览器没有开始下载，改用「导出日志」。</small>
-      <small>日志可能含本地路径、插件名与标识，发送给他人前请自行检查内容。</small>
-      <small>覆盖盲区：采集器挂载前的 warn/debug 不可恢复；纯 Web 环境下 MCP/Python 子进程 stderr 不在其中；浏览器渲染进程日志没有回传通道；直接 console.* 或只体现在返回值的失败看不到。</small>
     </div>
     </section>
   </>
