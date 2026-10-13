@@ -1,0 +1,16 @@
+#!/bin/sh
+# Push-time guard for the dependency edges that point back into this repository.
+#
+# Installing from `dev` must pair the branch tip's bundle with the branch tip's
+# plugins, so the five edges have to carry `#dev` — unless the commit being
+# pushed is the release commit itself, which keeps `#vX.Y.Z` because that is what
+# the tag and `stable` serve. The check is skipped for every other branch.
+#
+# Enable once per clone:  git config core.hooksPath .githooks
+# Bypass in an emergency:  git push --no-verify
+while read -r _local_ref _local_sha remote_ref _remote_sha; do
+  if [ "$remote_ref" = "refs/heads/dev" ]; then
+    exec node scripts/edge-refs.mjs check --pre-push
+  fi
+done
+exit 0
