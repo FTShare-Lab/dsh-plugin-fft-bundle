@@ -5,11 +5,13 @@ pnpm workspace 组织，组合包 `@ft/dsh-fft-bundle` 是终端用户的安装�
 ## 使用方式
 
 1. 确认本机能 ssh 访问 GitHub 私有仓；
-2. 安装官方 Deepseek Harness 桌面版：<https://deepseek-harness.github.io/deepseek-harness>
+2. 安装官方 Deepseek Harness 桌面版并启动：<https://deepseek-harness.github.io/deepseek-harness>
 3. 打开 git 子依赖，并关掉 peer 自动安装加速
 
 ```bash
-f=~/.dsh/profiles/desktop/pnpm-workspace.yaml; for k in blockExoticSubdeps autoInstallPeers; do grep -q "^$k:" "$f" || echo "$k: false" >> "$f"; done
+f=~/.dsh/profiles/desktop/pnpm-workspace.yaml
+[ -f "$f" ] || { echo "找不到 $f：先启动一次桌面版" >&2; exit 1; }
+for k in blockExoticSubdeps autoInstallPeers; do grep -q "^$k:" "$f" || echo "$k: false" >> "$f"; done
 ```
 
 4. 「插件管理」→「添加插件」，在输入框里粘贴同一条 spec：
