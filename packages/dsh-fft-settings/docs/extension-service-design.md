@@ -1,6 +1,6 @@
 # 设置扩展服务设计（方案 A2）：让任何插件注册自己的设置
 
-> 状态：**已实现并合入 `dev`**；`@ft/dsh-fft-settings` 版本 `0.4.0`（接缝 `0.3.0` + 运行日志），随组合包 `v0.6.0` 发布。A2 两条缝与第 10 节的 apiKey 归位分三步落地（落缝、归位与分家、立规矩），包版本已 bump 到 `0.3.0`，两张 ER 图按 `src/core/` + `src/features/api-key/` 分层重绘；组合包的发布说明仍待发布提交。
+> 状态：**已实现**；`@ft/dsh-fft-settings` 版本 `0.4.0`（接缝 `0.3.0` + 运行日志）。A2 两条缝与第 10 节的 apiKey 归位分三步落地（落缝、归位与分家、立规矩），包版本已 bump 到 `0.3.0`，两张 ER 图按 `src/core/` + `src/features/api-key/` 分层重绘。
 >
 > 基线：DSH 0.2.0-rc.2；`@ft/dsh-fft-settings` 0.2.0 → 目标 0.3.0；`FTSHARE_SETTINGS_API_VERSION` 保持 `1`（路由与 envelope 不变）。
 >
@@ -8,7 +8,7 @@
 
 ## 1. 目标与非目标
 
-目标：任意 FT 插件（本仓的、`@ftshare-lab/dsh-kline` 这类第三方的）都能**不改本插件源码**地登记一项设置，并且用户改动后**注册方自己的代码能读到**该值。
+目标：任意插件（本包自带的 API Key 与运行日志、`@ftshare-lab/dsh-kline` 这类第三方的）都能**不改本插件源码**地登记一项设置，并且用户改动后**注册方自己的代码能读到**该值。
 
 判定成功的三步，缺一不算完成：
 
@@ -253,7 +253,7 @@ declare module '@ft/dsh-fft-settings' {
 | `README.md` | 「新增一种设置」整段重写为"由插件自己注册"，保留包内模块的说明；接入约定补 `modules.register` 与槽位键 | 文档 |
 | 消费方（各自仓库） | cockpit 全量接入做验收；kline 按 6.2 接入（跨仓，单独排期）；internal-plugin 的 `settings.models.footer` 块可选迁入 | 联调 |
 
-发布口径：本插件 `0.3.0`（新公开缝，向后兼容）；`docs/releases.draft.md` 追加一条；是否需要同步 bump 组合包版本按 `dsh-fft-release` 流程判断。
+发布口径：本插件 `0.3.0`（新公开缝，向后兼容）；是否随之发版由消费方决定。
 
 ## 9. 决策记录
 

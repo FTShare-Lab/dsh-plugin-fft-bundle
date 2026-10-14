@@ -1,6 +1,6 @@
 # FTShare Settings：共享设置、远端服务与 API Key 检测
 
-`@ft/dsh-fft-settings`（原 `@ft/dsh-ftshare-settings`，迁移 dsh-fft-bundle 仓时改名）是 DSH 共享设置插件。Host 服务为 **`ctx.ftshareSettings`**，API Key 的所有能力位于 **`apiKey` 命名空间**，运行日志采集与导出位于 **`logs` 命名空间**；未来主题、用户偏好应作为 `theme`、`preferences` 等同级命名空间扩展，不能混入 `apiKey`。
+`@ft/dsh-fft-settings`（原 `@ft/dsh-ftshare-settings`）是 DSH 共享设置插件。Host 服务为 **`ctx.ftshareSettings`**，API Key 的所有能力位于 **`apiKey` 命名空间**，运行日志采集与导出位于 **`logs` 命名空间**；未来主题、用户偏好应作为 `theme`、`preferences` 等同级命名空间扩展，不能混入 `apiKey`。
 
 当前只实现 API Key 管理、远端服务检查与 Key 验证，以及**常驻的运行日志采集器**（落盘 `$DSH_HOME/logs/ft/`）与设置页导出卡片；未实现主题／用户偏好的持久化接口，也不提供行情查询、图表、通用 SDK 代理或 Python 凭据桥。Key 由 DSH `credentials` 服务存储，本插件不保存第二份密钥文件。原未发布的 `ftshareCredentials` 草案已替换，不保留旧服务别名。
 
@@ -11,7 +11,7 @@
 - 类型来源分两处：包主入口 `@ft/dsh-fft-settings` 是 Host 装配与 Host 类型；`/contract` 是**无 Node 运行时依赖**的汇总入口（纯类型、常量与输入校验），Host 类型来自 `src/core/` 与各 feature 的契约，浏览器 UI 类型来自 `/client`（SlotMap 合并与卡片 props）。`/client-api` 只导出 `createSettingsTransport`、`callSettingsRpc` 与通用类型，不再有特性适配器。
 - 两条公开缝：Host 侧 `ctx.ftshareSettings.modules.register(module, owner)`，浏览器侧槽位 `ftshare.settings.card`。新增设置由插件自己写一个 feature 注册，不需要改本包源码，见「新增一种设置」。
 - `apiVersion = 1`。新增设置领域应新增命名空间；破坏公开语义的修改需要重新评估协议版本。
-- 本仓没有修改 dsh_kline。下面的 kline 代码是接入示例，不代表消费者已经完成适配。
+- 本包没有修改 dsh_kline。下面的 kline 代码是接入示例，不代表消费者已经完成适配。
 - 不读取 `.credentials.yaml`、不解析 kline 的旧 JSON 文件、不把 Key 写入普通 settings 或 localStorage，不通过修改全局 `process.env` 同步运行中消费者。
 - 设置页有访问凭据与运行日志两张卡；本插件不展示应用版本，也不提供检查更新入口。
 - 核心 `src/core/` 不得出现特性词汇或依赖 `src/features/`（由 `tests/architecture.test.mjs` 守护）；内置 API Key 与第三方走同一套注册路径，没有内部后门。
@@ -149,9 +149,7 @@ Connection 返回 `{ ok: true, value }` 或 `{ ok: false, error: { code, message
 
 四个字段都有安全默认值，不写 `config.logs` 也能挂载。**配置写错会让整个插件不加载**（`level` 不是 `warn`/`debug`，或 `maxBytes`/`keep` 越界，cordis 在校验阶段抛 `ValidationError`）；改回合法值即恢复。
 
-使用注意：桌面端（Electron）下载**不弹保存对话框**，文件落在系统下载目录；日志可能含本地路径与标识，外发前请自查。
-
-文件与行格式、节流与脱敏、导出上限、诊断包结构与路由契约、覆盖范围与盲区、已补齐的日志点清单，统一见 [日志系统设计](../../docs/specs/logging/design.md)。
+使用注意：桌面端（Electron）下载**不弹保存对话框**，文件落在系统下载目录；日志可能含本地路径与标识，外发前请自查。导出的诊断包里带覆盖范围与盲区清单，用于判断「日志里没有」不等于「没问题」。
 
 ## dsh_kline 接入示例与改动清单
 

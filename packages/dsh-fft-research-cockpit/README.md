@@ -2,9 +2,9 @@
 
 安装包名为 `@ft/dsh-fft-research-cockpit`（用于 npm/pnpm 和 DeepSeek Harness 包解析），运行时插件显示名为 `FT 投研舱`，profile 行 id 仍为 `ft-research-cockpit`。
 
-> **本仓迁移（2026-10）**：源码自 `dsh-ft/submodules/dsh-ft-research-cockpit@b91ff2a` 整包搬入 `dsh-fft-bundle`，包名由 `ft-research-cockpit` 改为 `@ft/dsh-fft-research-cockpit`，并按 DSH 0.2.0-rc.2 校准宿主 API。共享设置依赖由 `@ft/dsh-ftshare-settings` 改为 `@ft/dsh-fft-settings`（Host 服务名 `ftshareSettings` 与路由未变）。迁移条目见仓库根 [releases.md](../../docs/releases.md)。
+> **本包沿革（2026-10）**：源码自 `dsh-ft/submodules/dsh-ft-research-cockpit@b91ff2a` 整包搬入本包，包名由 `ft-research-cockpit` 改为 `@ft/dsh-fft-research-cockpit`，并按 DSH 0.2.0-rc.2 校准宿主 API。共享设置依赖由 `@ft/dsh-ftshare-settings` 改为 `@ft/dsh-fft-settings`（Host 服务名 `ftshareSettings` 与路由未变）。
 
-已有 profile 若仍保留旧的 `investment-research` 或 `ft-个人投研-kit` 条目，请将该条目的 `id` 更新为 `ft-research-cockpit`，并将依赖名改为本仓的 `@ft/dsh-fft-research-cockpit`；这是一次插件身份改名，不会自动迁移旧条目。
+已有 profile 若仍保留旧的 `investment-research` 或 `ft-个人投研-kit` 条目，请将该条目的 `id` 更新为 `ft-research-cockpit`，并将依赖名改为本包的 `@ft/dsh-fft-research-cockpit`；这是一次插件身份改名，不会自动迁移旧条目。
 
 独立于 `stock_rec_stream` 的 DeepSeek Harness 投研报告插件。当前设计边界是：
 

@@ -2,7 +2,7 @@
 
 核对时间：2026-09-17。基线：`dsh_kline@d6253f07c90ebbeb25a31dd3a76565c242558d36`。
 
-本文的“当前”摘自工作区真实源码，省略部分用注释标记。“接入后”是待 kline 实现的示例，不代表本仓已修改 kline。FTShare Settings 不提供 Python 明文凭据 HTTP 服务；下面的 `privateBridge` / `settings_bridge` 是 kline 需要实现的私有 IPC 适配层。
+本文的“当前”摘自工作区真实源码，省略部分用注释标记。“接入后”是待 kline 实现的示例，不代表本包已修改 kline。FTShare Settings 不提供 Python 明文凭据 HTTP 服务；下面的 `privateBridge` / `settings_bridge` 是 kline 需要实现的私有 IPC 适配层。
 
 ## 0. 落地状态（2026-10-14 更新）
 
