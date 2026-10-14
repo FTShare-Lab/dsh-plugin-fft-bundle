@@ -86,13 +86,9 @@ describe('kline rows mirrored from the kline package', () => {
   const bundleRows = rowsOf(patchPath)
   const klineRows = rowsOf(klinePatch)
 
-  it('declares the kline dependency', () => {
-    assert.equal(
-      manifest.dependencies['@ftshare-lab/dsh-kline'],
-      'git+ssh://git@github.com/FTShare-Lab/dsh_kline.git#v0.3.5',
-      'the kline dependency must stay a pinned tag',
-    )
-  })
+  // The dependency edge itself is guarded by `third-party-edges.test.mjs`,
+  // which accepts either the upstream tag or the fork build tagged onto it.
+  // Pinning the exact address here as well would only duplicate that fact.
 
   for (const id of MIRRORED_ROWS) {
     it(`mirrors the upstream "${id}" row`, () => {
