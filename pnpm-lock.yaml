@@ -26,8 +26,8 @@ importers:
         specifier: link:../dsh-fft-settings
         version: link:../dsh-fft-settings
       '@ftshare-lab/dsh-kline':
-        specifier: git+ssh://git@github.com/FTShare-Lab/dsh_kline.git#v0.3.5
-        version: https://codeload.github.com/FTShare-Lab/dsh_kline/tar.gz/40466351f3bd7fd9f78f116d76ee68f5c70a023a
+        specifier: git+ssh://git@github.com/gigaflw/dsh_kline.git#v0.3.5-ft.1
+        version: https://codeload.github.com/gigaflw/dsh_kline/tar.gz/21539cd048fc38b956597b01bcbcb87b88e9561b
     devDependencies:
       js-yaml:
         specifier: ^4.3.2
@@ -542,8 +542,8 @@ packages:
     resolution: {integrity: sha512-EriSTlt5OC9/7SXkRSCAhfSxxoSUgBm33OH+IkwbdpgoqsSsUg7y3uh+IICI/Qg4BBWr3U2i39RpmycbxMq4ew==}
     engines: {node: ^12.0.0 || ^14.0.0 || >=16.0.0}
 
-  '@ftshare-lab/dsh-kline@https://codeload.github.com/FTShare-Lab/dsh_kline/tar.gz/40466351f3bd7fd9f78f116d76ee68f5c70a023a':
-    resolution: {gitHosted: true, integrity: sha512-QiglbIEbxGJ9J0FNtStNKw9+66ey/QmzhCecX6YIGfw7JjfHLP1HdOZpnl98UQiedGzi0DU2QkjUZ5NcQemR1w==, tarball: https://codeload.github.com/FTShare-Lab/dsh_kline/tar.gz/40466351f3bd7fd9f78f116d76ee68f5c70a023a}
+  '@ftshare-lab/dsh-kline@https://codeload.github.com/gigaflw/dsh_kline/tar.gz/21539cd048fc38b956597b01bcbcb87b88e9561b':
+    resolution: {gitHosted: true, integrity: sha512-MuerfnXIeyx+77EJXHoDQcQA1QcNA8PKwFVVxTX4Br+kOWso1qiUozZvOsY5vHiCR+72I4MrZspKLd+SRHuqQw==, tarball: https://codeload.github.com/gigaflw/dsh_kline/tar.gz/21539cd048fc38b956597b01bcbcb87b88e9561b}
     version: 0.3.5
     engines: {node: '>=22.19.0'}
 
@@ -2500,7 +2500,7 @@ snapshots:
 
   '@eslint-community/regexpp@4.12.2': {}
 
-  '@ftshare-lab/dsh-kline@https://codeload.github.com/FTShare-Lab/dsh_kline/tar.gz/40466351f3bd7fd9f78f116d76ee68f5c70a023a': {}
+  '@ftshare-lab/dsh-kline@https://codeload.github.com/gigaflw/dsh_kline/tar.gz/21539cd048fc38b956597b01bcbcb87b88e9561b': {}
 
   '@hono/node-server@2.1.3(hono@4.13.13)':
     dependencies:
