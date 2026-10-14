@@ -30,7 +30,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json && node scripts/build-client.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "pnpm run build && node scripts/test-indicators.mjs && node scripts/test-report-facts.mjs && node scripts/test-missing-data.mjs && node scripts/test-report-completeness.mjs && node scripts/test-llm-contracts.mjs && node scripts/test-fft-sidebar.mjs && node scripts/test-report-host-sidebar.mjs && node scripts/test-report-export-bridge.mjs && node scripts/test-sector-structure.mjs",
+    "test": "pnpm run build && node scripts/test-indicators.mjs && node scripts/test-report-facts.mjs && node scripts/test-missing-data.mjs && node scripts/test-report-completeness.mjs && node scripts/test-llm-contracts.mjs && node scripts/test-llm-failures.mjs && node scripts/test-fft-sidebar.mjs && node scripts/test-report-host-sidebar.mjs && node scripts/test-report-export-bridge.mjs && node scripts/test-sector-structure.mjs",
     "test:ftshare": "pnpm run build && node scripts/test-ftshare.mjs",
     "test:permissions:browser": "pnpm run build && node scripts/test-permission-rendering.mjs",
     "test:market-commentary": "pnpm run build && node scripts/test-market-commentary.mjs"

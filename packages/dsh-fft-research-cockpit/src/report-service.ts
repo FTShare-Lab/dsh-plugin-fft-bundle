@@ -214,6 +214,30 @@ async function ftshareClient(ctx: Context, config: Config, logger?: Logger): Pro
 
 function uniqueStrings(values: string[]): string[] { return [...new Set(values.map(value => value.trim()).filter(Boolean))] }
 
+/** 宿主「默认模型」服务的最小面：只在取路由时读它，缺服务就回退。 */
+interface AgentDefaultModelLike {
+  currentSelection(): { provider?: string; model?: string } | undefined
+}
+
+/**
+ * 本次报告使用的模型路由。
+ *
+ * 用户在模型设置页切模型改的是宿主服务 `agentDefaultModel`，不是本插件的
+ * config；跟着宿主走才不会出现「设置页显示 A、报告实际用 B」。这里用
+ * `ctx.get` **可选**读取，不写进静态 `inject`：静态 inject 是硬等待，缺这个
+ * 服务的最小 profile 会让整行不激活。读不到或读到的路由不完整时，回退到
+ * config 的两个字段。
+ * @param ctx - 工具行上下文（preset 子树会链到根服务）。
+ * @param config - 本插件配置，仅作为回退。
+ * @returns 供 LLM 调用与结果元数据共用的 provider / model。
+ */
+export function llmRoute(ctx: Context, config: Config): { provider: string; model: string } {
+  const selection = (ctx.get('agentDefaultModel') as AgentDefaultModelLike | undefined)?.currentSelection()
+  return selection?.provider && selection?.model
+    ? { provider: selection.provider, model: selection.model }
+    : { provider: config.llmProvider, model: config.llmModel }
+}
+
 export interface DeepReadArgs { symbol: string; asOf?: string }
 
 export async function generateDeepReadReport(ctx: Context, args: DeepReadArgs, signal: AbortSignal, config: Config, logger?: Logger): Promise<ReportToolResult> {
@@ -233,12 +257,13 @@ export async function generateDeepReadReport(ctx: Context, args: DeepReadArgs, s
     logger,
   ))
   const technical = calculateTechnicalSignals(snapshot.ohlcv, config.maxKlineDays)
+  const route = llmRoute(ctx, config)
   let structuredReport = null
   let llmUsed = false
   const warnings = [...snapshot.warnings]
   const dataGaps = [...snapshot.dataGaps]
   try {
-    structuredReport = await generateStructuredReport(ctx.llm, snapshot, technical, { provider: config.llmProvider, model: config.llmModel, maxAttempts: config.llmMaxAttempts }, signal, logger)
+    structuredReport = await generateStructuredReport(ctx.llm, snapshot, technical, { provider: route.provider, model: route.model, maxAttempts: config.llmMaxAttempts }, signal, logger)
     llmUsed = true
     if (structuredReport.analysis_meta && (structuredReport.analysis_meta as Record<string, unknown>).status !== 'generated') {
       dataGaps.push('部分 AI 分析未生成，已保留成功生成的章节')
@@ -260,7 +285,7 @@ export async function generateDeepReadReport(ctx: Context, args: DeepReadArgs, s
     base_data: { date: asOf, stock: { name: snapshot.name, symbol_id: snapshot.symbol, price: finiteNumber(snapshot.quote?.close ?? snapshot.quote?.price) } },
     llm_content: structuredReport, quant_data: { marginDetail: snapshot.marginDetail, capitalFlow: snapshot.capitalFlow, financial: snapshot.financial, valuation: snapshot.valuation, announcements: snapshot.announcements, research: snapshot.research },
     kline_data: snapshot.ohlcv, kline_indicator_data: technical, t0_data: null, data_gaps: dataGaps, provenance: snapshot.provenance,
-    llm_meta: { attempted: true, used: llmUsed, rounds: 5, provider: config.llmProvider, model: config.llmModel },
+    llm_meta: { attempted: true, used: llmUsed, rounds: 5, provider: route.provider, model: route.model },
   }
   const blockedPermissions = snapshot.blockedPermissions ?? []
   const renderDataGaps = renderableDataGaps(dataGaps, snapshot.permissions, blockedPermissions)
@@ -283,7 +308,7 @@ export async function generateDeepReadReport(ctx: Context, args: DeepReadArgs, s
     structuredReport,
     evidence: { technical, dataRows: { ohlcv: snapshot.ohlcv.length, income: snapshot.financial?.income.length ?? 0, cashflow: snapshot.financial?.cashflow.length ?? 0, announcements: snapshot.announcements.length, research: snapshot.research.length } },
     provenance: snapshot.provenance, freshness: { asOf, retrievedAt: new Date().toISOString(), provider: 'ftshare' }, dataGaps, warnings, permissions,
-    llm: { attempted: true, used: llmUsed, rounds: 5, provider: config.llmProvider, model: config.llmModel },
+    llm: { attempted: true, used: llmUsed, rounds: 5, provider: route.provider, model: route.model },
   }
   logger?.info('report.generated', {
     reportType: 'deep_read',
@@ -354,7 +379,8 @@ export async function generateInvestmentReport(ctx: Context, args: InvestmentRep
     }
     facts.dataGaps = facts.dataGaps.filter(gap => !facts.provenance.some(source => gap === `FTShare 工具调用失败：${source.tool}` || gap === `FTShare 数据为空：${source.tool}`))
   }
-  const generated = await generateTemplateReport(ctx.llm, reportType, facts, { provider: config.llmProvider, model: config.llmModel, maxAttempts: config.llmMaxAttempts }, signal, logger)
+  const route = llmRoute(ctx, config)
+  const generated = await generateTemplateReport(ctx.llm, reportType, facts, { provider: route.provider, model: route.model, maxAttempts: config.llmMaxAttempts }, signal, logger)
   const context = generated.context
   const reportPathName = `FtAi-${safeSymbol(args.symbol ?? args.sectorCode ?? args.sectorName ?? symbolsFor(request)[0] ?? reportType)}-${asOf}-${reportType}.html`
   const renderDataGaps = renderableDataGaps(facts.dataGaps, facts.permissions, facts.blockedPermissions)
@@ -381,7 +407,7 @@ export async function generateInvestmentReport(ctx: Context, args: InvestmentRep
     structuredReport: (contextReport(context) as Record<string, unknown> | null) ?? null,
     evidence: { snapshots: facts.snapshots.length, marketRows: facts.market.length, indexRows: facts.indices.length, sectorRows: facts.sectors.length, flowRows: facts.flows.length, limitRows: facts.limits.length, announcementRows: facts.announcements.length, newsRows: facts.news.length, request },
     provenance: facts.provenance, freshness: { asOf, retrievedAt: new Date().toISOString(), provider: 'ftshare' }, dataGaps: dedupe(dataGaps), warnings: dedupe(warnings), permissions,
-    llm: { attempted: generated.attempted, used: generated.used, rounds: generated.rounds, provider: config.llmProvider, model: config.llmModel },
+    llm: { attempted: generated.attempted, used: generated.used, rounds: generated.rounds, provider: route.provider, model: route.model },
   }
   logger?.info('report.generated', {
     reportType,
