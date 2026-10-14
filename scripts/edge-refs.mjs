@@ -37,6 +37,7 @@ export const OWN_REPO = /(?:github\.com\/FTShare-Lab\/dsh-plugin-fft-bundle|gith
 /** Manifests that carry an edge back into this repository. */
 export const MANIFESTS = [
   'packages/dsh-fft-bundle/package.json',
+  'packages/dsh-fft-ftshare/package.json',
   'packages/dsh-fft-research-cockpit/package.json',
 ]
 

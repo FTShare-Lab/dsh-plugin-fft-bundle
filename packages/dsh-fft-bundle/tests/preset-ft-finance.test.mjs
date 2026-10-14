@@ -38,12 +38,26 @@ const ADDED_PLUGINS = [
   'ft-guidance',
   'mcp-dsh-kline',
   'ft-research-cockpit-tools',
+  'ft-ftshare-tools',
+  'ft-ftshare-project',
   'dsh-fft-factor-intake-standard',
 ]
-/** Rows that must stay on the global plane, whatever the preset does. */
-const GLOBAL_ROWS = ['dsh-fft-settings', 'newapi-wechat-sso', 'dsh-kline-sidebar', 'ft-research-cockpit']
-/** Rows that must mount only from inside the finance preset. */
-const PRESET_ONLY_ROWS = ['mcp-dsh-kline', 'dsh-fft-factor-intake-standard']
+/**
+ * Rows that must stay on the global plane, whatever the preset does.
+ *
+ * `dsh-fft-ftshare` is the FTShare service provider: a `provide` inside a preset
+ * throws ("Preset services require isolate realms"), and isolating it would hide
+ * the service from every plugin outside the preset.
+ */
+const GLOBAL_ROWS = ['dsh-fft-settings', 'dsh-fft-ftshare', 'newapi-wechat-sso', 'dsh-kline-sidebar', 'ft-research-cockpit']
+/**
+ * Rows that must mount only from inside the finance preset.
+ *
+ * The last two are the FTShare tool whitelist and the P7/P8 projection hook:
+ * both must be absent from the standard mode, which is exactly what mounting
+ * them from the preset (and nowhere else) buys.
+ */
+const PRESET_ONLY_ROWS = ['mcp-dsh-kline', 'ft-ftshare-tools', 'ft-ftshare-project', 'dsh-fft-factor-intake-standard']
 /** The official composition this copy was taken from; growing requires a re-sync. */
 const UPSTREAM_PLUGIN_COUNT = 19
 
@@ -245,12 +259,12 @@ describe('the finance preset in this bundle', () => {
     }
   })
 
-  it('appends exactly the four finance rows, each id once', () => {
+  it('appends exactly the six finance rows, each id once', () => {
     const appended = bundlePlugins.slice(UPSTREAM_PLUGIN_COUNT).map(row => row.id)
     assert.deepEqual(
       appended,
       ADDED_PLUGINS,
-      `the "${PRESET_ID}" composition must end with the four finance rows, in this order`,
+      `the "${PRESET_ID}" composition must end with the six finance rows, in this order`,
     )
     const ids = bundlePlugins.map(row => row.id)
     const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index)

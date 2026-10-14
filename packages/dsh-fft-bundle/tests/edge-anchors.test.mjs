@@ -23,9 +23,10 @@ const edges = readEdges()
 
 describe('dependency edges into this repository', () => {
   it('resolve every plugin from this repository', () => {
-    // The composition bundle carries four, the research cockpit one; the
-    // public branch ships one fewer because the internal plugin is stripped.
-    assert.ok(edges.length >= 4, `expected the edges into this repo, found ${edges.length}`)
+    // The composition bundle carries five (including the FTShare base), the
+    // FTShare base one, the research cockpit one; the public branch ships one
+    // fewer because the internal plugin is stripped.
+    assert.ok(edges.length >= 6, `expected the edges into this repo, found ${edges.length}`)
     // A package may be an edge of more than one manifest (the cockpit and the
     // bundle both pull the settings plugin), but never twice in the same one.
     for (const manifestPath of MANIFESTS) {
