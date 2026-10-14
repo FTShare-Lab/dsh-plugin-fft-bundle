@@ -11,6 +11,16 @@ export interface LlmLike {
     stream(options: GenerateOptions): AsyncIterable<StreamChunk>;
 }
 /**
+ * 把缺凭据失败映射成一句可操作的中文。
+ *
+ * 用户能做的只有两件事：去模型设置页给这个路由配凭据，或换一个已配置的模型。
+ * 因此英文原文不进 `warnings`（用户读不懂也不可操作），只在调用处降级为
+ * `logger.warn` 供排查。
+ * @param text - 失败原文（可能已被上层包装）。
+ * @returns 中文指引；不是缺凭据失败时返回 `undefined`。
+ */
+export declare function missingCredentialGuidance(text: string): string | undefined;
+/**
  * Keep a valid report shell when one LLM chapter cannot be generated. The
  * successful chapters are merged into this shell, so a missing data source or
  * a transient failure does not erase analysis that was already produced.

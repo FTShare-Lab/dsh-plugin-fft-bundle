@@ -7,7 +7,7 @@ import { FtShareClient } from './ftshare-client.js';
 import { loadSnapshot } from './ftshare-data.js';
 import { loadReportFacts } from './report-data.js';
 import { renderReportHtml, renderReportTemplate } from './html-renderer.js';
-import { emptyDeepReadReport, generateStructuredReport, generateTemplateReport } from './llm-report.js';
+import { emptyDeepReadReport, generateStructuredReport, generateTemplateReport, missingCredentialGuidance } from './llm-report.js';
 /** 同一浏览器候选只报一次失败：打印进程已经失败后，不再补一条误导性的「超时」。 */
 function chromeFailureReporter(logger, executable, timeoutMs) {
     let reported = false;
@@ -223,6 +223,29 @@ export function llmRoute(ctx, config) {
         ? { provider: selection.provider, model: selection.model }
         : { provider: config.llmProvider, model: config.llmModel };
 }
+/**
+ * 把一次 LLM 失败变成用户可见的一句话。
+ *
+ * 缺凭据的英文原文对用户不可操作（它讲的是 credentials service 与环境变量），
+ * 所以只进 `logger.warn` 供排查，`warnings` 里换成一句能照做的中文指引。
+ * 其余失败保持原文，不做二次解释。
+ * @param error - 捕获到的失败或其文案。
+ * @param logger - 具名 logger，可缺省（测试/降级路径）。
+ * @param phase - 记录在日志里的阶段标识（报告类型或 `deep_read`）。
+ * @returns 写进 `warnings` 的文案。
+ */
+function llmWarningMessage(error, logger, phase) {
+    const raw = error instanceof Error ? error.message : String(error);
+    const guidance = missingCredentialGuidance(raw);
+    if (guidance === undefined)
+        return raw;
+    logger?.warn('report.llm_credential_missing', {
+        phase,
+        errorType: error instanceof Error ? error.name : typeof error,
+        raw: raw.slice(0, 240),
+    });
+    return guidance;
+}
 export async function generateDeepReadReport(ctx, args, signal, config, logger) {
     const startedAt = Date.now();
     const symbol = args.symbol.trim();
@@ -255,7 +278,7 @@ export async function generateDeepReadReport(ctx, args, signal, config, logger) 
         });
         structuredReport = emptyDeepReadReport();
         dataGaps.push('结构化 LLM 报告生成失败，当前 HTML 仅包含 FTShare 数据和确定性指标');
-        warnings.push(error instanceof Error ? error.message : String(error));
+        warnings.push(llmWarningMessage(error, logger, 'deep_read'));
     }
     const viewModel = {
         base_data: { date: asOf, stock: { name: snapshot.name, symbol_id: snapshot.symbol, price: finiteNumber(snapshot.quote?.close ?? snapshot.quote?.price) } },
@@ -369,7 +392,7 @@ export async function generateInvestmentReport(ctx, args, signal, config, logger
     if (!generated.used)
         warnings.push('LLM 未返回可用结构化内容，已使用确定性 FTShare 数据上下文降级渲染');
     if (generated.error)
-        warnings.push(generated.error);
+        warnings.push(llmWarningMessage(generated.error, logger, reportType));
     const dataGaps = [...facts.dataGaps];
     if (!coreAvailable(facts))
         dataGaps.push(`${reportTitle(reportType)}缺少核心 FTShare 数据`);

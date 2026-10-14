@@ -17,6 +17,39 @@ export interface LlmLike {
   stream(options: GenerateOptions): AsyncIterable<StreamChunk>
 }
 
+/**
+ * 缺凭据类失败的识别。
+ *
+ * 宿主 provider 适配器在没有任何 key 时抛 `MISSING_CREDENTIAL`，原文形如
+ * `llm-deepseek: no API key for provider route "deepseek-official"; store
+ * FT_API_KEY through the credentials service …`。原文会一层层被包装进
+ * 「某章节生成失败」等聚合文案里，所以这里按**文本**判定，不依赖错误对象。
+ */
+const MISSING_CREDENTIAL_PATTERNS = [
+  /no API key for provider route/i,
+  /MISSING_CREDENTIAL/,
+  /missing credential/i,
+]
+
+/** 从宿主原文里取出路由名（`provider route "X"`）。 */
+const PROVIDER_ROUTE_PATTERN = /provider route ["“]([^"”]+)["”]/i
+
+/**
+ * 把缺凭据失败映射成一句可操作的中文。
+ *
+ * 用户能做的只有两件事：去模型设置页给这个路由配凭据，或换一个已配置的模型。
+ * 因此英文原文不进 `warnings`（用户读不懂也不可操作），只在调用处降级为
+ * `logger.warn` 供排查。
+ * @param text - 失败原文（可能已被上层包装）。
+ * @returns 中文指引；不是缺凭据失败时返回 `undefined`。
+ */
+export function missingCredentialGuidance(text: string): string | undefined {
+  if (!MISSING_CREDENTIAL_PATTERNS.some(pattern => pattern.test(text))) return undefined
+  const route = PROVIDER_ROUTE_PATTERN.exec(text)?.[1]
+  return `当前模型路由${route === undefined ? '' : ` “${route}”`} 未配置凭据，无法生成 AI 分析：`
+    + `请到模型设置页配置该路由的凭据，或切换到已配置的模型。`
+}
+
 interface RoundSpec {
   name: string
   fields: string[]
