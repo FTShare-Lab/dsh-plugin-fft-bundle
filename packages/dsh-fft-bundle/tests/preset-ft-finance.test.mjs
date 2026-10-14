@@ -37,13 +37,13 @@ const PERSONA_ID = 'persona'
 const ADDED_PLUGINS = [
   'ft-guidance',
   'mcp-dsh-kline',
-  'ft-research-cockpit',
+  'ft-research-cockpit-tools',
   'dsh-fft-factor-intake-standard',
 ]
 /** Rows that must stay on the global plane, whatever the preset does. */
-const GLOBAL_ROWS = ['dsh-fft-settings', 'newapi-wechat-sso', 'dsh-kline-sidebar']
+const GLOBAL_ROWS = ['dsh-fft-settings', 'newapi-wechat-sso', 'dsh-kline-sidebar', 'ft-research-cockpit']
 /** Rows that must mount only from inside the finance preset. */
-const PRESET_ONLY_ROWS = ['mcp-dsh-kline', 'ft-research-cockpit', 'dsh-fft-factor-intake-standard']
+const PRESET_ONLY_ROWS = ['mcp-dsh-kline', 'dsh-fft-factor-intake-standard']
 /** The official composition this copy was taken from; growing requires a re-sync. */
 const UPSTREAM_PLUGIN_COUNT = 19
 
