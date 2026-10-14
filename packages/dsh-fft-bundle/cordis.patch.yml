@@ -13,6 +13,13 @@
 #     copies the official `standard` composition, because a preset's `plugins`
 #     list is complete and inherits nothing.
 #
+# The report tools are split across those two planes on purpose. DSH composes
+# the browser module graph from the ROOT loader's entries only, and a preset
+# mounts its rows in a detached subtree that never appears there, so the
+# cockpit's browser half is carried by the bare-name row below while its
+# tool registrations stay in the preset on the `/agent` subpath entry (a
+# subpath row produces no browser module source, so nothing double-registers).
+#
 # The preset's tool and skill registrations are scoped to the preset subtree,
 # so the standard mode keeps none of them.
 #
@@ -32,6 +39,11 @@
         redirectUri: https://llm-proxy.ftai.chat/oauth/ft-sso
     - id: dsh-kline-sidebar
       name: '@ftshare-lab/dsh-kline'
+    # Carrier only: the bare package name is what DSH's browser module scan can
+    # see, so this row is what composes the cockpit's report card, session
+    # "报告" view and sidebar tab. It registers no tools (see src/index.ts).
+    - id: ft-research-cockpit
+      name: '@ft/dsh-fft-research-cockpit'
     - id: preset-ft-finance
       name: '@deepseek-ai/dsh-agent-preset'
       config:
@@ -210,8 +222,8 @@
                 initialDelayMs: 500
                 maxDelayMs: 30000
                 maxAttempts: 10
-          - id: ft-research-cockpit
-            name: '@ft/dsh-fft-research-cockpit'
+          - id: ft-research-cockpit-tools
+            name: '@ft/dsh-fft-research-cockpit/agent'
           - id: dsh-fft-factor-intake-standard
             name: '@ft/dsh-fft-factor-intake-standard'
 
