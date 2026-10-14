@@ -4,6 +4,7 @@ import { createApiKeyModule } from './features/api-key/index.js';
 import { DEFAULT_LOGS_CONFIG, logsConfigSchema, resolveLogsConfig } from './features/logs/config.js';
 import { createLogsModule } from './features/logs/index.js';
 import { createSettingsRoute } from './core/transport.js';
+import { installDefaultPresetOnce } from './default-preset.js';
 export * from './contract.js';
 export { defineSettingsModule } from './core/module-registry.js';
 export const name = '@ft/dsh-fft-settings';
@@ -41,6 +42,7 @@ export function apply(ctx, config) {
     // Built-in namespaces take the same path a third-party module would take.
     service.modules.register(createApiKeyModule(logger), ctx);
     service.modules.register(createLogsModule(resolveLogsConfig(config)), ctx);
+    installDefaultPresetOnce(ctx);
     ctx.inject(['connection'], scoped => {
         const connection = scoped.get('connection');
         scoped.effect(() => connection.fetch.register(createSettingsRoute({ handler })), 'dsh-fft-settings: /api route');
