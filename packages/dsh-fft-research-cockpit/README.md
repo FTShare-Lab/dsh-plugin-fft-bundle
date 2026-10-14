@@ -58,7 +58,7 @@ dsh-investment-research/                 # 当前 checkout 目录
 
 默认地址是 `https://market.ft.tech/gateway/mcp`。FTShare 的部分实时行情、日线和研报接口需要 API Key；插件不会把密钥写入仓库，可通过环境变量注入：
 
-报告默认只保存在 DSH 会话结果中，供 Web 独立报告视图或右侧详情面板读取；插件不会自动创建或覆盖工作区文件。独立报告视图使用会话正文的完整宽度，提供返回对话、报告切换、全屏阅读以及 HTML、PDF、PNG 下载。点击下载按钮时，浏览器才会保存当前报告。旧版本的 `outputDir` / `saveToWorkspace` 配置字段仅为兼容旧 profile 保留，不再触发自动写盘。
+报告默认只保存在 DSH 会话结果中，供 Web 独立报告视图或右侧详情面板读取；插件不会自动创建或覆盖工作区文件。独立报告视图使用会话正文的完整宽度，提供返回对话、报告切换、全屏阅读以及 HTML、PDF、PNG 下载。点击下载按钮时，浏览器才会保存当前报告。
 
 ```bash
 export FTSHARE_API_KEY='你的 FTShare API Key'

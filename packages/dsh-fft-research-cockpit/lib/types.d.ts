@@ -134,7 +134,7 @@ export interface ReportToolResult {
     /** Pre-rendered export artifacts encoded for the browser download card. */
     reportPdfBase64?: string;
     reportPngBase64?: string;
-    /** Present only when Config.saveToWorkspace is true. */
+    /** 保留字段：当前唯一导出路径是浏览器下载，工具不再写盘。 */
     reportPath?: string;
     structuredReport: JsonRecord | null;
     evidence: JsonRecord;
