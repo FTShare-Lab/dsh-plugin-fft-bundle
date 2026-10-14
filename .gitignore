@@ -9,3 +9,4 @@ tmp/
 # Python bytecode from running the packaged skill scripts in place.
 __pycache__/
 *.pyc
+.worktrees/
