@@ -23,7 +23,8 @@ dsh-investment-research/                 # 当前 checkout 目录
 ├── cordis.patch.yml
 ├── cordis.local.patch.yml
 ├── src/
-│   ├── index.ts
+│   ├── index.ts                        # 纯载体：只让 DSH 扫到本包的浏览器半
+│   ├── agent.ts                        # preset 平面：10 个 cockpit_* 工具
 │   ├── report-tool.ts
 │   ├── report-service.ts
 │   ├── portfolio-recommendation.ts  # 候选池筛选、主题/分散选股与权重
@@ -45,7 +46,13 @@ dsh-investment-research/                 # 当前 checkout 目录
     └── sector_analysis_report.html
 ```
 
-插件遵循 Harness 官方的 Cordis 形态：入口导出 `apply(ctx, config)`，通过 `inject` 声明 `tools`、`llm`、`credentials`，工具使用 `defineTool` 注册；`package.json` 同时声明 `dsh.client`，让 DSH Web 自动加载报告卡片。正式分发采用 `dsh.bundle.patch` 组合包格式。参考：[第一个插件](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/index.zh.md)、[开发一个工具](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/tool.zh.md)、[打包与安装插件](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/publish.zh.md)。
+插件遵循 Harness 官方的 Cordis 形态：入口导出 `apply(ctx, config)`，通过 `inject` 声明 `tools`、`llm`、`ftshareSettings`，工具使用 `defineTool` 注册；`package.json` 同时声明 `dsh.client`，让 DSH Web 自动加载报告卡片。正式分发采用 `dsh.bundle.patch` 组合包格式。参考：[第一个插件](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/index.zh.md)、[开发一个工具](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/tool.zh.md)、[打包与安装插件](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/publish.zh.md)。
+
+### 两个平面的入口
+
+包根入口 `index.ts` 是**纯载体**：不带 `inject`、不注册任何工具。原因是 DSH 只从根 loader 的 entries 组合浏览器模块图，而 preset 把自己的行挂在扫描看不到的子树里；只有一行裸包名的全局行才能让报告卡片、会话「报告」视图和侧栏 tab 加载出来。工具注册全部在 `agent.ts`（`@ft/dsh-fft-research-cockpit/agent`），由 preset 或本包 patch 的 `/agent` 行挂载——子路径行不产生浏览器模块源，因此两行不会重复注册。
+
+本包的 `cordis.patch.yml` 因此插入两行（都在全局层）：裸包名载体行 + `/agent` 工具行。
 
 ## FTShare 配置
 
@@ -229,6 +236,8 @@ dsh plugin --profile demo add ./ft-dsh-fft-research-cockpit-0.2.0.tgz
 ```
 
 `package.json` 中的 `dsh.bundle.patch` 使用安装包名引用入口；本地开发 patch 才使用绝对路径。正式 bundle 需要先在 Harness 可解析的包源中安装 `@ft/dsh-fft-research-cockpit`，或直接安装组合层 `@ft/dsh-fft-bundle`。
+
+> **不要同时安装本包与组合包 `@ft/dsh-fft-bundle`**：组合包已经把本包的两行（全局载体行 + preset 内的 `/agent` 工具行）写进了它自己的 patch，再单独装一次会让 `cockpit_*` 工具注册两遍（重名注册报错）。二选一。
 
 ## 与原项目的迁移边界
 
