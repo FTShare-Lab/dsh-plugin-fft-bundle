@@ -13,7 +13,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { fileURLToPath } from 'node:url'
-import { dirname, resolve } from 'node:path'
+import { resolve } from 'node:path'
 import { createRequire } from 'node:module'
 import { load } from 'js-yaml'
 import { schema } from './lib/patch-yaml.mjs'
@@ -21,6 +21,49 @@ import { context, diffRows, evaluate } from './lib/patch-compare.mjs'
 
 /** Rows this bundle must mirror from the kline package. */
 const MIRRORED_ROWS = ['mcp-dsh-kline', 'dsh-kline-sidebar']
+
+/**
+ * The one row this bundle deliberately does not copy verbatim, and the fields
+ * allowed to differ.
+ *
+ * Upstream builds kline's directory from `ctx.baseUrl` — the profile's
+ * `cordis.yml` — which only reaches a top-level
+ * `node_modules/@ftshare-lab/dsh-kline`. That is where a git or registry
+ * install hoists the package, but a tarball install nests it inside this
+ * bundle, so the derived `cwd` does not exist and `spawn` fails with a bare
+ * `ENOENT`. Our copy runs `scripts/kline-mcp.mjs` from this package's own
+ * directory instead — present in every layout — and the shim resolves kline
+ * from there. The field list is what keeps the exception honest: any other
+ * difference in this row still fails, and the checks below pin what the fields
+ * have to resolve to.
+ *
+ * `env.DSH_KLINE_PACKAGE_ROOT` is forwarded because the MCP client scrubs every
+ * `DSH_*` name out of the child environment: the shim reads the override, so
+ * the row has to pass the host's value on.
+ */
+const OVERRIDDEN = new Map([['mcp-dsh-kline', ['args', 'cwd', 'env.DSH_KLINE_PACKAGE_ROOT']]])
+
+/** Key paths of the fields one row may differ in, under the row id. */
+function overridePaths(id) {
+  return (OVERRIDDEN.get(id) ?? []).map(field => `${id}.config.${field}`)
+}
+
+/**
+ * A copy of one evaluated row config without the overridden fields.
+ * @param config - evaluated row config.
+ * @param fields - dotted field paths to drop.
+ * @returns the config with those fields removed.
+ */
+function withoutFields(config, fields) {
+  const copy = structuredClone(config)
+  for (const field of fields) {
+    const keys = field.split('.')
+    const last = keys.pop()
+    const parent = keys.reduce((value, key) => value?.[key], copy)
+    if (parent !== undefined) delete parent[last]
+  }
+  return copy
+}
 
 const root = fileURLToPath(new URL('..', import.meta.url))
 const manifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'))
@@ -97,10 +140,32 @@ describe('kline rows mirrored from the kline package', () => {
       const bundleRow = bundleRows.get(id)
       assert.ok(bundleRow, `this bundle's patch must insert a "${id}" row`)
 
+      const allowed = overridePaths(id)
       const differences = diffRows(upstream, bundleRow, id)
-      assert.deepEqual(differences, [], `the "${id}" row drifted from the kline package`)
+        .filter(difference => !allowed.some(path => difference.startsWith(path)))
+      assert.deepEqual(differences, [], `the "${id}" row drifted from the kline package outside ${allowed.join(', ') || 'any field'}`)
     })
   }
+
+  it('launches kline from this package in both install layouts', () => {
+    const mirrored = evaluate(bundleRows.get(MIRRORED_ROWS[0]), context())
+    // `cwd` has to be this package: a tarball install nests kline inside it, and
+    // the profile directory — the only base a `!!js` scalar can reach — is its
+    // parent in every layout. Checked by shape so the assertion holds whatever
+    // the profile is called.
+    assert.ok(
+      mirrored.config.cwd.replaceAll('\\', '/').endsWith('node_modules/@ft/dsh-fft-bundle/'),
+      `the kline MCP row must run from this package, not ${mirrored.config.cwd}`,
+    )
+    assert.deepEqual(mirrored.config.args, ['scripts/kline-mcp.mjs'])
+    assert.ok(existsSync(resolve(root, 'scripts', 'kline-mcp.mjs')), 'the shim the row launches must exist')
+
+    // The win32 branch cannot be exercised here, so pin the parts that make it
+    // work: `new URL(...).pathname` yields `/C:/…`, which Windows cannot resolve.
+    const source = bundleRows.get(MIRRORED_ROWS[0]).config.cwd.source
+    assert.match(source, /platform === 'win32'/, 'the cwd expression must keep the win32 drive-letter handling')
+    assert.match(source, /slice\(1\)/, 'the win32 branch must strip the leading slash')
+  })
 
   it('evaluates every mirrored expression through the upstream context', () => {
     const ctx = context()
@@ -116,7 +181,14 @@ describe('kline rows mirrored from the kline package', () => {
         assert.equal(mirrored.config, undefined, `the "${id}" row must not gain a config`)
         continue
       }
-      assert.deepEqual(mirrored.config, upstream.config, `the "${id}" row resolves differently`)
+      // An overridden row is compared outside its declared fields: they are the
+      // redirect itself, checked by the test above.
+      const fields = OVERRIDDEN.get(id) ?? []
+      assert.deepEqual(
+        withoutFields(mirrored.config, fields),
+        withoutFields(upstream.config, fields),
+        `the "${id}" row resolves differently outside ${fields.join(', ') || 'any field'}`,
+      )
     }
   })
 })

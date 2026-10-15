@@ -203,13 +203,24 @@
             config:
               serverName: dsh-kline
               transport: stdio
+              # Not upstream's row verbatim: `cwd` is this package's own
+              # directory — the profile's `cordis.yml` sits next to it in every
+              # layout — and `scripts/kline-mcp.mjs` resolves kline from there.
+              # `args[0]` is relative to `cwd`, and pointing `cwd` at kline (or
+              # at DSH_KLINE_PACKAGE_ROOT) is what broke tarball installs, which
+              # nest kline inside this package. See tests/kline-rows.test.mjs.
               command: !!js process.execPath
               args:
-                - scripts/run-dsh-kline.mjs
-              cwd: !!js String(process.env.DSH_KLINE_PACKAGE_ROOT || '').trim() || ((process.platform === 'win32' && /^\/[A-Za-z]:\//.test(decodeURIComponent(new URL('./node_modules/@ftshare-lab/dsh-kline/', ctx.baseUrl).pathname)) && decodeURIComponent(new URL('./node_modules/@ftshare-lab/dsh-kline/', ctx.baseUrl).pathname).slice(1)) || decodeURIComponent(new URL('./node_modules/@ftshare-lab/dsh-kline/', ctx.baseUrl).pathname))
+                - scripts/kline-mcp.mjs
+              cwd: !!js ((process.platform === 'win32' && /^\/[A-Za-z]:\//.test(decodeURIComponent(new URL('./node_modules/@ft/dsh-fft-bundle/', ctx.baseUrl).pathname)) && decodeURIComponent(new URL('./node_modules/@ft/dsh-fft-bundle/', ctx.baseUrl).pathname).slice(1)) || decodeURIComponent(new URL('./node_modules/@ft/dsh-fft-bundle/', ctx.baseUrl).pathname))
               env:
                 DSH_KLINE_HOST_PID: !!js String(process.pid)
                 DSH_KLINE_DEFER_BOOTSTRAP: '1'
+                # The host's own value has to travel explicitly: the MCP client
+                # scrubs every `DSH_*` name out of the child environment, so the
+                # shim can only honor the documented override if the row passes
+                # it on.
+                DSH_KLINE_PACKAGE_ROOT: !!js process.env.DSH_KLINE_PACKAGE_ROOT || ''
                 DSH_KLINE_PYTHON: !!js process.env.DSH_KLINE_PYTHON || ''
                 DSH_KLINE_VENV: !!js process.env.DSH_KLINE_VENV || ''
                 DSH_KLINE_CACHE_DIR: !!js process.env.DSH_KLINE_CACHE_DIR || ''
