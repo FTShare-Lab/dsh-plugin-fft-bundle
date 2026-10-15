@@ -6,13 +6,27 @@
  * component, and core never styles card internals.
  *
  * The theme layer declares the plugin's `--ftshare-*` tokens once, on
- * `.ftshare-settings` — the root element every card renders — so a card reads
- * a token without carrying a palette value of its own, and every colour lives
- * in exactly one place. `--ftshare-accent*` is the plugin's own brand, kept
- * apart from the host palette; the rest are surfaces and text.
+ * `.ftshare-settings` — the root element every card renders. Surfaces and text
+ * take their value from the host palette: `--dsw-alias-*` is what DSH
+ * publishes for the light, the dark and every registered theme, so one
+ * stylesheet follows the live palette with no script, no `prefers-color-scheme`
+ * copy and no second palette to keep in sync. The literal inside each `var()`
+ * is the fallback for a host that publishes no palette.
+ *
+ * The declarations sit on the card root rather than on `:root` because a
+ * custom property resolves where it is *declared*: `--dsw-alias-*` exists from
+ * `body` downwards, so a value derived from it above `body` would resolve to
+ * nothing and fall back. Consequence: the place to pin a look is the host
+ * palette itself (`ctx.theme.register` / `ctx.theme.overrideTokens`), not these
+ * names.
+ *
+ * `--ftshare-accent*` is the plugin's own brand and has no host equivalent. The
+ * fill and its ink are scheme-invariant; `--ftshare-accent-on-surface` mixes the
+ * same yellow towards the host's text colour, so the brand stays legible as the
+ * 11px eyebrow and as the focus ring on either surface.
  */
 export const SETTINGS_CSS = `
-.ftshare-settings { --ftshare-text:#f4f4f5; --ftshare-muted:#aeb2bd; --ftshare-panel:#292a30; --ftshare-border:#44464f; --ftshare-control:#696c77; --ftshare-input:#1d1e23; --ftshare-link:#d8c4fc; --ftshare-error:#ffb5ad; --ftshare-accent:#f0c433; --ftshare-accent-ink:#171717; --ftshare-accent-on-surface:#e8bf35; }
+.ftshare-settings { --ftshare-text:var(--dsw-alias-label-primary,#f4f4f5); --ftshare-muted:var(--dsw-alias-label-secondary,#aeb2bd); --ftshare-panel:var(--dsw-alias-settings-card-fill,#292a30); --ftshare-border:var(--dsw-alias-settings-card-stroke,#44464f); --ftshare-control:var(--dsw-alias-border-l4,#696c77); --ftshare-input:var(--dsw-alias-bg-layer-1,#1d1e23); --ftshare-link:var(--dsw-alias-link,#d8c4fc); --ftshare-error:var(--dsw-alias-state-error-primary,#ffb5ad); --ftshare-accent:#f0c433; --ftshare-accent-ink:#171717; --ftshare-accent-on-surface:color-mix(in srgb,var(--ftshare-accent) 50%,var(--dsw-alias-label-primary,#f4f4f5)); }
 .ftshare-settings { color:var(--ftshare-text); max-width:760px; font-size:14px; line-height:1.6; }
 .ftshare-settings * { box-sizing:border-box; }
 .ftshare-settings h2 { font-size:26px; margin:4px 0 8px; }

@@ -128,7 +128,7 @@ Connection 返回 `{ ok: true, value }` 或 `{ ok: false, error: { code, message
 
 不接受任意 URL、请求参数或方法名称。`resolve`、`createEnvironment`、`subscribe` 不对 RPC 暴露。HTTP 直接调用需要 Connection 的完整 envelope 与认证，优先使用适配器，不要对 URL 裸 POST 业务参数。
 
-设置页自带样式，支持只读来源、加载反馈、保存结果、远端服务／API Key 分项结果、手动读取与凭据事件刷新。“测试当前连接”不会使用输入框中的草稿。另一个页面完成测试后，可点击“重新读取状态”读取其结果；当前没有独立的验证完成推送事件。核心只声明 `--ftshare-text`、`--ftshare-muted`、`--ftshare-panel`、`--ftshare-border`、`--ftshare-input`、`--ftshare-link`、`--ftshare-error` 的默认值（写在 `:where(:root)` 上，宿主主题任何规则都能覆盖）与 section 外壳样式；卡片自己的 CSS 随卡片组件渲染，见「新增一种设置」。这不是主题设置 API。
+设置页自带样式，支持只读来源、加载反馈、保存结果、远端服务／API Key 分项结果、手动读取与凭据事件刷新。“测试当前连接”不会使用输入框中的草稿。另一个页面完成测试后，可点击“重新读取状态”读取其结果；当前没有独立的验证完成推送事件。核心只声明 `--ftshare-text`、`--ftshare-muted`、`--ftshare-panel`、`--ftshare-border`、`--ftshare-control`、`--ftshare-input`、`--ftshare-link`、`--ftshare-error`、`--ftshare-accent`、`--ftshare-accent-ink`、`--ftshare-accent-on-surface`（声明在卡片根 `.ftshare-settings` 上，前八项取值来自宿主调色板 `--dsw-alias-*`，因此跟随 DSH 的黑夜／白天以及任何已注册的主题）与 section 外壳样式；卡片自己的 CSS 随卡片组件渲染，见「新增一种设置」。这不是主题设置 API。
 
 ## 运行日志（`logs` 命名空间）
 
