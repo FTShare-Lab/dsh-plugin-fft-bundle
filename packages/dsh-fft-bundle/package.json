@@ -1,6 +1,6 @@
 {
   "name": "@ft/dsh-fft-bundle",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Composition bundle for the FT financial workbench: installs and wires the dsh-fft plugin set with shared defaults.",
   "type": "module",
   "main": "lib/index.js",

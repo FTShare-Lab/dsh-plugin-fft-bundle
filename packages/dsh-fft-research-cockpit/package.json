@@ -1,6 +1,6 @@
 {
   "name": "@ft/dsh-fft-research-cockpit",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "FT 投研舱：FTShare-only investment research tools for DeepSeek Harness",
   "type": "module",
   "main": "lib/index.js",
