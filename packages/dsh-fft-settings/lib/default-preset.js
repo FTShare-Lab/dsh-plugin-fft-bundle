@@ -8,11 +8,13 @@
  * then records the claim so a later user choice is never touched again.
  *
  * The write goes through the settings service, the same path the settings page
- * uses: only volatile fields are writable there, so it can add
- * `selectedDefault` and nothing else. Because it is still the one change this
- * plugin ever makes to the user's own profile patch, the file is copied into
- * this plugin's data directory first, and a claim without that copy never
- * happens.
+ * uses: only volatile fields are writable there, so the patch this module hands
+ * over carries `selectedDefault` and nothing else. The row it lands in is wider
+ * than that patch — the service writes the effective config's non-volatile keys
+ * alongside the volatile change, so `default: ft-finance` is copied into the
+ * profile row too. Because it is still the one change this plugin ever makes to
+ * the user's own profile patch, the file is copied into this plugin's data
+ * directory first, and a claim without that copy never happens.
  * @module @ft/dsh-fft-settings/default-preset
  */
 import { existsSync } from 'node:fs';
