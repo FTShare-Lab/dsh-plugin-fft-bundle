@@ -7,7 +7,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json && tsdown --config tsdown.config.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "pnpm run build && node --test tests/*.test.mjs"
+    "test": "pnpm run build && node --test tests/*.test.mjs",
+    "theme:preview": "pnpm run build && node tools/theme-preview.mjs"
   },
   "files": [
     "lib",
