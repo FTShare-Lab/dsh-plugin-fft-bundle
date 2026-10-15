@@ -249,26 +249,25 @@ window.__ModuleLoader__.load({
 		/**
 		* The API Key card's own styles, rendered by the card component's `<style>`.
 		*
-		* A card owns everything past the section shell: the core provides the
-		* `--ftshare-*` variables and the section container, never card internals.
+		* A card owns everything past the section shell: the core declares the
+		* `--ftshare-*` tokens and the section container, never card internals.
 		* Every selector stays scoped under `.ftshare-settings`, so a card never
 		* styles another card's markup.
 		*/
 		const API_KEY_CARD_CSS = `
-.ftshare-settings .ftshare-eyebrow { color:#e8bf35; font-size:11px; letter-spacing:.12em; }
-.ftshare-settings .ftshare-badge { padding:5px 12px; border:1px solid #585b66; border-radius:20px; white-space:nowrap; }
-.ftshare-settings .ftshare-card { padding:22px; background:var(--ftshare-panel,#292a30); border:1px solid var(--ftshare-border,#44464f); border-radius:12px; margin-top:16px; }
+.ftshare-settings .ftshare-eyebrow { color:var(--ftshare-accent-on-surface); font-size:11px; letter-spacing:.12em; }
+.ftshare-settings .ftshare-card { padding:22px; background:var(--ftshare-panel); border:1px solid var(--ftshare-border); border-radius:12px; margin-top:16px; }
 .ftshare-settings label { display:block; font-weight:600; }
-.ftshare-settings input { width:100%; height:44px; border:1px solid #696c77; border-radius:7px; padding:0 12px; background:var(--ftshare-input,#1d1e23); color:inherit; font:inherit; }
-.ftshare-settings input::placeholder { color:var(--ftshare-muted,#aeb2bd); opacity:1; }
+.ftshare-settings input { width:100%; height:44px; border:1px solid var(--ftshare-control); border-radius:7px; padding:0 12px; background:var(--ftshare-input); color:inherit; font:inherit; }
+.ftshare-settings input::placeholder { color:var(--ftshare-muted); opacity:1; }
 .ftshare-settings .ftshare-actions { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:16px; }
-.ftshare-settings button { min-height:44px; border:1px solid #696c77; border-radius:7px; padding:8px 14px; font:inherit; background:transparent; color:inherit; cursor:pointer; }
-.ftshare-settings button.primary { background:#f0c433; color:#171717; border-color:#f0c433; font-weight:600; }
+.ftshare-settings button { min-height:44px; border:1px solid var(--ftshare-control); border-radius:7px; padding:8px 14px; font:inherit; background:transparent; color:inherit; cursor:pointer; }
+.ftshare-settings button.primary { background:var(--ftshare-accent); color:var(--ftshare-accent-ink); border-color:var(--ftshare-accent); font-weight:600; }
 .ftshare-settings button:disabled { opacity:.5; cursor:not-allowed; }
 .ftshare-settings dl { margin:0; }
-.ftshare-settings .ftshare-result { display:grid; grid-template-columns:130px 1fr; gap:12px; padding:10px 0; border-top:1px solid var(--ftshare-border,#44464f); }
+.ftshare-settings .ftshare-result { display:grid; grid-template-columns:130px 1fr; gap:12px; padding:10px 0; border-top:1px solid var(--ftshare-border); }
 .ftshare-settings dd { margin:0; overflow-wrap:anywhere; }
-.ftshare-settings .ftshare-error { color:var(--ftshare-error,#ffb5ad); }
+.ftshare-settings .ftshare-error { color:var(--ftshare-error); }
 @media(max-width:540px) { .ftshare-settings .ftshare-card { padding:16px; } .ftshare-settings .ftshare-result { grid-template-columns:1fr; gap:4px; } }
 `;
 		//#endregion
@@ -465,9 +464,9 @@ window.__ModuleLoader__.load({
 		* another card's markup.
 		*/
 		const LOGS_CARD_CSS = `
-.ftshare-settings select { height:44px; border:1px solid #696c77; border-radius:7px; padding:0 10px; background:var(--ftshare-input,#1d1e23); color:inherit; font:inherit; }
-.ftshare-settings .ftshare-download { display:inline-flex; align-items:center; min-height:44px; padding:8px 14px; border:1px solid #696c77; border-radius:7px; color:inherit; text-decoration:none; cursor:pointer; }
-.ftshare-settings .ftshare-log-preview { max-height:320px; overflow:auto; margin:0 0 12px; padding:12px; background:var(--ftshare-input,#1d1e23); border:1px solid var(--ftshare-border,#44464f); border-radius:7px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px; line-height:1.5; white-space:pre-wrap; overflow-wrap:anywhere; }
+.ftshare-settings select { height:44px; border:1px solid var(--ftshare-control); border-radius:7px; padding:0 10px; background:var(--ftshare-input); color:inherit; font:inherit; }
+.ftshare-settings .ftshare-download { display:inline-flex; align-items:center; min-height:44px; padding:8px 14px; border:1px solid var(--ftshare-control); border-radius:7px; color:inherit; text-decoration:none; cursor:pointer; }
+.ftshare-settings .ftshare-log-preview { max-height:320px; overflow:auto; margin:0 0 12px; padding:12px; background:var(--ftshare-input); border:1px solid var(--ftshare-border); border-radius:7px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px; line-height:1.5; white-space:pre-wrap; overflow-wrap:anywhere; }
 `;
 		//#endregion
 		//#region src/features/logs/card.tsx
@@ -670,25 +669,29 @@ window.__ModuleLoader__.load({
 		//#endregion
 		//#region src/core/styles.ts
 		/**
-		* Section shell styles plus the theme variables the section promises.
+		* The section shell's styles plus the theme tokens every card reads.
 		*
-		* The shell owns the container, typography, focus ring and link rules every
-		* card sits inside, and declares the `--ftshare-*` defaults. Declaring them
-		* under `:where(:root)` keeps specificity at zero, so any host theme rule wins
-		* while an unthemed host still gets this plugin's values. A card owns its own
-		* CSS and renders it from its own component; core never styles card internals.
+		* The shell owns the container, typography, focus ring and link rules that
+		* every card sits inside; a card owns its own CSS and renders it from its own
+		* component, and core never styles card internals.
+		*
+		* The theme layer declares the plugin's `--ftshare-*` tokens once, on
+		* `.ftshare-settings` — the root element every card renders — so a card reads
+		* a token without carrying a palette value of its own, and every colour lives
+		* in exactly one place. `--ftshare-accent*` is the plugin's own brand, kept
+		* apart from the host palette; the rest are surfaces and text.
 		*/
 		const SETTINGS_CSS = `
-:where(:root) { --ftshare-text:#f4f4f5; --ftshare-muted:#aeb2bd; --ftshare-panel:#292a30; --ftshare-border:#44464f; --ftshare-input:#1d1e23; --ftshare-link:#d8c4fc; --ftshare-error:#ffb5ad; }
-.ftshare-settings { color:var(--ftshare-text,#f4f4f5); max-width:760px; font-size:14px; line-height:1.6; }
+.ftshare-settings { --ftshare-text:#f4f4f5; --ftshare-muted:#aeb2bd; --ftshare-panel:#292a30; --ftshare-border:#44464f; --ftshare-control:#696c77; --ftshare-input:#1d1e23; --ftshare-link:#d8c4fc; --ftshare-error:#ffb5ad; --ftshare-accent:#f0c433; --ftshare-accent-ink:#171717; --ftshare-accent-on-surface:#e8bf35; }
+.ftshare-settings { color:var(--ftshare-text); max-width:760px; font-size:14px; line-height:1.6; }
 .ftshare-settings * { box-sizing:border-box; }
 .ftshare-settings h2 { font-size:26px; margin:4px 0 8px; }
 .ftshare-settings h3 { font-size:15px; margin:0 0 12px; }
-.ftshare-settings p { margin:8px 0; color:var(--ftshare-muted,#aeb2bd); }
+.ftshare-settings p { margin:8px 0; color:var(--ftshare-muted); }
 .ftshare-settings header { display:flex; justify-content:space-between; align-items:flex-start; gap:20px; margin-bottom:20px; }
-.ftshare-settings small { display:block; color:var(--ftshare-muted,#aeb2bd); font-size:12px; margin:5px 0 12px; }
-.ftshare-settings :is(button,input,a):focus-visible { outline:2px solid #e8bf35; outline-offset:3px; }
-.ftshare-settings a { color:var(--ftshare-link,#d8c4fc); }
+.ftshare-settings small { display:block; color:var(--ftshare-muted); font-size:12px; margin:5px 0 12px; }
+.ftshare-settings :is(button,input,a):focus-visible { outline:2px solid var(--ftshare-accent-on-surface); outline-offset:3px; }
+.ftshare-settings a { color:var(--ftshare-link); }
 @media(max-width:540px) { .ftshare-settings header { flex-direction:column; gap:10px; } }
 `;
 		//#endregion
