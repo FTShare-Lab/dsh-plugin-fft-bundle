@@ -11,7 +11,7 @@ pnpm workspace 组织，组合包 `@ft/dsh-fft-bundle` 是终端用户的安装�
 3. 「设置」→「插件管理」→「添加插件」，粘贴文件的**绝对路径**，或直接粘贴 Release 资产 URL（形如 `https://github.com/FTShare-Lab/dsh-plugin-fft-bundle/releases/download/vX.Y.Z/dsh-ft-finance-all-in-one-X.Y.Z.tgz`）：
 
 ```
-/Users/<你>/Downloads/ft-dsh-fft-bundle-0.6.0.tgz
+/Users/<你>/Downloads/ft-dsh-fft-bundle-X.Y.Z.tgz
 ```
 
 4. 装完刷新一次页面；若替换的是已装的同名插件，完全退出并重开应用。
