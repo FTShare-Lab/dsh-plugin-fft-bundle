@@ -47,8 +47,8 @@ const FIXED_NOW = () => new Date('2026-10-13T06:00:00.000Z')
 
 // —— empty：调用成功，但确实没有数据 ——
 {
-  const service = createFtshareDataService({ transport: stubTransport({ ft_v3_report_stock_reports: { ok: true, data: [], metadata: { source: 'ftshare' } } }), now: FIXED_NOW })
-  const result = await service.call('ft_v3_report_stock_reports')
+  const service = createFtshareDataService({ transport: stubTransport({ ft_v2_report_stock_reports: { ok: true, data: [], metadata: { source: 'ftshare' } } }), now: FIXED_NOW })
+  const result = await service.call('ft_v2_report_stock_reports')
   assert.equal(result.state, 'empty', '成功但无行才是 empty')
   assert.equal(result.ok, true, 'empty 说明通道是通的')
   assert.deepEqual(result.rows, [])
@@ -58,8 +58,8 @@ const FIXED_NOW = () => new Date('2026-10-13T06:00:00.000Z')
 // —— denied：网关 403 route_not_allowed ——
 {
   const error = new Error(JSON.stringify({ error: { code: 'route_not_allowed', message: 'route not allowed for the current plan' } }))
-  const service = createFtshareDataService({ transport: stubTransport({ ft_v3_report_stock_reports: error }), now: FIXED_NOW })
-  const result = await service.call('ft_v3_report_stock_reports')
+  const service = createFtshareDataService({ transport: stubTransport({ ft_v2_report_stock_reports: error }), now: FIXED_NOW })
+  const result = await service.call('ft_v2_report_stock_reports')
   assert.equal(result.state, 'denied', '套餐无权限必须落成 denied，而不是 empty')
   assert.equal(result.ok, false)
   assert.equal(result.notice.code, 'route_not_allowed')
@@ -83,10 +83,10 @@ const FIXED_NOW = () => new Date('2026-10-13T06:00:00.000Z')
 // —— denied：成功信封里带权限标记 ——
 {
   const service = createFtshareDataService({
-    transport: stubTransport({ ft_v3_report_stock_reports: { ok: true, data: [], metadata: { permissions: [{ code: '403', message: '订阅未开通该接口' }] } } }),
+    transport: stubTransport({ ft_v2_report_stock_reports: { ok: true, data: [], metadata: { permissions: [{ code: '403', message: '订阅未开通该接口' }] } } }),
     now: FIXED_NOW,
   })
-  const result = await service.call('ft_v3_report_stock_reports')
+  const result = await service.call('ft_v2_report_stock_reports')
   assert.equal(result.state, 'denied', '成功信封里的权限标记同样是 denied')
   assert.ok(result.notice.message.includes('无权访问'))
 }
@@ -164,7 +164,7 @@ console.log('ftshareData.call: four-state normalization, notices, rows and tool 
   assert.equal(resolved.length, 0, 'apply 阶段不读凭据')
 }
 
-// —— 工具平面（preset）：注册白名单，四态原样进正文 ——
+// —— 工具平面（preset）：注册接口表里暴露的条目，四态原样进正文 ——
 {
   const { apply } = await import('../lib/tools.js')
   const registered = []
@@ -187,7 +187,7 @@ console.log('ftshareData.call: four-state normalization, notices, rows and tool 
     },
   }
   apply(toolCtx)
-  assert.equal(registered.length, 10, '白名单有 10 个体检/研报/公告类接口')
+  assert.equal(registered.length, 10, '接口表里有 10 条暴露给模型的能力')
   const names = registered.map(definition => definition.name)
   assert.equal(new Set(names).size, names.length, '工具名不能重复')
   for (const name of names) assert.ok(name.startsWith('ftshare_'), `${name} 必须用 ftshare_ 前缀`)

@@ -39,10 +39,14 @@ import { asText, isPermissionSignal, isRecord } from './errors.js'
 /**
  * cordis 把 `on` 混在 `ctx` 上，其类型来自 cordis 内部的**相对路径**模块增强
  * （`declare module './context.ts'`）。本包开着 `declaration: true` 时 TypeScript
- * 解析不到这类相对增强，所以这里把 `tools/post-execute` 那一个重载显式写出来；
- * 签名逐字抄自 `@deepseek-ai/dsh-tools` 的事件声明，运行时行为不变。
+ * 解析不到这类相对增强，所以这里把要用到的那一个重载显式写出来，运行时行为不变。
+ *
+ * 刻意**不** `extends Context`：`@deepseek-ai/dsh-tools` 给这个事件声明的监听者带
+ * `this: Scoped<ToolRuntime>`，而那句增强是否进了本次编译单元取决于文件处理顺序
+ * （`src/capabilities.ts` 一进来就会把它带进程序）。extends 一旦撞上增强就报
+ * TS2430，所以这里只描述「我需要的那一个方法」，用 `as unknown as` 收口。
  */
-interface ProjectionHost extends Context {
+interface ProjectionHost {
   on(
     name: 'tools/post-execute',
     listener: (
@@ -533,7 +537,7 @@ export function renderCallResult(title: string, tool: string, result: FtshareCal
  */
 export function apply(ctx: Context): void {
   const logger = ctx.logger('dsh-fft-ftshare-projection')
-  const host = ctx as ProjectionHost
+  const host = ctx as unknown as ProjectionHost
   host.on('tools/post-execute', async (exec, result, next): Promise<PostToolDecision> => {
     // 先让下游听完：本钩子只做「补充投影」，不该改变别人的决定。
     const decision = await next()
