@@ -30,6 +30,14 @@
       "types": "./lib/project.d.ts",
       "default": "./lib/project.js"
     },
+    "./route": {
+      "types": "./lib/route.d.ts",
+      "default": "./lib/route.js"
+    },
+    "./client": {
+      "types": "./lib/client.d.ts",
+      "default": "./lib/client.js"
+    },
     "./catalog.json": "./catalog.json",
     "./cordis.patch.yml": "./cordis.patch.yml",
     "./package.json": "./package.json"
@@ -48,7 +56,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "catalog": "pnpm run build && node scripts/build-catalog.mjs",
     "catalog:check": "pnpm run build && node scripts/build-catalog.mjs --check",
-    "test": "pnpm run build && node scripts/test-projection.mjs && node scripts/test-service.mjs && node scripts/test-catalog.mjs && node scripts/test-mask.mjs"
+    "test": "pnpm run build && node scripts/test-projection.mjs && node scripts/test-service.mjs && node scripts/test-catalog.mjs && node scripts/test-mask.mjs && node scripts/test-crossplane.mjs"
   },
   "dependencies": {
     "@ft/dsh-fft-settings": "git+ssh://git@github.com/FTShare-Lab/dsh-plugin-fft-bundle.git#path:packages/dsh-fft-settings",

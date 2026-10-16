@@ -13,6 +13,12 @@
  */
 /** 服务在 cordis `Context` 上的名字，也是 `ctx.provide` 的键。 */
 export declare const FTSHARE_DATA_SERVICE: "ftshareData";
+/**
+ * 跨平面通路的精确路由：浏览器侧的 `createFtshareClient` POST 到这里，宿主侧的
+ * `registerFtshareRoute` 在这里应答。走 `connection.fetch` 的 `/api` 载体，因此
+ * Host/Origin 围栏与浏览器鉴权由载体负责。
+ */
+export declare const FTSHARE_DATA_ROUTE: "/api/ftshare-data";
 /** 用户可升级订阅的页面，{@link FtshareNotice.upgradeUrl} 的默认值。 */
 export declare const FTSHARE_UPGRADE_URL: "https://ftai.chat/me/profile?tab=subscription";
 /**
