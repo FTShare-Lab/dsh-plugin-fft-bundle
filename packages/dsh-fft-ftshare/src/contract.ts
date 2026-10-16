@@ -85,6 +85,10 @@ export interface FtshareToolInfo {
   tool: string
   /** 上游标题；上游未提供时回落为工具名。 */
   title: string
+  /** 上游说明原文；随包目录的两份产物都由它生成。 */
+  description?: string
+  /** 上游入参 JSON Schema 原文；`ftshare_call` 的本地预校验用它。 */
+  inputSchema?: unknown
 }
 
 /**
@@ -98,15 +102,20 @@ export interface FtshareToolInfo {
  */
 export interface FtshareDataService {
   /**
-   * 调一个上游 FTShare 工具并把结果归一成 {@link FtshareCallResult}。
-   * @param tool - 上游工具名，例如 `ft_v1_finance_income`。
-   * @param args - 上游工具入参，原样透传。
+   * 调一个上游 FTShare 接口并把结果归一成 {@link FtshareCallResult}。
+   * @param interfaceName - 上游接口名，例如 `ft_v1_finance_income`。
+   * @param args - 上游接口入参，原样透传。
    * @param options - 取消信号等。
    * @returns 归一后的结果；本方法不抛异常，权限与失败都走 `state`/`notice`。
    */
-  call(tool: string, args?: Record<string, unknown>, options?: FtshareCallOptions): Promise<FtshareCallResult>
-  /** 上游当前可用的工具清单；上游不可达时可能为空数组。 */
-  listTools(): readonly FtshareToolInfo[]
+  call(interfaceName: string, args?: Record<string, unknown>, options?: FtshareCallOptions): Promise<FtshareCallResult>
+  /**
+   * 上游当前可用的接口清单（名字、标题、说明、入参 schema）。
+   *
+   * 自己触发拉取并做短 TTL 缓存：不依赖「先调通一次」才有人填缓存。上游不可达时
+   * 返回上一次的清单，没有则返回空数组——清单是增强信息，不该让取数失败。
+   */
+  listTools(): Promise<readonly FtshareToolInfo[]>
 }
 
 declare module '@deepseek-ai/cordis' {

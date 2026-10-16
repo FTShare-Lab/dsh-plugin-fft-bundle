@@ -159,7 +159,15 @@ export function createFtshareTransport(options: FtshareTransportOptions): Ftshar
           if (!isRecord(entry)) continue
           const tool = asText(entry.name)
           if (tool === undefined) continue
-          tools.push({ tool, title: asText(entry.title) ?? tool })
+          const description = asText(entry.description)
+          tools.push({
+            tool,
+            title: asText(entry.title) ?? tool,
+            // 目录产物（`catalog.json` / `catalog.txt`）就是这两项生成的：少了它们
+            // 目录只能给名字，模型没法判断该调哪个接口、要传什么。
+            ...description !== undefined ? { description } : {},
+            ...entry.inputSchema !== undefined ? { inputSchema: entry.inputSchema } : {},
+          })
         }
         return tools
       } finally {

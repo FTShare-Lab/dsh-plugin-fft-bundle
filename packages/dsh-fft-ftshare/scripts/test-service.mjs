@@ -10,12 +10,14 @@ import { createFtshareDataService, normalizeRows } from '../lib/index.js'
 import { classifyFailure, parseUpstreamError, permissionNoticeFromPayload } from '../lib/errors.js'
 
 /** 造一个按脚本作答的假 transport。 */
-function stubTransport(script) {
+function stubTransport(script, options = {}) {
   const calls = []
+  let listCalls = 0
   return {
     calls,
-    async call(tool, args, options) {
-      calls.push({ tool, args, options })
+    get listCalls() { return listCalls },
+    async call(tool, args, callOptions) {
+      calls.push({ tool, args, options: callOptions })
       const answer = script[tool]
       if (answer === undefined) throw new Error(`未编排的工具：${tool}`)
       if (typeof answer === 'function') return answer(args)
@@ -23,7 +25,14 @@ function stubTransport(script) {
       return { value: answer }
     },
     async listTools() {
-      return [{ tool: 'ft_v1_finance_income', title: '利润表' }]
+      listCalls += 1
+      if (options.listToolsError !== undefined) throw options.listToolsError
+      return [{
+        tool: 'ft_v1_finance_income',
+        title: '利润表',
+        description: '查询龙虎榜明细',
+        inputSchema: { type: 'object', properties: { stock_code: { type: 'string' } }, required: ['stock_code'] },
+      }]
     },
   }
 }
@@ -117,13 +126,24 @@ const FIXED_NOW = () => new Date('2026-10-13T06:00:00.000Z')
   assert.equal(result.notice.retryable, false)
 }
 
-// —— listTools 在调通之后刷新 ——
+// —— listTools 自己触发拉取、保留说明与入参 schema、短 TTL 内不再拉 ——
 {
-  const service = createFtshareDataService({ transport: stubTransport({ ft_v1_finance_income: { data: [{ a: 1 }] } }), now: FIXED_NOW })
-  assert.deepEqual(service.listTools(), [], '刷新完成前是空清单，不是错误')
-  await service.call('ft_v1_finance_income')
-  await new Promise(resolve => setImmediate(resolve))
-  assert.deepEqual(service.listTools(), [{ tool: 'ft_v1_finance_income', title: '利润表' }])
+  const transport = stubTransport({})
+  const service = createFtshareDataService({ transport, now: FIXED_NOW })
+  const listed = await service.listTools()
+  assert.equal(listed.length, 1)
+  assert.equal(listed[0].title, '利润表')
+  assert.equal(listed[0].description, '查询龙虎榜明细', '目录产物要靠 description')
+  assert.deepEqual(listed[0].inputSchema.properties.stock_code, { type: 'string' }, '入参 schema 要保住，ftshare_call 的预校验用它')
+  assert.equal(transport.listCalls, 1, '不需要先调通一次')
+  await service.listTools()
+  assert.equal(transport.listCalls, 1, 'TTL 内走缓存')
+}
+
+// —— 上游不可达时退回空清单，不抛 ——
+{
+  const service = createFtshareDataService({ transport: stubTransport({}, { listToolsError: new Error('ECONNREFUSED') }), now: FIXED_NOW })
+  assert.deepEqual(await service.listTools(), [], '清单是增强信息，拿不到就是空，不是异常')
 }
 
 // —— normalizeRows 的判定边界 ——
@@ -158,7 +178,6 @@ console.log('ftshareData.call: four-state normalization, notices, rows and tool 
   apply(hostCtx)
   assert.ok(provided.has('ftshareData'), '宿主入口必须 provide ftshareData')
   assert.deepEqual([...provided.keys()], ['ftshareData'], '宿主入口只提供这一个服务')
-  assert.deepEqual(provided.get('ftshareData').listTools(), [], '刷新前工具清单为空，且不抛异常')
   // 凭据在每次调用时重新 resolve；这里只验证注入的是设置服务的那个函数，
   // 不触发任何网络请求（真实 transport 只在这一步之后才会被用到）。
   assert.equal(resolved.length, 0, 'apply 阶段不读凭据')
@@ -187,7 +206,7 @@ console.log('ftshareData.call: four-state normalization, notices, rows and tool 
     },
   }
   apply(toolCtx)
-  assert.equal(registered.length, 10, '接口表里有 10 条暴露给模型的能力')
+  assert.equal(registered.length, 8, '接口表里有 8 条暴露给模型的能力')
   const names = registered.map(definition => definition.name)
   assert.equal(new Set(names).size, names.length, '工具名不能重复')
   for (const name of names) assert.ok(name.startsWith('ftshare_'), `${name} 必须用 ftshare_ 前缀`)
@@ -203,11 +222,11 @@ console.log('ftshareData.call: four-state normalization, notices, rows and tool 
   assert.deepEqual(income.output.render({ stock_code: '600519' }, value), [{ type: 'text', text: value.text }])
 
   const reports = registered.find(definition => definition.name === 'ftshare_stock_reports')
-  const denied = await reports.execute({ stock_code: '600519' }, { signal: undefined })
+  const denied = await reports.execute({ stock_code: '600519', page: 1, page_size: 30 }, { signal: undefined })
   assert.equal(denied.state, 'denied')
   assert.ok(denied.text.includes('无权访问'), '无权访问必须写在正文里，模型才看得到')
   assert.ok(denied.text.includes('所需订阅：Advanced'))
   assert.ok(!denied.text.includes('=0'))
 }
 
-console.log('provider plane: provide ftshareData, credentials deferred to settings; tools plane: 10 ftshare_* tools, four states in the body passed')
+console.log('provider plane: provide ftshareData, credentials deferred to settings; tools plane: 8 ftshare_* tools, four states in the body passed')

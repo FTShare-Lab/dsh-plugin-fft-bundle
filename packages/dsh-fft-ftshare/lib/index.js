@@ -71,49 +71,52 @@ export function normalizeRows(value) {
     return meaningful.length > 0 ? [value] : [];
 }
 /**
+ * 上游接口清单的缓存时长。清单一天最多变几次，而目录产物是发版时生成的，运行期
+ * 只用来回答「这个接口名上游认不认」，所以短缓存足够。
+ */
+const TOOLS_TTL_MS = 5 * 60_000;
+/**
  * 建一个 `ctx.ftshareData`。
  * @param options - 见 {@link FtshareDataServiceOptions}。
  * @returns 服务实现；`call` 不抛异常，失败走 `state`/`notice`。
  */
 export function createFtshareDataService(options) {
     const now = options.now ?? (() => new Date());
-    let tools = [];
-    /**
-     * 刷新上游工具清单。失败只记日志：清单是增强信息，不该让取数失败。
-     */
-    async function refreshTools() {
-        try {
-            tools = await options.transport.listTools();
-        }
-        catch (error) {
-            options.logger?.warn('ftshare.list_tools_failed', { message: error instanceof Error ? error.message : String(error) });
-        }
-    }
+    let cache;
     return {
-        async call(tool, args = {}, callOptions) {
+        async call(interfaceName, args = {}, callOptions) {
             const source = { name: 'FTShare', fetchedAt: now().toISOString() };
             const startedAt = Date.now();
             try {
-                const { value } = await options.transport.call(tool, args, callOptions);
-                // 工具清单只在真的调通之后刷新，避免挂起的网络请求。
-                void refreshTools();
+                const { value } = await options.transport.call(interfaceName, args, callOptions);
                 const rows = normalizeRows(value);
                 if (rows.length > 0)
                     return { ok: true, state: 'available', rows, source };
-                const gated = permissionNoticeFromPayload(tool, value);
+                const gated = permissionNoticeFromPayload(interfaceName, value);
                 // 成功信封 + 权限标记 = 无权，不是没有数据。这是 P8 的第二种形态。
                 if (gated !== undefined)
                     return { ok: false, state: 'denied', rows: [], notice: gated, source };
                 return { ok: true, state: 'empty', rows: [], source };
             }
             catch (error) {
-                const { state, notice } = classifyFailure(error, tool);
-                options.logger?.warn('ftshare.call_classified', { tool, state, code: notice.code, durationMs: Date.now() - startedAt });
+                const { state, notice } = classifyFailure(error, interfaceName);
+                options.logger?.warn('ftshare.call_classified', { tool: interfaceName, state, code: notice.code, durationMs: Date.now() - startedAt });
                 return { ok: false, state, rows: [], notice, source };
             }
         },
-        listTools() {
-            return tools;
+        async listTools() {
+            if (cache !== undefined && Date.now() - cache.at < TOOLS_TTL_MS)
+                return cache.tools;
+            try {
+                const tools = await options.transport.listTools();
+                cache = { tools, at: Date.now() };
+                return tools;
+            }
+            catch (error) {
+                // 清单是增强信息，不该让调用方拿到异常；失败就退回上一次的清单。
+                options.logger?.warn('ftshare.list_tools_failed', { message: error instanceof Error ? error.message : String(error) });
+                return cache?.tools ?? [];
+            }
         },
     };
 }
