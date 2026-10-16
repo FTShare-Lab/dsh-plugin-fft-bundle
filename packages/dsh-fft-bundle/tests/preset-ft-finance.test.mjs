@@ -260,12 +260,12 @@ describe('the finance preset in this bundle', () => {
     }
   })
 
-  it('appends exactly the six finance rows, each id once', () => {
+  it('appends exactly the seven finance rows, each id once', () => {
     const appended = bundlePlugins.slice(UPSTREAM_PLUGIN_COUNT).map(row => row.id)
     assert.deepEqual(
       appended,
       ADDED_PLUGINS,
-      `the "${PRESET_ID}" composition must end with the six finance rows, in this order`,
+      `the "${PRESET_ID}" composition must end with the seven finance rows, in this order`,
     )
     const ids = bundlePlugins.map(row => row.id)
     const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index)
