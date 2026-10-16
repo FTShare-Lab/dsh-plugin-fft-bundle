@@ -1,24 +1,23 @@
 /**
- * preset 平面：`tools/post-execute` 投影钩子 —— **P7/P8 的修复本体**。
+ * preset 平面：`tools/post-execute` 投影钩子。
  *
- * ### 病
+ * ### 它现在只做一件事
  *
- * `@ftshare-lab/dsh-kline` 的摘要式 MCP 工具把明细只放进 `structuredContent`，
- * `content` 只有一行 `security_intelligence · 600519.XSHG · flows=10 · events=0`。
- * DSH 的 MCP 桥只把 `content` 投影给模型
- * （`thirdparty/deepseek-harness/packages/mcp/mcp-client/src/tools.ts`，`createOutput`），
- * 所以模型看不到那 10 条资金流（**P7**）。更糟的是这行摘要把「真的没有」「套餐
- * 无权限（网关 403 route_not_allowed）」「取数失败」一律印成 `0`（**P8**）。
+ * `@ftshare-lab/dsh-kline` 的摘要式 MCP 工具把明细放进 `structuredContent`，
+ * `content` 只有一行 `fetch_candles · 600519.XSHG · rows=250`。DSH 的 MCP 桥只把
+ * `content` 投影给模型（`@deepseek-ai/dsh-mcp-client` 的 `createOutput`），所以模型
+ * 看不到那 250 行（**P7**）；而且这行摘要把「真的没有」「套餐无权限（网关 403
+ * `route_not_allowed`）」「取数失败」一律印成 `0`（**P8**）。
  *
- * ### 药
+ * 所以保留工具（K 线、指标、自选）的投影统一走通用渲染：摊开数组、写全标量、
+ * 空数组写「无数据」，绝不输出 `key=count` 这类裸计数。
  *
- * `tools/post-execute` 是 waterfall 钩子，签名 `(exec, result, next)`，返回
- * `{ kind: 'accept', content }` 即可替换模型可见文本
- * （`@deepseek-ai/dsh-tools` 的 `index.ts` 声明与 `postExecute` 实现）。`result`
- * 是 `ToolExecutionSuccess`，其 `value` 就是 MCP 工具返回的
- * `{ content, structuredContent }`，取之做纯函数渲染即可。
+ * 三个「明细藏在 `structuredContent`」的重灾区（`security_intelligence` /
+ * `market_pulse` / `market_board_detail`）不再由本行接管：它们是 FTShare wrapper，
+ * 已被 `./mask` 从模型可见面掩掉，替代能力走 `ctx.ftshareData`（见设计 §6）。
  *
- * 三条约束写死在实现里：
+ * ### 三条约束写死在实现里
+ *
  * 1. **只替换 `content`，绝不动 `value`**——同时给 `content` 和 `value` 会抛
  *    `TypeError`（`postExecute` 里的显式检查）。
  * 2. **绝不用 `block`**——那会把结果变成错误。
@@ -36,32 +35,13 @@ export declare const DEFAULT_MCP_SERVER_NAME = "dsh-kline";
 /**
  * 接管投影的工具（MCP 公共名去掉前缀之后的那一段）。
  *
- * 前三个是「明细藏在 structuredContent」的重灾区；后五个只要求「不再输出裸计数」，
- * 走通用渲染。`analyze_kline` 不在列表里：它的 content 本身就是完整行情说明，
- * 重排它只会丢掉信息。
+ * 只列保留工具：FTShare wrapper 那三个已由 `./mask` 掩掉，不再需要投影。
+ * `analyze_kline` 不在列表里：它的 content 本身就是完整行情说明，重排它只会丢掉
+ * 信息。
  */
 export declare const PROJECTED_TOOLS: readonly string[];
 /**
- * `security_intelligence` 的投影：逐条渲染资金流，并把三段状态显式化。
- * @param payload - 工具返回的 `structuredContent`。
- * @returns 模型可见文本；形状不符时 undefined（调用方原样放行）。
- */
-export declare function renderSecurityIntelligence(payload: unknown): string | undefined;
-/**
- * `market_pulse` 的投影。`sections` 决定渲染哪些分组，因此「本次未请求」也能显式
- * 说出来，而不是看着空。
- * @param payload - 工具返回的 `structuredContent`。
- * @returns 模型可见文本；形状不符时 undefined。
- */
-export declare function renderMarketPulse(payload: unknown): string | undefined;
-/**
- * `market_board_detail` 的投影。
- * @param payload - 工具返回的 `structuredContent`。
- * @returns 模型可见文本；形状不符时 undefined。
- */
-export declare function renderMarketBoardDetail(payload: unknown): string | undefined;
-/**
- * 通用渲染：给没有专属渲染器的摘要式工具用。
+ * 通用渲染：保留工具统一走它。
  *
  * 只做两件正确的事：把数组摊开、把标量写全。**不输出 `key=count` 这类裸计数**——
  * 那正是 P8 的形态；数组为空时写「无数据」，不写 `0`。
@@ -71,7 +51,7 @@ export declare function renderMarketBoardDetail(payload: unknown): string | unde
 export declare function renderGenericPayload(payload: unknown): string | undefined;
 /**
  * 把 MCP 公共名拆成服务器段与工具段。
- * @param publicName - 形如 `mcp__dsh-kline__security_intelligence`。
+ * @param publicName - 形如 `mcp__dsh-kline__fetch_candles`。
  * @returns 两段名字；不是 MCP 公共名时 undefined。
  */
 export declare function mcpToolNameOf(publicName: string): {
@@ -104,7 +84,7 @@ export declare function projectContent(name: string, result: {
 /**
  * 把一次 `ctx.ftshareData.call()` 的结果渲染成模型可见文本（工具平面与投影平面共用）。
  * @param title - 中文标题。
- * @param tool - 上游工具名。
+ * @param tool - 上游接口名。
  * @param result - 归一结果。
  * @returns 文本。
  */
