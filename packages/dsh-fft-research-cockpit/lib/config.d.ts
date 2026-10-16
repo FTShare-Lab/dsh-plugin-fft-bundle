@@ -1,6 +1,5 @@
 import Schema from '@deepseek-ai/schemastery';
 export interface Config {
-    ftshareUrl: string;
     llmProvider: string;
     llmModel: string;
     maxKlineDays: number;

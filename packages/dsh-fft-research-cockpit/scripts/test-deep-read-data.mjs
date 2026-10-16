@@ -35,28 +35,33 @@ assert.equal(missing.financial_indicator.net_profit_margin_ttm,null)
 console.log('Deep-read data: ratios, reporting periods, zero denominators, same-day turnover and capital flow passed')
 
 // Exercise the actual collector-to-template path against the gateway's schemas.
+// 取数经假服务（`ctx.ftshareData` 的最小面），结局是底座的四态。
 const {loadSnapshot} = await import('../lib/ftshare-data.js')
+const {available, empty, fakeFtshare} = await import('./fake-ftshare.mjs')
 const called=[]
-const session={async call(tool,args){
+const unexpected=[]
+const service=fakeFtshare((tool,args)=>{
  called.push(tool)
- if(tool==='ft_v1_company_list')return {data:[{stock_code:'000001',stock_name:'测试'}]}
- if(tool==='ft_v1_stock_candlesticks')return {data:[{ts_millis:Date.parse('2026-09-08T07:00:00Z'),open:10,high:10,low:10,close:10,volume:100}]}
- if(tool==='ft_v1_finance_income')return {data:[{...period,year:2027,publish_date:'2027-08-01',t_revenue:99999},...model.quant_data.financial.income]}
- if(tool==='ft_v1_finance_cashflow')return {data:model.quant_data.financial.cashflow}
- if(tool==='ft_v1_finance_balance')return {data:model.quant_data.financial.balance}
- if(tool==='ft_v1_eastmoney_stock_valuation')return {data:[model.quant_data.valuation]}
+ if(tool==='ft_v1_company_list')return available([{stock_code:'000001',stock_name:'测试'}])
+ if(tool==='ft_v1_stock_candlesticks')return available([{ts_millis:Date.parse('2026-09-08T07:00:00Z'),open:10,high:10,low:10,close:10,volume:100}])
+ if(tool==='ft_v1_finance_income')return available([{...period,year:2027,publish_date:'2027-08-01',t_revenue:99999},...model.quant_data.financial.income])
+ if(tool==='ft_v1_finance_cashflow')return available(model.quant_data.financial.cashflow)
+ if(tool==='ft_v1_finance_balance')return available(model.quant_data.financial.balance)
+ if(tool==='ft_v1_eastmoney_stock_valuation')return available([model.quant_data.valuation])
  if(tool==='ft_v1_eastmoney_stock_flow'){
   assert.equal(args.symbol,'000001.SZ')
   assert.ok(!('stock_code' in args))
-  return {data:[{trade_date:'2026-09-08',main_net:-100,super_large_net:0,large_net:-100,medium_net:50,small_net:50}]}
+  return available([{trade_date:'2026-09-08',main_net:-100,super_large_net:0,large_net:-100,medium_net:50,small_net:50}])
  }
  if(tool==='ft_v1_margin_trading_details'){
   assert.equal(args.date,'20260908')
-  return {data:[{date:'2026-09-08',symbol:'000001.SZ',margin_trading_balance:1000,total_balance:1200,margin_trading_buying_amount:100,securities_lending_selling_volume:10}]}
+  return available([{date:'2026-09-08',symbol:'000001.SZ',margin_trading_balance:1000,total_balance:1200,margin_trading_buying_amount:100,securities_lending_selling_volume:10}])
  }
- throw new Error(`Unexpected tool ${tool}`)
-}}
-const collected=await loadSnapshot(session,'000001','2026-09-08',120,new AbortController().signal,30,{includeExtendedFacts:true,includeRiskFacts:false,includeAnnouncements:false,includeResearch:false})
+ unexpected.push(tool)
+ return empty()
+})
+const collected=await loadSnapshot(service,'000001','2026-09-08',120,new AbortController().signal,30,{includeExtendedFacts:true,includeAnnouncements:false,includeResearch:false})
+assert.deepEqual(unexpected,[],`unexpected interfaces: ${unexpected.join(', ')}`)
 assert.equal(collected.financial.income[0].year,2026)
 assert.equal(collected.capitalFlow.main_net_val,-100)
 assert.equal(collected.marginDetail.sloan_bal,200)

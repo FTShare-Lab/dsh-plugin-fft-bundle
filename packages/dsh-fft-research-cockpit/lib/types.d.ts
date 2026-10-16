@@ -5,7 +5,8 @@ export interface PermissionNotice {
     partial?: boolean;
     tool: string;
     code?: string;
-    requiredPlan: string;
+    /** 建议档位；上游信封没给就不猜（底座口径：档位只从上游字段读）。 */
+    requiredPlan?: string;
     message: string;
     upgradeUrl: string;
 }
@@ -69,15 +70,16 @@ export interface Snapshot {
     /** Latest stock-level capital-flow fact when the endpoint is available. */
     capitalFlow?: JsonRecord | null;
     marginDetail?: JsonRecord | null;
-    /** Latest stock-level beta/risk fact when the endpoint is available. */
-    beta?: JsonRecord | null;
     announcements: JsonRecord[];
     research: JsonRecord[];
     provenance: Provenance[];
     dataGaps: string[];
     warnings: string[];
     permissions: PermissionNotice[];
-    /** Permission failures that could not be satisfied by a fallback endpoint. */
+    /**
+     * 需要渲染权限遮罩的提示：底座判定 `denied` 的调用。`empty`（上游确实没有数据）
+     * 不进这里，它只出现在 `dataGaps` 里。
+     */
     blockedPermissions?: PermissionNotice[];
 }
 export interface TechnicalSignals {

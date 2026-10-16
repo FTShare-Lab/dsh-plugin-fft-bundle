@@ -3,7 +3,6 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { fallbackContext } from '../lib/llm-report.js'
 import { renderReportHtml, renderReportTemplate } from '../lib/html-renderer.js'
-import { permissionNoticesFromPayload } from '../lib/ftshare-client.js'
 
 const base = {
   asOf: '2026-09-03', request: { reportType: 'portfolio_stocks', holdings: [{ symbol: '300750', name: '有数据股票' }, { symbol: '000001', name: '缺数据股票' }] },
@@ -152,29 +151,13 @@ if (!deepReadRealtimeOnlyHtml.includes('selector":"#report-quote-access"') ||
   throw new Error('deep_read: 行情遮罩应使用独立横条，价格和市值必须标明正确口径')
 }
 
-const flowMetadataPayload = {
-  data: [],
-  metadata: {
-    access: 'restricted',
-    required_plan: 'Basic',
-    message: 'subscription required for this endpoint',
-  },
-}
-const flowMetadataPermissions = permissionNoticesFromPayload('ft_v1_stock_capital_flows', flowMetadataPayload)
-if (flowMetadataPermissions.length !== 1 || flowMetadataPermissions[0].requiredPlan !== 'Basic') {
-  throw new Error('deep_read: 空结果中的结构化权限元数据未被识别')
-}
-const ordinaryEmptyPayload = { data: [], metadata: { access: 'public', warnings: ['暂时无数据'] } }
-if (permissionNoticesFromPayload('ft_v1_beta_snapshot', ordinaryEmptyPayload).length !== 0) {
-  throw new Error('deep_read: 普通空结果被误判为订阅权限限制')
-}
+// 「成功信封里其实带着订阅门禁」「顶层 permissions 数组」「参数错误不该被当成无权」
+// 这三类载荷的分类已归 FTShare 底座的四态（`denied` / `empty` / `failed`）：本包只
+// 读归一的 `state` + `notice`，不再自己解析上游 envelope。对应的语义断言 ——
+// denied 渲染遮罩 + 升级入口、empty 只落「没有数据」缺口、两者不可混同 ——
+// 在 `scripts/test-ftshare.mjs` 里用假服务直接覆盖。
 
 console.log('permission-only masks: ok')
-
-for (const payload of [{ code: 403, message: 'Forbidden', data: [] }, { status: 'restricted', data: [] }, { permissions: [{ code: 'PERMISSION_DENIED', requiredPlan: 'Pro' }], data: [] }]) {
-  if (!permissionNoticesFromPayload('ft_v4_stock_realtime_day_kline', payload).length) throw new Error('顶层权限响应未识别')
-}
-if (permissionNoticesFromPayload('ft_v1_beta_snapshot', { code: 'UPSTREAM_REJECTED', message: 'invalid date', data: [] }).length) throw new Error('参数错误不应触发订阅遮罩')
 
 // Empty optional deep-read modules disappear, while zero-valued facts survive.
 const optionalContext = {

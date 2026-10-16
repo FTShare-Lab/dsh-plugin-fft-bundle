@@ -31,6 +31,19 @@ try {
     const seed = await render([notice('test')])
     const payload = JSON.parse(seed.match(/const payload = (.*);/)[1])
     const tools = [...new Set(payload.targets.flatMap(target => target.tools))]
+    // denied 与 empty 不可混同：凭据/套餐被拒才出现升级入口；上游「没有数据」只是
+    // 数据缺口，绝不能渲染成升级提示。这里对同一张报告直接把两种输入并排断言。
+    const deniedHtml = await render(tools.map(tool => notice(tool)))
+    if (!deniedHtml.includes('ftshare-module-mask-script') || !deniedHtml.includes('升级 FtShare 订阅')) {
+      throw new Error(`${reportType}: denied 必须渲染无权访问 + 升级入口`)
+    }
+    const emptyGap = 'FTShare 数据为空：ft_v1_daec_market_snapshot'
+    const emptyHtml = reportType === 'deep_read'
+      ? await renderReportHtml({ ...deep, data_gaps: [emptyGap] })
+      : await renderReportTemplate(reportType, fallbackContext({ ...base, reportType, request, dataGaps: [emptyGap] }), [], [emptyGap])
+    if (emptyHtml.includes('ftshare-module-mask-script') || emptyHtml.includes('升级 FtShare 订阅')) {
+      throw new Error(`${reportType}: empty 只表示没有数据，不得出现升级入口`)
+    }
     for (const mode of ['denied', 'partial', 'available']) {
       const permissions = mode === 'available' ? [] : tools.map(tool => ({ ...notice(tool), partial: mode === 'partial' }))
       const html = await render(permissions, mode !== 'denied')

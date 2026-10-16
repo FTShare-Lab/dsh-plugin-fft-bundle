@@ -85,12 +85,12 @@ importers:
       '@deepseek-ai/schemastery':
         specifier: '>=3.18.2'
         version: 3.18.4
+      '@ft/dsh-fft-ftshare':
+        specifier: link:../dsh-fft-ftshare
+        version: link:../dsh-fft-ftshare
       '@ft/dsh-fft-settings':
         specifier: link:../dsh-fft-settings
         version: link:../dsh-fft-settings
-      '@modelcontextprotocol/sdk':
-        specifier: ^1.30.0
-        version: 1.32.0(zod@4.6.5)
       dsh-better-sidebar:
         specifier: '>=0.18.0'
         version: 0.24.1(270891d7b0f75fc29c93062977799b16)

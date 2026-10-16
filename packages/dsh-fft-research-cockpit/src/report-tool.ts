@@ -10,6 +10,16 @@ import type { ReportType } from './types.js'
 const REPORT_TYPES: ReportType[] = ['deep_read', 'holding_analysis', 'limit_up_attribution', 'market_commentary', 'portfolio_etfs', 'portfolio_stocks', 'review', 'sector_analysis']
 const PLAN_LABELS: Record<string, string> = { Free: '免费版', Basic: '基础版', Advanced: '进阶版', Pro: '专业版（Pro）' }
 
+/**
+ * 权限提示里的档位文案。
+ *
+ * 档位只来自上游信封（底座口径：接口版本号推不出订阅档位），上游没说就不写档位——
+ * 这里绝不能回落到某个「默认档位」，那会把用户引向错误的套餐。
+ */
+function planLabelOf(requiredPlan: string | undefined): string {
+  return requiredPlan ? PLAN_LABELS[requiredPlan] ?? requiredPlan : '更高档位'
+}
+
 const outputSchema = {
   type: 'object',
   additionalProperties: false,
@@ -64,7 +74,7 @@ const recommendationOutputSchema = {
 function renderResult(value: Record<string, unknown>): Array<{ type: 'text'; text: string }> {
   const permissions = Array.isArray(value.permissions) ? value.permissions as Array<{ message?: string; upgradeUrl?: string; requiredPlan?: string }> : []
   const permissionText = permissions.length
-    ? `FTShare 权限提示：${permissions.map(item => `${item.message ?? ''} [升级 FTShare ${PLAN_LABELS[item.requiredPlan ?? 'Pro'] ?? item.requiredPlan ?? '专业版（Pro）'} 订阅](${item.upgradeUrl ?? 'https://ftai.chat/me/profile?tab=subscription'})`).join('；')}`
+    ? `FTShare 权限提示：${permissions.map(item => `${item.message ?? ''} [升级 FTShare ${planLabelOf(item.requiredPlan)} 订阅](${item.upgradeUrl ?? 'https://ftai.chat/me/profile?tab=subscription'})`).join('；')}`
     : ''
   const report = value.structuredReport && typeof value.structuredReport === 'object' && !Array.isArray(value.structuredReport)
     ? value.structuredReport as Record<string, unknown>
@@ -123,7 +133,7 @@ function renderRecommendation(value: Record<string, unknown>): Array<{ type: 'te
   lines.push(Array.isArray(value.dataGaps) && value.dataGaps.length ? `数据缺口：${value.dataGaps.join('；')}` : '数据缺口：无')
   lines.push(Array.isArray(value.warnings) && value.warnings.length ? `警告：${value.warnings.join('；')}` : '警告：无')
   const permissions = Array.isArray(value.permissions) ? value.permissions as Array<{ message?: string; requiredPlan?: string; upgradeUrl?: string }> : []
-  if (permissions.length) lines.push(`FTShare 权限提示：${permissions.map(item => `${item.message ?? ''} [升级 FTShare ${PLAN_LABELS[item.requiredPlan ?? 'Pro'] ?? item.requiredPlan ?? '专业版（Pro）'} 订阅](${item.upgradeUrl ?? 'https://ftai.chat/me/profile?tab=subscription'})`).join('；')}`)
+  if (permissions.length) lines.push(`FTShare 权限提示：${permissions.map(item => `${item.message ?? ''} [升级 FTShare ${planLabelOf(item.requiredPlan)} 订阅](${item.upgradeUrl ?? 'https://ftai.chat/me/profile?tab=subscription'})`).join('；')}`)
   if (value.report && typeof value.report === 'object' && !Array.isArray(value.report)) lines.push('已附带第一个推荐组合的股票组合报告结果。')
   return [{ type: 'text', text: lines.join('\n') }]
 }

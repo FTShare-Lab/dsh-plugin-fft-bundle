@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises'
 import nunjucks from 'nunjucks'
 
 import { calculateTechnicalSignals } from './indicators.js'
-import { FTSHARE_PLAN_LABELS } from './ftshare-client.js'
+import { FTSHARE_PLAN_LABELS } from './ftshare-call.js'
 import type { JsonRecord, OhlcvPoint, PermissionNotice, Snapshot, TechnicalSignals } from './types.js'
 import type { DeepReadReport } from './report-schema.js'
 
@@ -257,12 +257,11 @@ const PERMISSION_MASK_TARGETS: Record<string, PermissionMaskTarget[]> = {
   deep_read: [
     { selector: '#technical-metrics, #technical-state-chart, #technical-analysis-data', tools: ['ft_v1_stock_candlesticks'], label: '技术指标与分析', horizontal: true },
     { selector: '#report-quote-access', tools: ['ft_v1_company_list', 'ft_v4_stock_realtime_day_kline'], label: '实时行情', horizontal: true },
-    { selector: '#catalyst-data', tools: ['ft_v3_announcements_stock_announcements', 'ft_v1_report_announcement_list', 'ft_v1_report_announcements_list', 'ft_v3_report_stock_reports'], label: '公告与研报证据', horizontal: true },
+    { selector: '#catalyst-data', tools: ['ft_v2_announcements_stock_announcements', 'ft_v1_report_announcements_list', 'ft_v2_report_stock_reports'], label: '公告与研报证据', horizontal: true },
     { selector: '#quant-financial-chart, #quant-financial-table', tools: ['ft_v1_finance_income', 'ft_v1_finance_cashflow'], label: '财务规模与现金流', title: '财务规模与现金流', horizontal: true },
     { selector: '#quant-profitability-chart', tools: ['ft_v1_finance_income'], label: '盈利质量', title: '盈利质量', horizontal: true },
     { selector: '#quant-valuation-chart, #quant-valuation-table', tools: ['ft_v1_eastmoney_stock_valuation'], label: '估值数据', title: '估值数据', horizontal: true },
-    { selector: '#quant-flow-chart, #quant-flow-table', tools: ['ft_v1_stock_capital_flows', 'ft_v1_eastmoney_stock_flow', 'ft_v2_eastmoney_stock_flow'], label: '资金流数据', title: '资金流数据', horizontal: true },
-    { selector: '#quant-risk-chart, #quant-risk-table', tools: ['ft_v1_beta_snapshot', 'ft_v2_risk_beta'], label: '风险暴露数据', title: '风险暴露数据', horizontal: true },
+    { selector: '#quant-flow-chart, #quant-flow-table', tools: ['ft_v1_stock_capital_flows', 'ft_v1_eastmoney_stock_flow'], label: '资金流数据', title: '资金流数据', horizontal: true },
     { selector: '#kline-chart', tools: ['ft_v1_stock_candlesticks'], label: '技术行情数据', title: '技术行情数据', horizontal: true },
   ],
   holding_analysis: [
@@ -277,22 +276,22 @@ const PERMISSION_MASK_TARGETS: Record<string, PermissionMaskTarget[]> = {
     // cells must not be mistaken for ordinary missing data.
     { selector: '.factor-matrix', tools: ['ft_v1_company_list', 'ft_v4_stock_realtime_day_kline', 'ft_v1_finance_income', 'ft_v1_finance_cashflow', 'ft_v1_eastmoney_stock_valuation'], label: '风险因子矩阵', title: '风险因子矩阵', forceUnavailable: true, horizontal: true },
     { selector: 'section > .grid-3', tools: ['ft_v1_stock_candlesticks', 'ft_v4_stock_realtime_day_kline', 'ft_v1_finance_income', 'ft_v1_finance_cashflow', 'ft_v1_eastmoney_stock_valuation'], label: '风险优先级数据', title: '风险优先级数据', forceUnavailable: true, horizontal: true },
-    { selector: 'section > .timeline', tools: ['ft_v4_stock_realtime_day_kline', 'ft_v3_announcements_stock_announcements', 'ft_v1_report_announcements_list', 'ft_v3_limit_up_reports_briefs'], label: '后续观察数据', title: '后续观察数据', forceUnavailable: true, horizontal: true },
+    { selector: 'section > .timeline', tools: ['ft_v4_stock_realtime_day_kline', 'ft_v2_announcements_stock_announcements', 'ft_v1_report_announcements_list', 'ft_v3_limit_up_reports_briefs'], label: '后续观察数据', title: '后续观察数据', forceUnavailable: true, horizontal: true },
   ],
   limit_up_attribution: [
     { selector: '.metrics-panel', tools: ['ft_v1_limit_list'], label: '涨停统计数据', title: '涨停统计数据', gaps: ['ft_v1_limit_list', '涨停池'], forceUnavailable: true, horizontal: true },
     { selector: '.case-list, .empty-state', tools: ['ft_v1_limit_list', 'ft_v2_limit_event_timeline_3s'], label: '涨停案例数据', title: '涨停案例数据', gaps: ['ft_v1_limit_list', 'ft_v2_limit_event_timeline_3s', '涨停案例', '涨停池'], forceUnavailable: true, horizontal: true },
-    { selector: '.attribution-block', tools: ['ft_v3_limit_up_reports_briefs', 'ft_v3_announcements_stock_announcements', 'ft_v1_report_announcements_list', 'ft_v1_report_announcement_list'], label: '涨停归因证据', title: '涨停归因证据', gaps: ['ft_v3_limit_up_reports_briefs', 'ft_v3_announcements_stock_announcements', 'ft_v1_report_announcements_list', 'ft_v1_report_announcement_list', '涨停归因', '公告数据'], forceUnavailable: true, horizontal: true },
+    { selector: '.attribution-block', tools: ['ft_v3_limit_up_reports_briefs', 'ft_v2_announcements_stock_announcements', 'ft_v1_report_announcements_list'], label: '涨停归因证据', title: '涨停归因证据', gaps: ['ft_v3_limit_up_reports_briefs', 'ft_v2_announcements_stock_announcements', 'ft_v1_report_announcements_list', '涨停归因', '公告数据'], forceUnavailable: true, horizontal: true },
   ],
   market_commentary: [
-    { selector: '.metric-grid .metric', tools: ['ft_v1_daec_stocks', 'ft_v1_daec_market_snapshot', 'ft_v1_eastmoney_market_valuation', 'ft_v1_stock_capital_flows', 'ft_v2_eastmoney_dapan_flow'], label: '市场指标', title: '市场指标', forceUnavailable: true, compact: true },
-    { selector: '.judgement-grid .judgement', tools: ['ft_v1_daec_stocks', 'ft_v1_daec_market_snapshot', 'ft_v1_stock_capital_flows', 'ft_v2_eastmoney_dapan_flow'], label: '市场判断', title: '市场判断', forceUnavailable: true, compact: true },
-    { selector: '.driver-grid .driver-card', tools: ['ft_v1_daec_stocks', 'ft_v1_daec_market_snapshot', 'ft_v1_stock_capital_flows', 'ft_v2_eastmoney_dapan_flow', 'ft_v1_sw_industry_overview'], label: '市场驱动', title: '市场驱动', forceUnavailable: true, compact: true },
+    { selector: '.metric-grid .metric', tools: ['ft_v1_daec_stocks', 'ft_v1_daec_market_snapshot', 'ft_v1_eastmoney_market_valuation', 'ft_v1_stock_capital_flows', 'ft_v1_eastmoney_dapan_flow'], label: '市场指标', title: '市场指标', forceUnavailable: true, compact: true },
+    { selector: '.judgement-grid .judgement', tools: ['ft_v1_daec_stocks', 'ft_v1_daec_market_snapshot', 'ft_v1_stock_capital_flows', 'ft_v1_eastmoney_dapan_flow'], label: '市场判断', title: '市场判断', forceUnavailable: true, compact: true },
+    { selector: '.driver-grid .driver-card', tools: ['ft_v1_daec_stocks', 'ft_v1_daec_market_snapshot', 'ft_v1_stock_capital_flows', 'ft_v1_eastmoney_dapan_flow', 'ft_v1_sw_industry_overview'], label: '市场驱动', title: '市场驱动', forceUnavailable: true, compact: true },
     { selector: '.conclusion', tools: ['ft_v1_daec_stocks', 'ft_v1_daec_market_snapshot', 'ft_v1_stock_capital_flows', 'ft_v1_limit_list'], label: '报告结论', title: '报告结论', forceUnavailable: true },
     { selector: '.dashboard-grid > article.card:first-child', tools: ['ft_v1_daec_stocks', 'ft_v1_daec_market_snapshot', 'ft_v1_eastmoney_market_valuation'], label: '指数行情数据', title: '指数行情数据', gaps: ['ft_v1_daec_stocks', 'ft_v1_daec_market_snapshot', 'ft_v1_eastmoney_market_valuation', '指数与市场行情', '大盘行情'], forceUnavailable: true, horizontal: true },
     { selector: '.dashboard-grid > article.card:nth-child(2)', tools: ['ft_v1_daec_stocks', 'ft_v1_daec_market_snapshot'], label: '市场宽度数据', title: '市场宽度数据', gaps: ['ft_v1_daec_stocks', 'ft_v1_daec_market_snapshot', '市场宽度'], forceUnavailable: true, horizontal: true },
     { selector: '#sectorChart', tools: ['ft_v1_sw_industry_overview', 'ft_v1_ths_board_list'], label: '行业强弱数据', title: '行业强弱数据', gaps: ['ft_v1_sw_industry_overview', 'ft_v1_ths_board_list', '行业强弱'] },
-    { selector: '#capitalChart', tools: ['ft_v1_stock_capital_flows', 'ft_v2_eastmoney_dapan_flow'], label: '主力资金数据', title: '主力资金数据', gaps: ['ft_v1_stock_capital_flows', 'ft_v2_eastmoney_dapan_flow', '主力资金', '资金流'] },
+    { selector: '#capitalChart', tools: ['ft_v1_stock_capital_flows', 'ft_v1_eastmoney_dapan_flow'], label: '主力资金数据', title: '主力资金数据', gaps: ['ft_v1_stock_capital_flows', 'ft_v1_eastmoney_dapan_flow', '主力资金', '资金流'] },
     { selector: '#etfList', tools: ['ft_v2_etf_description_all', 'ft_v1_etf_candlesticks'], label: 'ETF 行情数据', title: 'ETF 行情数据', gaps: ['ft_v2_etf_description_all', 'ft_v1_etf_candlesticks', 'ETF 行情'] },
   ],
   portfolio_etfs: [
@@ -301,7 +300,7 @@ const PERMISSION_MASK_TARGETS: Record<string, PermissionMaskTarget[]> = {
   ],
   portfolio_stocks: [
     { selector: '#summaryStocks', tools: ['ft_v1_company_list', 'ft_v4_stock_realtime_day_kline'], label: '个股行情数据', title: '个股行情数据', gaps: ['ft_v1_company_list', 'ft_v4_stock_realtime_day_kline', '实时行情', '个股快照'], forceUnavailable: true, horizontal: true },
-    { selector: '#deepCards', tools: ['ft_v1_stock_candlesticks', 'ft_v1_finance_income', 'ft_v1_finance_cashflow', 'ft_v1_eastmoney_stock_valuation', 'ft_v3_report_stock_reports'], label: '个股技术与基本面数据', title: '个股技术与基本面数据', gaps: ['ft_v1_stock_candlesticks', 'ft_v1_finance_income', 'ft_v1_finance_cashflow', 'ft_v1_eastmoney_stock_valuation', 'ft_v3_report_stock_reports', '日线 OHLCV', '财务收入', '现金流', '估值数据'], forceUnavailable: true, horizontal: true },
+    { selector: '#deepCards', tools: ['ft_v1_stock_candlesticks', 'ft_v1_finance_income', 'ft_v1_finance_cashflow', 'ft_v1_eastmoney_stock_valuation', 'ft_v2_report_stock_reports'], label: '个股技术与基本面数据', title: '个股技术与基本面数据', gaps: ['ft_v1_stock_candlesticks', 'ft_v1_finance_income', 'ft_v1_finance_cashflow', 'ft_v1_eastmoney_stock_valuation', 'ft_v2_report_stock_reports', '日线 OHLCV', '财务收入', '现金流', '估值数据'], forceUnavailable: true, horizontal: true },
     { selector: '.advantage-deep', tools: [], label: 'T0 回测数据', title: 'T0 回测数据', gaps: ['T0', '回测', '未纳入本次快照'], forceUnavailable: true, horizontal: true },
   ],
   review: [
@@ -325,7 +324,7 @@ const PERMISSION_MASK_TARGETS: Record<string, PermissionMaskTarget[]> = {
     { selector: '#validation .logic-surface', tools: ['ft_v1_ths_board_kline', 'ft_v1_ths_all_board_kline', 'ft_v1_sw_industry_overview', 'ft_v1_ths_industry_daily_flow', 'ft_v1_eastmoney_sector_flow'], label: '逻辑验证数据', title: '逻辑验证数据', forceUnavailable: true, horizontal: true },
     { selector: '#valuation .two-column', tools: ['ft_v1_eastmoney_stock_valuation', 'ft_v1_ths_industry_daily_flow', 'ft_v1_eastmoney_sector_flow'], label: '估值与拥挤度数据', title: '估值与拥挤度数据', forceUnavailable: true, horizontal: true },
     { selector: '#leaders article.surface', tools: ['ft_v1_tdx_board_members', 'ft_v1_sw_industry_overview', 'ft_v4_stock_realtime_day_kline', 'ft_v1_company_list'], label: '关键公司数据', title: '关键公司数据', forceUnavailable: true, horizontal: true },
-    { selector: '#events .two-column', tools: ['ft_v3_announcements_stock_announcements', 'ft_v1_report_announcements_list', 'ft_v3_supply_chain_subindustry_supply_chain'], label: '催化与风险数据', title: '催化与风险数据', forceUnavailable: true, horizontal: true },
+    { selector: '#events .two-column', tools: ['ft_v2_announcements_stock_announcements', 'ft_v1_report_announcements_list', 'ft_v3_supply_chain_subindustry_supply_chain'], label: '催化与风险数据', title: '催化与风险数据', forceUnavailable: true, horizontal: true },
     { selector: '#conclusion .final-answer', tools: ['ft_v1_ths_board_kline', 'ft_v1_ths_all_board_kline', 'ft_v1_sw_industry_overview', 'ft_v1_ths_industry_daily_flow', 'ft_v1_eastmoney_sector_flow'], label: '综合结论', title: '综合结论', forceUnavailable: true, horizontal: true },
   ],
 }
@@ -616,7 +615,7 @@ function permissionMaskScript(reportType: keyof typeof TEMPLATE_FILES, permissio
       tool: permission.tool,
       partial: permission.partial === true,
       requiredPlan: permission.requiredPlan,
-      planLabel: FTSHARE_PLAN_LABELS[permission.requiredPlan as keyof typeof FTSHARE_PLAN_LABELS] ?? permission.requiredPlan,
+      planLabel: permission.requiredPlan ? FTSHARE_PLAN_LABELS[permission.requiredPlan] ?? permission.requiredPlan : '',
       upgradeUrl: permission.upgradeUrl,
     })),
     targets: targets.map(target => ({

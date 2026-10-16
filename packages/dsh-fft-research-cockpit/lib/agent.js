@@ -12,8 +12,13 @@
 import { Config } from './config.js';
 import { registerReportTool } from './report-tool.js';
 export const name = 'FT 投研舱';
-/** 工具注册需要的能力；缺任一项（如自造最小 profile）本行会挂起等待，属刻意的 fail-loud。 */
-export const inject = ['tools', 'llm', 'ftshareSettings'];
+/**
+ * 工具注册需要的能力；缺任一项（如自造最小 profile）本行会挂起等待，属刻意的 fail-loud。
+ *
+ * `ftshareData` 是 FTShare 公用底座（全局平面）发布的唯一取数服务：本包不再自己连
+ * 网关、不再自己读凭据，凭据只由底座经 `ftshareSettings` 解析一次。
+ */
+export const inject = ['tools', 'llm', 'ftshareData'];
 export { Config };
 export function apply(ctx, config) {
     // 具名 logger 只创建一次，再显式注入到各服务/函数：不使用模块级单例，

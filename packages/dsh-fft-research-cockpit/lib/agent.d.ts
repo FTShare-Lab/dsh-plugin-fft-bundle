@@ -12,7 +12,12 @@
 import type { Context } from '@deepseek-ai/cordis';
 import { Config } from './config.js';
 export declare const name = "FT \u6295\u7814\u8231";
-/** 工具注册需要的能力；缺任一项（如自造最小 profile）本行会挂起等待，属刻意的 fail-loud。 */
+/**
+ * 工具注册需要的能力；缺任一项（如自造最小 profile）本行会挂起等待，属刻意的 fail-loud。
+ *
+ * `ftshareData` 是 FTShare 公用底座（全局平面）发布的唯一取数服务：本包不再自己连
+ * 网关、不再自己读凭据，凭据只由底座经 `ftshareSettings` 解析一次。
+ */
 export declare const inject: string[];
 export { Config };
 export type { Config as InvestmentResearchConfig } from './config.js';

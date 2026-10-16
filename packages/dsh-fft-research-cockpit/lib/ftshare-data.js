@@ -1,4 +1,4 @@
-import { callWithSubscriptionFallback, isFtSharePermissionError, permissionNotices, permissionNoticesFromPayload } from './ftshare-client.js';
+import { callInterface, permissionKey } from './ftshare-call.js';
 function isRecord(value) {
     return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
@@ -135,22 +135,6 @@ function parseOhlcv(source) {
         .filter(point => point.date && point.close !== null)
         .sort((left, right) => left.date.localeCompare(right.date));
 }
-/**
- * A fallback call can resolve successfully while still returning an empty
- * envelope. Treat that as unavailable for permission accounting; otherwise a
- * denied higher-tier endpoint followed by an empty lower-tier response would
- * look like a successful downgrade and the report would miss the module mask.
- */
-function hasSnapshotCallData(index, source) {
-    switch (index) {
-        case 0:
-            return klineRows(source).some(row => number(row, 'close', 'close_price', 'price', 'last', 'last_price') !== null);
-        case 1:
-            return parseOhlcv(source).length > 0;
-        default:
-            return rows(source).length > 0;
-    }
-}
 function sourceWarning(source, tool) {
     if (!isRecord(source.metadata))
         return null;
@@ -197,59 +181,25 @@ function normalizeValuation(row) {
         total_market_cap: number(row, 'total_market_cap', 'totalMarketCap', 'market_cap', 'marketCap'),
     };
 }
-async function loadRecentAnnouncements(session, symbol, asOf, lookbackDays, signal, logger) {
+/**
+ * 最近的股票公告。
+ *
+ * 旧实现按「Basic 的 stock_code 模式优先、Free 的按日模式兜底」成对候选逐日请求。
+ * 候选链已按规格 §附录 B 删除，这里只调保留的那一个接口：上游 `empty` 就是「确实
+ * 没有公告」，`denied` 就是「当前套餐无权访问」，两者都不再触发降级。
+ */
+async function loadRecentAnnouncements(data, symbol, asOf, lookbackDays, signal, logger) {
     const days = Math.max(1, Math.min(90, Math.trunc(lookbackDays)));
-    const end = new Date(`${asOf}T12:00:00Z`);
-    const dates = Array.from({ length: days }, (_, offset) => {
-        const date = new Date(end);
-        date.setUTCDate(date.getUTCDate() - offset);
-        return date.toISOString().slice(0, 10).replaceAll('-', '');
-    });
-    const items = [];
-    const warnings = [];
-    const permissions = [];
-    let downgraded = false;
-    let selectedTool = TOOLS.announcementsPreferred;
-    let truncated = false;
-    for (const date of dates) {
-        try {
-            const result = await callWithSubscriptionFallback(session, [
-                {
-                    tool: TOOLS.announcementsPreferred,
-                    plan: 'Basic',
-                    arguments_: { type: 'stock', stock_code: normalizeStockSymbol(symbol), page: 1, page_size: 30 },
-                },
-                {
-                    tool: TOOLS.announcements,
-                    plan: 'Free',
-                    arguments_: { date, sec_code: bareStockSymbol(symbol), page: 1, page_size: 30 },
-                },
-            ], signal, logger);
-            permissions.push(...result.permissions);
-            downgraded ||= result.downgraded;
-            selectedTool = result.tool;
-            items.push(...rows(result.value));
-            const metadata = isRecord(result.value.metadata) ? result.value.metadata : {};
-            truncated ||= metadata.truncated === true;
-            if (Array.isArray(metadata.warnings))
-                warnings.push(...metadata.warnings.map(String));
-            // The Basic stock_code mode already returns the latest history; avoid
-            // repeating the same full-history request for every lookback day.
-            if (result.tool === TOOLS.announcementsPreferred)
-                break;
-            if (items.length >= 100)
-                break;
-        }
-        catch (error) {
-            if (isFtSharePermissionError(error)) {
-                permissions.push(...permissionNotices(error));
-                throw error;
-            }
-            warnings.push(`${date}：${error instanceof Error ? error.message : String(error)}`);
-        }
-    }
+    const outcome = await callInterface(data, TOOLS.announcements, {
+        type: 'stock',
+        stock_code: normalizeStockSymbol(symbol),
+        page: 1,
+        page_size: 30,
+    }, signal, logger);
+    if (outcome.state !== 'available')
+        return outcome;
     const seen = new Set();
-    const unique = items
+    const unique = outcome.rows
         .filter(item => {
         const key = String(item.announcement_id ?? item.id ?? item.url_hash ?? item.announcement_title ?? JSON.stringify(item));
         if (seen.has(key))
@@ -258,185 +208,147 @@ async function loadRecentAnnouncements(session, symbol, asOf, lookbackDays, sign
         return true;
     })
         .sort((left, right) => String(right.announcement_time ?? right.updated_at ?? '').localeCompare(String(left.announcement_time ?? left.updated_at ?? '')));
-    return {
+    const value = {
         data: unique.slice(0, 100),
         metadata: {
             source: 'ftshare',
-            tool: selectedTool,
+            tool: TOOLS.announcements,
             operation: `recent_${days}d`,
+            as_of: asOf,
             returned: Math.min(unique.length, 100),
             total: unique.length,
-            truncated: truncated || unique.length > 100,
-            downgraded,
-            permissions: [...new Map(permissions.map(item => [`${item.tool}:${item.requiredPlan}`, item])).values()],
-            warnings: [...new Set(warnings)],
+            truncated: unique.length > 100,
         },
     };
+    return { ...outcome, value, rows: unique };
 }
+/**
+ * 一条能力一个接口。旧的成对候选（`beta`/`betaPreferred`、
+ * `announcements`/`announcementsPreferred`、`security`/`securityPreferred`、
+ * `capitalFlow`/`capitalFlowPreferred`）按规格 §附录 B 删除：降级本身就是「假定两个
+ * 上游接口之间存在对应关系」。
+ *
+ * 接口名以底座的 `catalog.json` 为准（`ft_v2_*` 才是上游真实存在的那一版）：旧实现的
+ * `ft_v3_report_stock_reports`、`ft_v3_announcements_stock_announcements` 与两个
+ * `*_risk_beta` 在 250 条目录里**都不存在**。风险暴露（Beta）因此没有可指的上游接口，
+ * 它是能力缺口：不再发一次注定失败的调用。
+ */
 const TOOLS = {
     security: 'ft_v1_company_list',
-    securityPreferred: 'ft_v4_stock_realtime_day_kline',
+    securityRealtime: 'ft_v4_stock_realtime_day_kline',
     kline: 'ft_v1_stock_candlesticks',
     income: 'ft_v1_finance_income',
     cashflow: 'ft_v1_finance_cashflow',
     valuation: 'ft_v1_eastmoney_stock_valuation',
-    capitalFlow: 'ft_v1_stock_capital_flows',
-    capitalFlowPreferred: 'ft_v1_eastmoney_stock_flow',
-    beta: 'ft_v1_beta_snapshot',
-    betaPreferred: 'ft_v2_risk_beta',
-    announcements: 'ft_v1_report_announcement_list',
-    announcementsPreferred: 'ft_v3_announcements_stock_announcements',
-    research: 'ft_v3_report_stock_reports',
+    capitalFlow: 'ft_v1_eastmoney_stock_flow',
+    announcements: 'ft_v2_announcements_stock_announcements',
+    research: 'ft_v2_report_stock_reports',
 };
-export async function loadSnapshot(session, symbol, asOf, maxKlineDays, signal, announcementLookbackDays = 30, options = {}, logger) {
+export async function loadSnapshot(data, symbol, asOf, maxKlineDays, signal, announcementLookbackDays = 30, options = {}, logger) {
     const range = dateRange(asOf, maxKlineDays);
     const includeAnnouncements = options.includeAnnouncements ?? true;
     const includeResearch = options.includeResearch ?? true;
     const includeExtendedFacts = options.includeExtendedFacts ?? false;
-    const includeRiskFacts = options.includeRiskFacts ?? includeExtendedFacts;
     const currentDate = new Date().toISOString().slice(0, 10);
-    const securityCandidates = asOf === currentDate
-        ? [
-            { tool: TOOLS.securityPreferred, plan: 'Pro', arguments_: { symbols: [normalizeStockSymbol(symbol)] } },
-            { tool: TOOLS.security, plan: 'Free', arguments_: { stock_code: bareStockSymbol(symbol), page: 1, page_size: 5 } },
-        ]
-        : [{ tool: TOOLS.security, plan: 'Free', arguments_: { stock_code: bareStockSymbol(symbol), page: 1, page_size: 5 } }];
+    // 一条能力一个接口：当天用实时日线，历史用公司名录快照，二者不再互为降级候选。
+    const securityTool = asOf === currentDate ? TOOLS.securityRealtime : TOOLS.security;
+    const securityArguments = asOf === currentDate
+        ? { symbols: [normalizeStockSymbol(symbol)] }
+        : { stock_code: bareStockSymbol(symbol), page: 1, page_size: 5 };
+    const skipped = { state: 'empty', value: null, rows: [], retryable: false };
     const callSpecs = [
-        { label: '证券行情', candidates: securityCandidates },
+        { tool: securityTool, run: () => callInterface(data, securityTool, securityArguments, signal, logger) },
         {
-            label: '日线行情',
-            candidates: [{ tool: TOOLS.kline, plan: 'Free', arguments_: {
-                        symbol: normalizeStockSymbol(symbol),
-                        interval_unit: 'Day',
-                        interval_value: 1,
-                        since_ts_millis: timestampForDate(range.since),
-                        until_ts_millis: timestampForDate(range.until, true),
-                        adjust_kind: 'Forward',
-                        limit: 500,
-                    } }],
+            tool: TOOLS.kline,
+            run: () => callInterface(data, TOOLS.kline, {
+                symbol: normalizeStockSymbol(symbol),
+                interval_unit: 'Day',
+                interval_value: 1,
+                since_ts_millis: timestampForDate(range.since),
+                until_ts_millis: timestampForDate(range.until, true),
+                adjust_kind: 'Forward',
+                limit: 500,
+            }, signal, logger),
         },
-        { label: '利润表', candidates: [{ tool: TOOLS.income, plan: 'Free', arguments_: { stock_code: bareStockSymbol(symbol) } }] },
-        { label: '现金流量表', candidates: [{ tool: TOOLS.cashflow, plan: 'Free', arguments_: { stock_code: bareStockSymbol(symbol) } }] },
+        { tool: TOOLS.income, run: () => callInterface(data, TOOLS.income, { stock_code: bareStockSymbol(symbol) }, signal, logger) },
+        { tool: TOOLS.cashflow, run: () => callInterface(data, TOOLS.cashflow, { stock_code: bareStockSymbol(symbol) }, signal, logger) },
         {
-            label: '估值',
-            candidates: [{ tool: TOOLS.valuation, plan: 'Free', arguments_: {
-                        symbol: normalizeStockSymbol(symbol),
-                        start_date: range.since,
-                        end_date: range.until,
-                        page: 1,
-                        page_size: 30,
-                    } }],
-        },
-        {
-            label: '公告',
-            invoke: includeAnnouncements
-                ? () => loadRecentAnnouncements(session, symbol, asOf, announcementLookbackDays, signal, logger)
-                : () => Promise.resolve({ data: [], metadata: { source: 'ftshare', skipped: true } }),
+            tool: TOOLS.valuation,
+            run: () => callInterface(data, TOOLS.valuation, {
+                symbol: normalizeStockSymbol(symbol),
+                start_date: range.since,
+                end_date: range.until,
+                page: 1,
+                page_size: 30,
+            }, signal, logger),
         },
         {
-            label: '研报',
-            candidates: includeResearch
-                ? [{ tool: TOOLS.research, plan: 'Basic', arguments_: { type: 'StockReport', stock_code: normalizeStockSymbol(symbol), page: 1, page_size: 30 } }]
-                : undefined,
-            invoke: includeResearch ? undefined : () => Promise.resolve({ data: [], metadata: { source: 'ftshare', skipped: true } }),
+            tool: TOOLS.announcements,
+            run: includeAnnouncements
+                ? () => loadRecentAnnouncements(data, symbol, asOf, announcementLookbackDays, signal, logger)
+                : () => Promise.resolve(skipped),
+        },
+        {
+            tool: TOOLS.research,
+            run: includeResearch
+                ? () => callInterface(data, TOOLS.research, { type: 'StockReport', stock_code: normalizeStockSymbol(symbol), page: 1, page_size: 30 }, signal, logger)
+                : () => Promise.resolve(skipped),
         },
         ...(includeExtendedFacts ? [{
-                label: '个股资金流',
-                candidates: [{ tool: TOOLS.capitalFlowPreferred, plan: 'Free', arguments_: { symbol: normalizeStockSymbol(symbol), start_date: range.since, end_date: range.until, page: 1, page_size: 200 } }],
-            }, {
-                label: '风险暴露',
-                invoke: includeRiskFacts ? undefined : () => Promise.resolve({ data: [], metadata: { skipped: true } }),
-                candidates: [{ tool: TOOLS.betaPreferred, plan: 'Basic', arguments_: { symbol: normalizeStockSymbol(symbol), trade_date: compactDate(asOf) } }, { tool: TOOLS.beta, plan: 'Free', arguments_: { stock_code: bareStockSymbol(symbol), trade_date: compactDate(asOf) } }],
+                tool: TOOLS.capitalFlow,
+                run: () => callInterface(data, TOOLS.capitalFlow, { symbol: normalizeStockSymbol(symbol), start_date: range.since, end_date: range.until, page: 1, page_size: 200 }, signal, logger),
             }] : []),
-        { label: '资产负债表', candidates: [{ tool: 'ft_v1_finance_balance', plan: 'Free', arguments_: { stock_code: bareStockSymbol(symbol) } }] },
+        { tool: 'ft_v1_finance_balance', run: () => callInterface(data, 'ft_v1_finance_balance', { stock_code: bareStockSymbol(symbol) }, signal, logger) },
     ];
-    const calls = await Promise.allSettled(callSpecs.map(spec => spec.invoke
-        ? spec.invoke().then(value => ({
-            value,
-            tool: isRecord(value.metadata) && typeof value.metadata.tool === 'string' ? value.metadata.tool : spec.label,
-            plan: 'Free',
-            attemptedTools: [TOOLS.announcementsPreferred, TOOLS.announcements],
-            permissions: isRecord(value.metadata) && Array.isArray(value.metadata.permissions)
-                ? value.metadata.permissions.filter(isRecord)
-                : [],
-            downgraded: isRecord(value.metadata) && value.metadata.downgraded === true,
-        }))
-        : callWithSubscriptionFallback(session, spec.candidates ?? [], signal, logger)));
+    const calls = await Promise.all(callSpecs.map(async (spec) => {
+        try {
+            return { tool: spec.tool, ...await spec.run() };
+        }
+        catch (error) {
+            // 叶子取数不抛异常：连日期解析这类同步错误也只折成一条 failed，绝不让整份
+            // 快照因为一个模块崩掉。
+            return {
+                tool: spec.tool,
+                state: 'failed',
+                value: null,
+                rows: [],
+                gap: `FTShare 工具调用失败：${spec.tool}`,
+                warning: error instanceof Error ? error.message : String(error),
+                retryable: false,
+            };
+        }
+    }));
     const dataGaps = [];
     const warnings = [];
     const permissions = [];
     const blockedPermissions = [];
     const successful = new Map();
-    const selectedTools = new Map();
-    calls.forEach((result, index) => {
-        if (result.status === 'fulfilled') {
-            successful.set(index, result.value.value);
-            selectedTools.set(index, result.value.tool);
-            const payloadPermissions = permissionNoticesFromPayload(result.value.tool, result.value.value);
-            const effectivePermissions = [...result.value.permissions, ...payloadPermissions];
-            permissions.push(...effectivePermissions);
-            if (effectivePermissions.length > 0) {
-                blockedPermissions.push(...effectivePermissions.map(notice => ({ ...notice, partial: hasSnapshotCallData(index, result.value.value) })));
-            }
-            dataGaps.push(...effectivePermissions.map(item => item.message));
-            warnings.push(...effectivePermissions.map(item => item.message));
-            if (result.value.downgraded)
-                warnings.push(`FTShare ${callSpecs[index].label} 已从 ${result.value.attemptedTools[0]} 降级使用 ${result.value.tool}`);
-            const warning = sourceWarning(result.value.value, result.value.tool);
+    calls.forEach((call, index) => {
+        if (call.permission) {
+            permissions.push(call.permission);
+            blockedPermissions.push(call.permission);
+        }
+        if (call.gap)
+            dataGaps.push(call.gap);
+        if (call.warning)
+            warnings.push(call.warning);
+        if (call.state === 'available' && call.value) {
+            successful.set(index, call.value);
+            const warning = sourceWarning(call.value, call.tool);
             if (warning)
                 warnings.push(warning);
         }
-        else {
-            dataGaps.push(`FTShare 工具调用失败：${callSpecs[index].label}`);
-            if (isFtSharePermissionError(result.reason)) {
-                const notices = permissionNotices(result.reason);
-                permissions.push(...notices);
-                blockedPermissions.push(...notices);
-                dataGaps.push(...notices.map(item => item.message));
-                warnings.push(...notices.map(item => item.message));
-            }
-            else {
-                warnings.push(result.reason instanceof Error ? result.reason.message : String(result.reason));
-            }
-        }
     });
     let securitySource = successful.get(0);
-    // A Pro real-time endpoint can legitimately return an empty `items` array
-    // outside a trading session. Treat that as unavailable and use the free
-    // snapshot endpoint rather than exposing an empty quote as valid data.
-    if (securitySource && selectedTools.get(0) === TOOLS.securityPreferred
+    // 实时接口在非交易时段会返回「调用成功但没有收盘价」的信封。旧实现在这时降级调
+    // 免费快照接口；候选链删除后不再降级，如实记为缺少实时行情，绝不让空信封变成一条
+    // 全是 null 的假报价（下游据此误判「有行情」并压掉正确的缺口标记）。
+    if (securitySource && securityTool === TOOLS.securityRealtime
         && !klineRows(securitySource).some(row => number(row, 'close', 'close_price', 'price', 'last', 'last_price') !== null)) {
-        try {
-            securitySource = await session.call(TOOLS.security, { stock_code: bareStockSymbol(symbol), page: 1, page_size: 5 }, signal);
-            successful.set(0, securitySource);
-            selectedTools.set(0, TOOLS.security);
-            warnings.push(`FTShare ${TOOLS.securityPreferred} 返回空实时数据，已降级使用 ${TOOLS.security}`);
-        }
-        catch (error) {
-            if (isFtSharePermissionError(error)) {
-                const notices = permissionNotices(error);
-                logger?.warn('ftshare.permission_denied', {
-                    section: 'security_quote',
-                    tools: [TOOLS.securityPreferred, TOOLS.security],
-                    code: notices[0]?.code,
-                    requiredPlan: notices[0]?.requiredPlan,
-                    errorType: 'permission_denied',
-                });
-                permissions.push(...notices);
-                blockedPermissions.push(...notices);
-                dataGaps.push(...notices.map(item => item.message));
-                warnings.push(...notices.map(item => item.message));
-            }
-            else {
-                warnings.push(error instanceof Error ? error.message : String(error));
-            }
-        }
+        securitySource = undefined;
+        warnings.push(`FTShare ${TOOLS.securityRealtime} 未返回可用实时行情，本次不展示报价`);
     }
     const securityRows = securitySource ? klineRows(securitySource) : [];
-    // An empty envelope (for example `{ data: [], metadata: ... }`) must not be
-    // converted into a truthy quote object containing only null fields.  That
-    // phantom quote would make downstream core-availability checks think the
-    // report had usable market data and would suppress the correct module mask.
     const rawSecurityRow = securityRows[0] ?? rows(securitySource ?? {})[0];
     const securityRow = rawSecurityRow ? normalizeQuote(rawSecurityRow) : null;
     const ohlcvSource = successful.get(1);
@@ -446,8 +358,7 @@ export async function loadSnapshot(session, symbol, asOf, maxKlineDays, signal, 
     const announcementSource = successful.get(5);
     const researchSource = successful.get(6);
     const capitalFlowSource = includeExtendedFacts ? successful.get(7) : undefined;
-    const betaSource = includeExtendedFacts ? successful.get(8) : undefined;
-    const balanceSource = successful.get(includeExtendedFacts ? 9 : 7);
+    const balanceSource = successful.get(includeExtendedFacts ? 8 : 7);
     const name = text(securityRow ?? {}, 'name', 'stock_name', 'company_name')
         ?? text(rows(incomeSource ?? {})[0] ?? {}, 'stock_name', 'company_name', 'name')
         ?? text(rows(valuationSource ?? {})[0] ?? {}, 'stock_name', 'company_name', 'name')
@@ -477,20 +388,7 @@ export async function loadSnapshot(session, symbol, asOf, maxKlineDays, signal, 
             small_net_val: number(row, 'small_net_val', 'small_net', 'smallNet', 'small_net_inflow'),
         };
     };
-    const normalizeBeta = (row) => {
-        if (!row)
-            return null;
-        const generic = number(row, 'beta', 'beta_value');
-        return {
-            ...row,
-            trade_date: dateText(row.trade_date ?? row.tradeDate ?? row.date ?? row.ts_millis ?? row.tsMillis) ?? text(row, 'trade_date', 'tradeDate', 'date'),
-            beta_1y: number(row, 'beta_1y', 'beta1y', 'beta_1_year', 'one_year_beta') ?? generic,
-            beta_2y: number(row, 'beta_2y', 'beta2y', 'beta_2_year', 'two_year_beta'),
-            beta_100w: number(row, 'beta_100w', 'beta100w', 'beta_100_week', 'hundred_week_beta'),
-        };
-    };
     const capitalFlow = includeExtendedFacts ? normalizeCapitalFlow(latestRow(capitalFlowSource)) : null;
-    const beta = includeExtendedFacts ? normalizeBeta(latestRow(betaSource)) : null;
     if (!securityRow)
         dataGaps.push('缺少 FTShare 实时行情数据');
     if (ohlcv.length === 0)
@@ -503,8 +401,6 @@ export async function loadSnapshot(session, symbol, asOf, maxKlineDays, signal, 
         dataGaps.push('缺少 FTShare 估值数据');
     if (includeExtendedFacts && !capitalFlow)
         dataGaps.push('缺少 FTShare 个股资金流数据');
-    if (includeRiskFacts && !beta)
-        dataGaps.push('缺少 FTShare 风险暴露数据');
     if (includeAnnouncements && (!announcementSource || rows(announcementSource).length === 0))
         dataGaps.push('缺少 FTShare 公告数据');
     if (includeResearch && (!researchSource || rows(researchSource).length === 0))
@@ -513,8 +409,19 @@ export async function loadSnapshot(session, symbol, asOf, maxKlineDays, signal, 
     let marginSource;
     const marginDate = ohlcv.filter(point => point.date <= asOf).at(-1)?.date;
     if (includeExtendedFacts && marginDate) {
-        try {
-            marginSource = await session.call('ft_v1_margin_trading_details', { stock: normalizeStockSymbol(symbol), date: compactDate(marginDate) }, signal);
+        const margin = await callInterface(data, 'ft_v1_margin_trading_details', { stock: normalizeStockSymbol(symbol), date: compactDate(marginDate) }, signal, logger);
+        if (margin.permission) {
+            permissions.push(margin.permission);
+            blockedPermissions.push(margin.permission);
+            dataGaps.push(margin.permission.message);
+        }
+        else if (margin.state === 'failed') {
+            dataGaps.push('FTShare 两融接口调用失败');
+        }
+        if (margin.warning)
+            warnings.push(margin.warning);
+        if (margin.state === 'available' && margin.value) {
+            marginSource = margin.value;
             const row = rows(marginSource).find(row => bareStockSymbol(String(row.symbol ?? '')) === bareStockSymbol(symbol) && dateText(row.date) === marginDate);
             if (row) {
                 const financing = number(row, 'margin_trading_balance');
@@ -526,36 +433,21 @@ export async function loadSnapshot(session, symbol, asOf, maxKlineDays, signal, 
             if (!marginDetail)
                 dataGaps.push(`FTShare ${marginDate} 未返回该标的两融记录`);
         }
-        catch (error) {
-            if (isFtSharePermissionError(error)) {
-                const notices = permissionNotices(error);
-                logger?.warn('ftshare.permission_denied', {
-                    section: 'margin',
-                    tools: ['ft_v1_margin_trading_details'],
-                    code: notices[0]?.code,
-                    requiredPlan: notices[0]?.requiredPlan,
-                    errorType: 'permission_denied',
-                });
-                permissions.push(...notices);
-                blockedPermissions.push(...notices);
-                dataGaps.push(...notices.map(item => item.message));
-            }
-            else
-                dataGaps.push('FTShare 两融接口调用失败');
-            warnings.push(error instanceof Error ? error.message : String(error));
+        else if (margin.state === 'empty') {
+            dataGaps.push(`FTShare ${marginDate} 未返回该标的两融记录`);
         }
     }
     const sources = [];
     [
-        [selectedTools.get(0) ?? TOOLS.security, securitySource],
+        [securityTool, securitySource],
         [TOOLS.kline, ohlcvSource],
         [TOOLS.income, incomeSource],
         ['ft_v1_finance_balance', balanceSource],
         ['ft_v1_margin_trading_details', marginSource],
         [TOOLS.cashflow, cashflowSource],
         [TOOLS.valuation, valuationSource],
-        ...(includeExtendedFacts ? [[selectedTools.get(7) ?? TOOLS.capitalFlow, capitalFlowSource], [selectedTools.get(8) ?? TOOLS.beta, betaSource]] : []),
-        ...(includeAnnouncements ? [[selectedTools.get(5) ?? TOOLS.announcements, announcementSource]] : []),
+        ...(includeExtendedFacts ? [[TOOLS.capitalFlow, capitalFlowSource]] : []),
+        ...(includeAnnouncements ? [[TOOLS.announcements, announcementSource]] : []),
         ...(includeResearch ? [[TOOLS.research, researchSource]] : []),
     ].forEach(([tool, source]) => {
         if (source)
@@ -578,14 +470,13 @@ export async function loadSnapshot(session, symbol, asOf, maxKlineDays, signal, 
         valuation: valuationRows[0] ?? null,
         capitalFlow,
         marginDetail,
-        beta,
         announcements: announcementSource ? rows(announcementSource).slice(0, 30) : [],
         research: researchSource ? rows(researchSource).slice(0, 30) : [],
         provenance: sources,
         dataGaps: [...new Set(dataGaps)],
         warnings: [...new Set(warnings)],
-        permissions: [...new Map(permissions.map(item => [`${item.tool}:${item.requiredPlan}`, item])).values()],
-        blockedPermissions: [...new Map(blockedPermissions.map(item => [`${item.tool}:${item.requiredPlan}`, item])).values()],
+        permissions: [...new Map(permissions.map(item => [permissionKey(item), item])).values()],
+        blockedPermissions: [...new Map(blockedPermissions.map(item => [permissionKey(item), item])).values()],
     };
 }
 //# sourceMappingURL=ftshare-data.js.map

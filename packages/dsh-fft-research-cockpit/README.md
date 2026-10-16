@@ -28,7 +28,7 @@ dsh-investment-research/                 # 当前 checkout 目录
 │   ├── report-tool.ts
 │   ├── report-service.ts
 │   ├── portfolio-recommendation.ts  # 候选池筛选、主题/分散选股与权重
-│   ├── ftshare-client.ts
+│   ├── ftshare-call.ts                 # 与 FTShare 底座之间唯一的接缝（四态 → 报告四本账）
 │   ├── ftshare-data.ts
 │   ├── indicators.ts
 │   ├── llm-report.ts
@@ -46,59 +46,58 @@ dsh-investment-research/                 # 当前 checkout 目录
     └── sector_analysis_report.html
 ```
 
-插件遵循 Harness 官方的 Cordis 形态：入口导出 `apply(ctx, config)`，通过 `inject` 声明 `tools`、`llm`、`ftshareSettings`，工具使用 `defineTool` 注册；`package.json` 同时声明 `dsh.client`，让 DSH Web 自动加载报告卡片。正式分发采用 `dsh.bundle.patch` 组合包格式。参考：[第一个插件](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/index.zh.md)、[开发一个工具](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/tool.zh.md)、[打包与安装插件](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/publish.zh.md)。
+插件遵循 Harness 官方的 Cordis 形态：入口导出 `apply(ctx, config)`，通过 `inject` 声明 `tools`、`llm`、`ftshareData`，工具使用 `defineTool` 注册；`package.json` 同时声明 `dsh.client`，让 DSH Web 自动加载报告卡片。正式分发采用 `dsh.bundle.patch` 组合包格式。参考：[第一个插件](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/index.zh.md)、[开发一个工具](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/tool.zh.md)、[打包与安装插件](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/publish.zh.md)。
 
 ### 两个平面的入口
 
 包根入口 `index.ts` 是**纯载体**：不带 `inject`、不注册任何工具。原因是 DSH 只从根 loader 的 entries 组合浏览器模块图，而 preset 把自己的行挂在扫描看不到的子树里；只有一行裸包名的全局行才能让报告卡片、会话「报告」视图和侧栏 tab 加载出来。工具注册全部在 `agent.ts`（`@ft/dsh-fft-research-cockpit/agent`），由 preset 或本包 patch 的 `/agent` 行挂载——子路径行不产生浏览器模块源，因此两行不会重复注册。
 
-本包的 `cordis.patch.yml` 因此插入两行（都在全局层）：裸包名载体行 + `/agent` 工具行。
+本包的 `cordis.patch.yml` 因此插入两行（都在全局层）：裸包名载体行 + `/agent` 工具行。取数服务 `ftshareData` 由 FTShare 底座 `@ft/dsh-fft-ftshare` 在全局层 `provide`，所以本包单独安装时必须同时安装底座（`dsh plugin --profile <name> add @ft/dsh-fft-ftshare`），否则 `/agent` 行会挂起等待该服务——这是刻意的 fail-loud，不会退回任何自建客户端。
 
-## FTShare 配置
+## FTShare 数据来源
 
-默认地址是 `https://market.ft.tech/gateway/mcp`。FTShare 的部分实时行情、日线和研报接口需要 API Key；插件不会把密钥写入仓库，可通过环境变量注入：
+本包**不连接 FTShare 网关**，也不读任何凭据：网关地址、API Key 解析与四态归一全部归公用底座 `@ft/dsh-fft-ftshare`，本包只注入它的服务取数：
+
+```ts
+export const inject = ['tools', 'llm', 'ftshareData']
+
+const result = await ctx.ftshareData.call('ft_v1_finance_income', { stock_code })
+```
+
+结局只看 `result.state`：`available` 渲染明细、`empty` 才是「没有数据」（中性数据缺口）、`denied` 是无权访问（渲染升级入口）、`failed` 是取数失败。**`empty` 与 `denied` 不可混同**。
+
+一条能力对一个上游接口，**不做候选降级**：上游拒绝就如实展示，不再尝试同族接口。凭据与档位由底座统一处理，本包不猜档位。
 
 报告默认只保存在 DSH 会话结果中，供 Web 独立报告视图或右侧详情面板读取；插件不会自动创建或覆盖工作区文件。独立报告视图使用会话正文的完整宽度，提供返回对话、报告切换、全屏阅读以及 HTML、PDF、PNG 下载。点击下载按钮时，浏览器才会保存当前报告。
 
-```bash
-export FTSHARE_API_KEY='你的 FTShare API Key'
-pnpm test:ftshare 300750 2026-09-02
-```
+全部报告均优先读取真实 FTShare 数据；不同报告按需调用行情、日线、财务、估值、公告、资金流、行业、涨停、ETF 等接口。LLM 只能使用本次 FTShare 返回的事实，未接入字段统一以数据遮罩呈现，并保留已返回事实。
 
-也可以在 Harness 的插件配置中传入请求头：
+当前使用的核心接口为：
 
-```yaml
-config:
-```
-
-全部报告均优先读取真实 FTShare 数据；不同报告按需调用行情、日线、财务、估值、公告、资金流、行业、涨停、ETF 等 FTShare 工具。LLM 只能使用本次 FTShare 返回的事实，未接入字段统一以数据遮罩呈现，并保留已返回事实。
-
-当前使用的核心 FTShare 工具为：
-
-| 数据 | 工具 |
+| 数据 | 接口 |
 | --- | --- |
-| 证券行情 | `ft_v1_company_list` |
+| 证券行情 | `ft_v4_stock_realtime_day_kline`（当天）/ `ft_v1_company_list`（历史与兜底快照） |
 | 日线 OHLCV | `ft_v1_stock_candlesticks` |
 | 利润表 | `ft_v1_finance_income` |
 | 现金流量表 | `ft_v1_finance_cashflow` |
+| 资产负债表 | `ft_v1_finance_balance` |
 | 个股估值 | `ft_v1_eastmoney_stock_valuation` |
-| 公司公告 | `ft_v1_report_announcement_list` |
+| 个股资金流 | `ft_v1_eastmoney_stock_flow` |
+| 风险暴露 | `ft_v2_risk_beta` |
+| 公司公告 | `ft_v3_announcements_stock_announcements` |
 | 机构研报 | `ft_v3_report_stock_reports` |
+| 两融明细 | `ft_v1_margin_trading_details` |
 
 报告级数据接口还会按报告类型补充调用：
 
 - 市场点评/复盘：`ft_v1_daec_stocks`、`ft_v1_daec_market_snapshot`、`ft_v1_eastmoney_market_valuation`、`ft_v1_stock_capital_flows`、`ft_v2_eastmoney_dapan_flow`、`ft_v2_ths_hot_list`、`ft_v1_limit_list`、ETF 描述接口；
-- 板块分析：`ft_v1_ths_board_list`、`ft_v1_sw_industry_overview`、`ft_v1_ths_all_board_kline`（自动兼容 `ft_v1_ths_board_kline`）、`ft_v1_ths_industry_daily_flow`、`ft_v1_eastmoney_sector_flow`、`ft_v1_tdx_board_members`、产业链接口及成员实时行情接口；
-- ETF 组合：`ft_v2_etf_description_all`、`ft_v4_etf_realtime_day_kline`，并自动降级到 `ft_v1_etf_candlesticks`；
-- 涨停归因：`ft_v1_limit_list`、`ft_v2_limit_event_timeline_3s`、`ft_v3_limit_up_reports_briefs` 及公告兼容接口。
+- 板块分析：`ft_v1_ths_board_list`、`ft_v1_sw_industry_overview`、`ft_v1_ths_board_kline`、`ft_v1_ths_industry_daily_flow`、`ft_v1_eastmoney_sector_flow`、`ft_v1_tdx_board_members`、产业链接口及成员实时行情接口；
+- ETF 组合：`ft_v2_etf_description_all`、`ft_v4_etf_realtime_day_kline`、`ft_v1_etf_candlesticks`；
+- 涨停归因：`ft_v1_limit_list`、`ft_v2_limit_event_timeline_3s`、`ft_v3_limit_up_reports_briefs` 及公告接口。
 
-接口返回空数据或被拒绝时，报告会保留已获得的真实内容，并把原因写入 `dataGaps`/`warnings`；权限受限模块使用升级遮罩，普通空数据使用中性占位，绝不填充模拟金融数据。套餐按 FTShare 文档的免费版、基础版、进阶版、专业版（Pro）识别；同一数据存在多个接口时，默认按专业版 → 进阶版 → 基础版 → 免费版尝试，在上游明确返回权限不足、接口别名不支持或结果为空时尝试已配置的兼容接口。降级前的权限缺口同时保留在 `permissions` 和 `blockedPermissions` 中；返回了可用事实时以 `partial` 标记，在保留这些事实的同时展示独立受限数据遮罩。
+接口返回空数据或被拒绝时，报告会保留已获得的真实内容，并把原因写入 `dataGaps`/`warnings`：权限受限模块使用升级遮罩，普通空数据使用中性占位，绝不填充模拟金融数据。上游的权限提示（含升级入口）来自底座归一的 `notice`，本包不再自己解析 MCP 错误信封或成功响应里的权限元数据。
 
-权限限制统一从 MCP 错误及成功响应的权限元数据读取。深度研读报告保留完整量化底稿（财务、估值、资金流、两融、风险暴露及图表），缺失值不伪造；已移除独立 T0 评估，市场份额、竞争格局、历史分位和同业比较仅在有实际内容时展示。章节编号随内容连续排列。订阅受限与普通空数据仍分别处理。未匹配到既有展示位置的受限接口会保留具名遮罩，避免静默消失。普通空数据不冒充订阅限制。
-
-若 FTShare 返回订阅权限不足，结果会包含 `permissions`，并在对应 HTML 数据模块内显示 50% 透明灰色遮罩和可点击的 [升级 FtShare 订阅](https://ftai.chat/me/profile?tab=subscription) 入口；页面顶部不再插入统一权限横幅。当前已接入的典型降级链包括：专业版实时股票日 K → 免费版公司/行情快照；基础版股票公告 → 免费版兼容公告接口。行情和研报权限不足时仍可生成降级报告；日线、财务、估值和公告会独立保留。
-
-非权限型数据缺口会保留其余已接入事实，并在对应模块使用中性占位；明确的 FTShare 权限不足会显示 50% 透明升级遮罩和升级入口。报告正文不暴露“数据不足”“当前模块无法接入”或底层工具调用诊断。
+深度研读报告保留完整量化底稿（财务、估值、资金流、两融、风险暴露及图表），缺失值不伪造；已移除独立 T0 评估，市场份额、竞争格局、历史分位和同业比较仅在有实际内容时展示。非权限型数据缺口保留其余已接入事实，并在对应模块使用中性占位；明确的权限不足显示 50% 透明升级遮罩和可点击的 [升级 FtShare 订阅](https://ftai.chat/me/profile?tab=subscription) 入口。报告正文不暴露“数据不足”“当前模块无法接入”或底层工具调用诊断。
 
 ## 本地开发
 
@@ -109,9 +108,11 @@ pnpm install
 pnpm build
 ```
 
-本地无密钥只能运行接口契约与渲染验收；不会生成或展示模拟金融数据：
+本地无密钥即可跑全部接口契约与渲染验收（取数用假服务，`denied`/`empty`/`failed` 都能覆盖）；需要真实 LLM 的用例才要求 `DEEPSEEK_API_KEY`。不会生成或展示模拟金融数据：
 
 ```bash
+pnpm test
+pnpm test:ftshare          # 四态契约 + denied/empty 不可混同
 pnpm test:report-facts
 pnpm test:completeness
 pnpm test:llm
@@ -148,7 +149,7 @@ pnpm dsh --profile headless '请调用 cockpit_deep_read_report，对 300750 生
 
 插件需要两类完全不同的凭证：
 
-- `FTSHARE_API_KEY`：只给 FTShare MCP 数据接口使用；
+- FTShare 的 API Key：由 FTShare 底座（`@ft/dsh-fft-ftshare`）经设置服务的 `ftshareSettings.apiKey` 解析一次，本包不读凭据、不持有网关地址；
 - `DEEPSEEK_API_KEY`：由 Harness 的 `deepseek-official` provider 使用，负责 `ctx.llm.stream`。
 
 DSH 会优先从其本地凭证库 `$DSH_HOME/.credentials.yaml`（本机默认为
@@ -158,7 +159,6 @@ DSH 会优先从其本地凭证库 `$DSH_HOME/.credentials.yaml`（本机默认�
 例如在本机源码仓库中做 headless 验证：
 
 ```bash
-export FTSHARE_API_KEY='你的 FTShare key'
 export DEEPSEEK_API_KEY='你的 DeepSeek key'
 cd /Users/xzmini24/FtNova_work/deepseek-harness
 pnpm dsh --profile headless \

@@ -3,10 +3,9 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Context, Logger } from '@deepseek-ai/cordis'
-import type { FtshareSettingsService } from '@ft/dsh-fft-settings/contract'
 
 import { calculateTechnicalSignals } from './indicators.js'
-import { FtShareClient } from './ftshare-client.js'
+import { permissionKey } from './ftshare-call.js'
 import { loadSnapshot } from './ftshare-data.js'
 import { loadReportFacts, type ReportFacts } from './report-data.js'
 import { renderReportHtml, renderReportTemplate, type ReportViewModel, type TemplateContext } from './html-renderer.js'
@@ -155,10 +154,6 @@ async function renderExportArtifacts(html: string, logger?: Logger): Promise<{ p
   }
 }
 
-interface FtshareSettingsContext extends Context {
-  ftshareSettings: FtshareSettingsService
-}
-
 function normalizeAsOf(value?: string): string {
   if (!value) return new Date().toISOString().slice(0, 10)
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new Error('asOf 必须是 YYYY-MM-DD')
@@ -180,9 +175,9 @@ function renderableDataGaps(
   permissions: PermissionNotice[],
   blockedPermissions: PermissionNotice[],
 ): string[] {
-  const permissionKey = (item: PermissionNotice) => `${item.tool}:${item.requiredPlan}:${item.message}`
-  const blockedKeys = new Set(blockedPermissions.map(permissionKey))
-  const resolvedMessages = new Set(permissions.filter(item => !blockedKeys.has(permissionKey(item))).map(item => item.message))
+  const gapKey = (item: PermissionNotice) => `${permissionKey(item)}:${item.message}`
+  const blockedKeys = new Set(blockedPermissions.map(gapKey))
+  const resolvedMessages = new Set(permissions.filter(item => !blockedKeys.has(gapKey(item))).map(item => item.message))
   return dataGaps.filter(gap => !resolvedMessages.has(gap))
 }
 
@@ -205,11 +200,6 @@ function losslessJson(value: unknown): unknown {
     return output
   }
   return value
-}
-
-async function ftshareClient(ctx: Context, config: Config, logger?: Logger): Promise<FtShareClient> {
-  const credential = await (ctx as FtshareSettingsContext).ftshareSettings.apiKey.resolve()
-  return new FtShareClient(config.ftshareUrl, credential, logger)
 }
 
 function uniqueStrings(values: string[]): string[] { return [...new Set(values.map(value => value.trim()).filter(Boolean))] }
@@ -268,17 +258,16 @@ export async function generateDeepReadReport(ctx: Context, args: DeepReadArgs, s
   const symbol = args.symbol.trim()
   if (!symbol) throw new Error('symbol 不能为空')
   const asOf = normalizeAsOf(args.asOf)
-  const client = await ftshareClient(ctx, config, logger)
-  const snapshot = await client.withSession(signal, session => loadSnapshot(
-    session,
+  const snapshot = await loadSnapshot(
+    ctx.ftshareData,
     symbol,
     asOf,
     config.maxKlineDays,
     signal,
     config.announcementLookbackDays,
-    { includeExtendedFacts: true, includeRiskFacts: false },
+    { includeExtendedFacts: true },
     logger,
-  ))
+  )
   const technical = calculateTechnicalSignals(snapshot.ohlcv, config.maxKlineDays)
   const route = llmRoute(ctx, config)
   let structuredReport = null
@@ -312,10 +301,8 @@ export async function generateDeepReadReport(ctx: Context, args: DeepReadArgs, s
   }
   const blockedPermissions = snapshot.blockedPermissions ?? []
   const renderDataGaps = renderableDataGaps(dataGaps, snapshot.permissions, blockedPermissions)
-  // Only pass permissions whose call produced no usable payload. A denied
-  // higher-tier attempt may still have succeeded through a lower-tier
-  // fallback; that notice is retained in warnings/provenance, but must not
-  // hide data that the current subscription actually returned.
+  // 只有底座判定 denied 的调用才进 blockedPermissions，因此这里渲染的遮罩永远是
+  // 「无权访问 + 升级入口」；empty 只落数据缺口，不会变成升级提示。
   const html = await renderReportHtml({ ...viewModel, data_gaps: renderDataGaps }, blockedPermissions)
   const exports = await renderExportArtifacts(html, logger)
   if (!exports.pdf || !exports.png) warnings.push('PDF/PNG 导出资产未能在服务端预渲染；网页端将提供打印或兼容降级路径')
@@ -379,13 +366,12 @@ export async function generateInvestmentReport(ctx: Context, args: InvestmentRep
     throw new Error(`${reportType} 报告需要 symbol、symbols、holdings 或 sectorCode/sectorName`)
   }
   const request: ReportRequest = { ...args, reportType, symbols: args.symbols, holdings: args.holdings }
-  const client = await ftshareClient(ctx, config, logger)
-  let facts = await client.withSession(signal, session => loadReportFacts(session, request, asOf, config, signal, undefined, logger))
-  // Retry an incomplete sector snapshot on a new gateway session and retain
-  // successful facts from both attempts; one failing source must not erase another.
+  let facts = await loadReportFacts(ctx.ftshareData, request, asOf, config, signal, undefined, logger)
+  // Retry an incomplete sector snapshot and retain successful facts from both
+  // attempts; one failing source must not erase another.
   for (let retry = 0; retry < 3 && reportType === 'sector_analysis' && (!facts.sectors.some(row => row.close != null) || !facts.flows.length || !facts.constituents.length || !Array.isArray(facts.raw.sector_classifications) || !facts.raw.sector_classifications.length || facts.raw.sector_classifications_complete !== true || (Array.isArray(facts.raw.sector_member_history) && new Set(facts.raw.sector_member_history.map(row => String(row.symbol))).size < facts.constituents.length))
       && facts.warnings.some(message => message.includes('上游服务暂时不可用')); retry++) {
-    const refreshed = await client.withSession(signal, session => loadReportFacts(session, request, asOf, config, signal, facts, logger))
+    const refreshed = await loadReportFacts(ctx.ftshareData, request, asOf, config, signal, facts, logger)
     const distinct = <T>(items: T[], key: (item: T) => string): T[] => [...new Map(items.map(item => [key(item), item])).values()]
     facts = {
       ...facts,
@@ -395,8 +381,8 @@ export async function generateInvestmentReport(ctx: Context, args: InvestmentRep
       news: distinct([...facts.news, ...refreshed.news], item => JSON.stringify(item)),
       raw: { ...facts.raw, ...refreshed.raw, sector_member_history: distinct([...(Array.isArray(facts.raw.sector_member_history) ? facts.raw.sector_member_history : []), ...(Array.isArray(refreshed.raw.sector_member_history) ? refreshed.raw.sector_member_history : [])], row => JSON.stringify(row)), sector_classifications: distinct([...(Array.isArray(facts.raw.sector_classifications) ? facts.raw.sector_classifications : []), ...(Array.isArray(refreshed.raw.sector_classifications) ? refreshed.raw.sector_classifications : [])], row => JSON.stringify(row)) },
       provenance: [...facts.provenance, ...refreshed.provenance],
-      permissions: distinct([...facts.permissions, ...refreshed.permissions], item => `${item.tool}:${item.requiredPlan}`),
-      blockedPermissions: distinct([...facts.blockedPermissions, ...refreshed.blockedPermissions], item => `${item.tool}:${item.requiredPlan}`),
+      permissions: distinct([...facts.permissions, ...refreshed.permissions], permissionKey),
+      blockedPermissions: distinct([...facts.blockedPermissions, ...refreshed.blockedPermissions], permissionKey),
       dataGaps: uniqueStrings([...facts.dataGaps, ...refreshed.dataGaps]),
       warnings: uniqueStrings([...facts.warnings, ...refreshed.warnings]),
     }
@@ -407,9 +393,8 @@ export async function generateInvestmentReport(ctx: Context, args: InvestmentRep
   const context = generated.context
   const reportPathName = `FtAi-${safeSymbol(args.symbol ?? args.sectorCode ?? args.sectorName ?? symbolsFor(request)[0] ?? reportType)}-${asOf}-${reportType}.html`
   const renderDataGaps = renderableDataGaps(facts.dataGaps, facts.permissions, facts.blockedPermissions)
-  // Render subscription veils only for calls that ended without usable data.
-  // Successful lower-tier fallbacks remain visible; their permission notices
-  // stay available in the result metadata and warnings for transparency.
+  // 遮罩只认 blockedPermissions（底座判定 denied 的调用）；上游「没有数据」只进
+  // dataGaps，用中性占位呈现，绝不被写成升级要求。
   const html = await renderReportTemplate(reportType, context, facts.blockedPermissions, renderDataGaps)
   const exports = await renderExportArtifacts(html, logger)
   const warnings = [...facts.warnings]
