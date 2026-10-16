@@ -1,16 +1,17 @@
 # dsh-fft-ftshare bundle patch
 #
-# `dsh.bundle.patch` layer of the published package. It carries three rows on
+# `dsh.bundle.patch` layer of the published package. It carries four rows on
 # purpose, because the two installation paths need different planes:
 #
 #   * through the composition bundle `@ft/dsh-fft-bundle` — that patch inserts
 #     the bare-name provider row globally (a `provide` cannot live in a preset)
-#     and mounts this package's `/tools` and `/project` entries from
+#     and mounts this package's `/tools`, `/mask` and `/project` entries from
 #     `preset-ft-finance`; DO NOT add this package separately, or every row
 #     lands twice (see README).
 #   * standalone (`dsh plugin --profile <name> add @ft/dsh-fft-ftshare`) —
-#     there is no preset, so all three rows go on the global plane and the
-#     tools plus the projection hook simply apply to every agent.
+#     there is no preset, so all four rows go on the global plane: the tools and
+#     the mask apply to every agent, and the projection hook covers every MCP
+#     result.
 #
 # The bare package name is the only row that provides the service. This package
 # declares no `dsh.client`, so a bare-name row never composes a browser module
@@ -20,5 +21,7 @@
       name: '@ft/dsh-fft-ftshare'
     - id: ft-ftshare-tools
       name: '@ft/dsh-fft-ftshare/tools'
+    - id: ft-ftshare-mask
+      name: '@ft/dsh-fft-ftshare/mask'
     - id: ft-ftshare-project
       name: '@ft/dsh-fft-ftshare/project'

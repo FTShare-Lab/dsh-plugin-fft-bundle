@@ -39,6 +39,7 @@ const ADDED_PLUGINS = [
   'mcp-dsh-kline',
   'ft-research-cockpit-tools',
   'ft-ftshare-tools',
+  'ft-ftshare-mask',
   'ft-ftshare-project',
   'dsh-fft-factor-intake-standard',
 ]
@@ -53,11 +54,11 @@ const GLOBAL_ROWS = ['dsh-fft-settings', 'dsh-fft-ftshare', 'newapi-wechat-sso',
 /**
  * Rows that must mount only from inside the finance preset.
  *
- * The last two are the FTShare tool whitelist and the P7/P8 projection hook:
- * both must be absent from the standard mode, which is exactly what mounting
- * them from the preset (and nowhere else) buys.
+ * The last three are the FTShare tool surface, the kline FTShare-wrapper mask and
+ * the P7/P8 projection hook: all of them must be absent from the standard mode,
+ * which is exactly what mounting them from the preset (and nowhere else) buys.
  */
-const PRESET_ONLY_ROWS = ['mcp-dsh-kline', 'ft-ftshare-tools', 'ft-ftshare-project', 'dsh-fft-factor-intake-standard']
+const PRESET_ONLY_ROWS = ['mcp-dsh-kline', 'ft-ftshare-tools', 'ft-ftshare-mask', 'ft-ftshare-project', 'dsh-fft-factor-intake-standard']
 /** The official composition this copy was taken from; growing requires a re-sync. */
 const UPSTREAM_PLUGIN_COUNT = 19
 

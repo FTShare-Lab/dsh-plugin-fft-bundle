@@ -22,6 +22,10 @@
       "types": "./lib/tools.d.ts",
       "default": "./lib/tools.js"
     },
+    "./mask": {
+      "types": "./lib/mask.d.ts",
+      "default": "./lib/mask.js"
+    },
     "./project": {
       "types": "./lib/project.d.ts",
       "default": "./lib/project.js"
@@ -44,7 +48,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "catalog": "pnpm run build && node scripts/build-catalog.mjs",
     "catalog:check": "pnpm run build && node scripts/build-catalog.mjs --check",
-    "test": "pnpm run build && node scripts/test-projection.mjs && node scripts/test-service.mjs && node scripts/test-catalog.mjs"
+    "test": "pnpm run build && node scripts/test-projection.mjs && node scripts/test-service.mjs && node scripts/test-catalog.mjs && node scripts/test-mask.mjs"
   },
   "dependencies": {
     "@ft/dsh-fft-settings": "git+ssh://git@github.com/FTShare-Lab/dsh-plugin-fft-bundle.git#path:packages/dsh-fft-settings",
