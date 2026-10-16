@@ -16,6 +16,8 @@ interface UpstreamErrorEnvelope {
     message: string;
     requiredPlan?: string;
 }
+/** 配额用尽时附在失败提示后的文案。 */
+export declare const FTSHARE_QUOTA_NOTICE = "\u514D\u8D39\u914D\u989D\u7528\u5C3D\uFF0C\u914D\u7F6E FTShare API Key \u6216\u7A0D\u540E\u91CD\u8BD5";
 /** 判断一个值是不是可当对象读的记录。 */
 export declare function isRecord(value: unknown): value is Record<string, unknown>;
 /** 读一个非空字符串；其余一律 undefined。 */

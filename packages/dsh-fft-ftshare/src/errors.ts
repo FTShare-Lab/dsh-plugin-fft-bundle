@@ -21,7 +21,8 @@ interface UpstreamErrorEnvelope {
 
 /**
  * 权限类错误码：上游 HTTP 层的 403 语义，以及本包与 `dsh-kline` 的归一码。
- * 只列确定表达「无权」的码，不把 404/参数错误也算进来。
+ * 只列确定表达「无权」的码，不把 404/参数错误也算进来。**配额类不算权限**：匿名
+ * 通道有 500 次/日的额度，用尽与「套餐没开通」是两种事，见 {@link QUOTA_CODES}。
  */
 const PERMISSION_CODES = new Set([
   '403',
@@ -35,10 +36,17 @@ const PERMISSION_CODES = new Set([
   'invalid_key',
   'invalid_api_key',
   'auth_required',
-  'insufficient_quota',
-  'quota_exceeded',
   'subscription_required',
 ])
+
+/**
+ * 配额类错误码。实测匿名通道额度用尽时上游返回 `UPSTREAM_UNAVAILABLE`——与「上游
+ * 真的挂了」同码，因此文案不冒充结论，把两条出路都写出来。
+ */
+const QUOTA_CODES = new Set(['upstream_unavailable', 'insufficient_quota', 'quota_exceeded', 'quota_exhausted'])
+
+/** 配额用尽时附在失败提示后的文案。 */
+export const FTSHARE_QUOTA_NOTICE = '免费配额用尽，配置 FTShare API Key 或稍后重试'
 
 /** 中文/英文文案里的权限信号。用于上游只给一句话、不给码的情况。 */
 const PERMISSION_TEXT = /套餐|权限|订阅|升级|未开通|未授权|无权限|额度|permission|subscription|unauthori[sz]ed|forbidden|not\s+allowed/i
@@ -154,12 +162,14 @@ export function classifyFailure(error: unknown, tool: string): { state: 'denied'
     return { state: 'denied', notice: deniedNotice(tool, parsed.code, parsed.message, parsed.requiredPlan) }
   }
   const code = parsed.code ?? 'upstream_error'
-  const retryable = isRetryableSignal(parsed.code, parsed.message)
+  const quota = parsed.code !== undefined && QUOTA_CODES.has(parsed.code.toLowerCase())
+  const retryable = quota || isRetryableSignal(parsed.code, parsed.message)
+  const tail = quota ? `。${FTSHARE_QUOTA_NOTICE}` : retryable ? '。可稍后重试。' : ''
   return {
     state: 'failed',
     notice: {
       code,
-      message: `FTShare ${tool} 调用失败（${code}）：${parsed.message}${retryable ? '。可稍后重试。' : ''}`,
+      message: `FTShare ${tool} 调用失败（${code}）：${parsed.message}${tail}`,
       retryable,
     },
   }

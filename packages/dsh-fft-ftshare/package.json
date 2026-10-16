@@ -1,7 +1,7 @@
 {
   "name": "@ft/dsh-fft-ftshare",
   "version": "0.1.0",
-  "description": "FTShare 公用底座：一处取数、一处把结果归一成 available/empty/denied/failed，并把 dsh-kline 摘要式 MCP 工具的明细投影回模型可见文本。",
+  "description": "FTShare 数据底座：全 bundle 唯一出站、一处四态归一、一处模型可见面，并随包发布上游接口目录。",
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -14,6 +14,10 @@
       "types": "./lib/contract.d.ts",
       "default": "./lib/contract.js"
     },
+    "./catalog": {
+      "types": "./lib/catalog.d.ts",
+      "default": "./lib/catalog.js"
+    },
     "./tools": {
       "types": "./lib/tools.d.ts",
       "default": "./lib/tools.js"
@@ -22,11 +26,15 @@
       "types": "./lib/project.d.ts",
       "default": "./lib/project.js"
     },
+    "./catalog.json": "./catalog.json",
     "./cordis.patch.yml": "./cordis.patch.yml",
     "./package.json": "./package.json"
   },
   "files": [
     "lib",
+    "catalog.json",
+    "catalog.txt",
+    "catalog.meta.json",
     "README.md",
     "cordis.patch.yml",
     "package.json"
@@ -34,7 +42,9 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "pnpm run build && node scripts/test-projection.mjs && node scripts/test-service.mjs"
+    "catalog": "pnpm run build && node scripts/build-catalog.mjs",
+    "catalog:check": "pnpm run build && node scripts/build-catalog.mjs --check",
+    "test": "pnpm run build && node scripts/test-projection.mjs && node scripts/test-service.mjs && node scripts/test-catalog.mjs"
   },
   "dependencies": {
     "@ft/dsh-fft-settings": "git+ssh://git@github.com/FTShare-Lab/dsh-plugin-fft-bundle.git#path:packages/dsh-fft-settings",

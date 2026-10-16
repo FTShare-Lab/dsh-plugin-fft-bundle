@@ -206,7 +206,7 @@ console.log('ftshareData.call: four-state normalization, notices, rows and tool 
     },
   }
   apply(toolCtx)
-  assert.equal(registered.length, 8, '接口表里有 8 条暴露给模型的能力')
+  assert.equal(registered.length, 9, '接口表里 8 条暴露能力，外加通用直调 ftshare_call')
   const names = registered.map(definition => definition.name)
   assert.equal(new Set(names).size, names.length, '工具名不能重复')
   for (const name of names) assert.ok(name.startsWith('ftshare_'), `${name} 必须用 ftshare_ 前缀`)
@@ -229,4 +229,4 @@ console.log('ftshareData.call: four-state normalization, notices, rows and tool 
   assert.ok(!denied.text.includes('=0'))
 }
 
-console.log('provider plane: provide ftshareData, credentials deferred to settings; tools plane: 8 ftshare_* tools, four states in the body passed')
+console.log('provider plane: provide ftshareData, credentials deferred to settings; tools plane: 8 ftshare_* tools plus ftshare_call, four states in the body passed')
