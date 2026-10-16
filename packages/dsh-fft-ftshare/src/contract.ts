@@ -1,11 +1,11 @@
 /**
  * `@ft/dsh-fft-ftshare/contract` —— FTShare 公用底座的冻结契约。
  *
- * 消费方只需要 `import type { FtshareMarketService } from '@ft/dsh-fft-ftshare/contract'`，
+ * 消费方只需要 `import type { FtshareDataService } from '@ft/dsh-fft-ftshare/contract'`，
  * 不依赖本包的实现、传输层或 MCP SDK。本模块只有类型与常量，没有运行时依赖，
  * 因此宿主插件与测试都能安全引用。
  *
- * 设计要点是 **三态归一**：FTShare 网关把「真的没有数据」「套餐无权限（403
+ * 设计要点是 **四态归一**：FTShare 网关把「真的没有数据」「套餐无权限（403
  * route_not_allowed）」「取数失败」三种情况都表现为「空」，调用方若只判断空数组就
  * 会把「无权限」误读成「没有数据」。{@link FtshareCallResult.state} 强制区分这四种
  * 结局，并把权限提示挂在 {@link FtshareCallResult.notice} 上。
@@ -13,7 +13,7 @@
  */
 
 /** 服务在 cordis `Context` 上的名字，也是 `ctx.provide` 的键。 */
-export const FTSHARE_MARKET_SERVICE = 'ftshareMarket' as const
+export const FTSHARE_DATA_SERVICE = 'ftshareData' as const
 
 /** 用户可升级订阅的页面，{@link FtshareNotice.upgradeUrl} 的默认值。 */
 export const FTSHARE_UPGRADE_URL = 'https://ftai.chat/me/profile?tab=subscription' as const
@@ -30,7 +30,7 @@ export const FTSHARE_UPGRADE_URL = 'https://ftai.chat/me/profile?tab=subscriptio
 export type FtshareCallState = 'available' | 'empty' | 'denied' | 'failed'
 
 /**
- * 三态归一后的取数结果。
+ * 四态归一后的取数结果。
  *
  * 形状已冻结：字段只增不改，消费方按需读取。
  */
@@ -88,15 +88,15 @@ export interface FtshareToolInfo {
 }
 
 /**
- * `ctx.ftshareMarket`：FTShare 取数的唯一入口。
+ * `ctx.ftshareData`：FTShare 取数的唯一入口。
  *
  * 实现由本包的宿主入口（裸包名 `@ft/dsh-fft-ftshare`）`provide`，且必须挂在
  * **全局平面**：preset 内的 `provide` 会直接抛
  * `Preset services require isolate realms`（`agent-preset-registry` 的
  * `mount.ts`），而加上 isolate 之后服务会变成 preset 私有，preset 之外的插件再也
- * inject 不到。消费方因此统一用 `inject: ['ftshareMarket']` 声明依赖。
+ * inject 不到。消费方因此统一用 `inject: ['ftshareData']` 声明依赖。
  */
-export interface FtshareMarketService {
+export interface FtshareDataService {
   /**
    * 调一个上游 FTShare 工具并把结果归一成 {@link FtshareCallResult}。
    * @param tool - 上游工具名，例如 `ft_v1_finance_income`。
@@ -111,6 +111,6 @@ export interface FtshareMarketService {
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
-    ftshareMarket: FtshareMarketService
+    ftshareData: FtshareDataService
   }
 }

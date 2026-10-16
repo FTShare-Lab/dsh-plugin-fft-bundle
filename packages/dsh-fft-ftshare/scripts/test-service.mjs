@@ -6,8 +6,8 @@
  * `denied`/`failed` 各自带上可展示的 notice。
  */
 import assert from 'node:assert/strict'
-import { createFtshareMarketService, normalizeRows } from '../lib/index.js'
-import { classifyFailure, parseUpstreamError, permissionNoticeFromPayload, planForTool } from '../lib/errors.js'
+import { createFtshareDataService, normalizeRows } from '../lib/index.js'
+import { classifyFailure, parseUpstreamError, permissionNoticeFromPayload } from '../lib/errors.js'
 
 /** 造一个按脚本作答的假 transport。 */
 function stubTransport(script) {
@@ -33,7 +33,7 @@ const FIXED_NOW = () => new Date('2026-10-13T06:00:00.000Z')
 // —— available：真的拿到行 ——
 {
   const transport = stubTransport({ ft_v1_finance_income: { data: [{ stock_code: '600519', revenue: 1 }] } })
-  const service = createFtshareMarketService({ transport, now: FIXED_NOW })
+  const service = createFtshareDataService({ transport, now: FIXED_NOW })
   const result = await service.call('ft_v1_finance_income', { stock_code: '600519' })
   assert.equal(result.state, 'available')
   assert.equal(result.ok, true)
@@ -47,7 +47,7 @@ const FIXED_NOW = () => new Date('2026-10-13T06:00:00.000Z')
 
 // —— empty：调用成功，但确实没有数据 ——
 {
-  const service = createFtshareMarketService({ transport: stubTransport({ ft_v3_report_stock_reports: { ok: true, data: [], metadata: { source: 'ftshare' } } }), now: FIXED_NOW })
+  const service = createFtshareDataService({ transport: stubTransport({ ft_v3_report_stock_reports: { ok: true, data: [], metadata: { source: 'ftshare' } } }), now: FIXED_NOW })
   const result = await service.call('ft_v3_report_stock_reports')
   assert.equal(result.state, 'empty', '成功但无行才是 empty')
   assert.equal(result.ok, true, 'empty 说明通道是通的')
@@ -58,13 +58,13 @@ const FIXED_NOW = () => new Date('2026-10-13T06:00:00.000Z')
 // —— denied：网关 403 route_not_allowed ——
 {
   const error = new Error(JSON.stringify({ error: { code: 'route_not_allowed', message: 'route not allowed for the current plan' } }))
-  const service = createFtshareMarketService({ transport: stubTransport({ ft_v3_report_stock_reports: error }), now: FIXED_NOW })
+  const service = createFtshareDataService({ transport: stubTransport({ ft_v3_report_stock_reports: error }), now: FIXED_NOW })
   const result = await service.call('ft_v3_report_stock_reports')
   assert.equal(result.state, 'denied', '套餐无权限必须落成 denied，而不是 empty')
   assert.equal(result.ok, false)
   assert.equal(result.notice.code, 'route_not_allowed')
   assert.equal(result.notice.retryable, false)
-  assert.equal(result.notice.requiredPlan, 'Advanced', 'v3 接口推断为进阶版')
+  assert.equal(result.notice.requiredPlan, undefined, '上游没给档位就不猜，接口版本号不是档位依据')
   assert.ok(result.notice.upgradeUrl.includes('subscription'))
   assert.ok(result.notice.message.includes('无权访问'))
   assert.ok(result.notice.message.includes('不代表「没有数据」'), '提示必须点破「不是没有数据」这个误读')
@@ -73,16 +73,16 @@ const FIXED_NOW = () => new Date('2026-10-13T06:00:00.000Z')
 // —— denied：另一家网关的 403 capability_limited（P8 实测形态）——
 {
   const error = new Error('403 capability_limited: FTShare API Key 有效，但当前套餐未开通此项数据能力。')
-  const service = createFtshareMarketService({ transport: stubTransport({ ft_v2_limit_event_timeline_3s: error }), now: FIXED_NOW })
+  const service = createFtshareDataService({ transport: stubTransport({ ft_v2_limit_event_timeline_3s: error }), now: FIXED_NOW })
   const result = await service.call('ft_v2_limit_event_timeline_3s')
   assert.equal(result.state, 'denied')
   assert.equal(result.notice.code, 'capability_limited')
-  assert.ok(result.notice.message.includes('基础版'))
+  assert.ok(result.notice.message.includes('更高的档位'), '上游没给档位时只说「更高的档位」，不猜具体套餐')
 }
 
 // —— denied：成功信封里带权限标记 ——
 {
-  const service = createFtshareMarketService({
+  const service = createFtshareDataService({
     transport: stubTransport({ ft_v3_report_stock_reports: { ok: true, data: [], metadata: { permissions: [{ code: '403', message: '订阅未开通该接口' }] } } }),
     now: FIXED_NOW,
   })
@@ -93,7 +93,7 @@ const FIXED_NOW = () => new Date('2026-10-13T06:00:00.000Z')
 
 // —— failed：限流可重试 ——
 {
-  const service = createFtshareMarketService({ transport: stubTransport({ ft_v1_finance_income: new Error('rate_limited: 请求过于频繁') }), now: FIXED_NOW })
+  const service = createFtshareDataService({ transport: stubTransport({ ft_v1_finance_income: new Error('rate_limited: 请求过于频繁') }), now: FIXED_NOW })
   const result = await service.call('ft_v1_finance_income')
   assert.equal(result.state, 'failed')
   assert.equal(result.notice.retryable, true)
@@ -102,7 +102,7 @@ const FIXED_NOW = () => new Date('2026-10-13T06:00:00.000Z')
 
 // —— failed：网络失败也是 failed，不是 empty ——
 {
-  const service = createFtshareMarketService({ transport: stubTransport({ ft_v1_finance_income: new Error('fetch failed: ECONNREFUSED') }), now: FIXED_NOW })
+  const service = createFtshareDataService({ transport: stubTransport({ ft_v1_finance_income: new Error('fetch failed: ECONNREFUSED') }), now: FIXED_NOW })
   const result = await service.call('ft_v1_finance_income')
   assert.equal(result.state, 'failed')
   assert.deepEqual(result.rows, [])
@@ -110,7 +110,7 @@ const FIXED_NOW = () => new Date('2026-10-13T06:00:00.000Z')
 
 // —— 未配置凭据导致的拒绝也是 denied，不是 empty ——
 {
-  const service = createFtshareMarketService({ transport: stubTransport({ ft_v1_finance_income: new Error('auth_required: FTShare 未收到 API Key，请检查配置后重试。') }), now: FIXED_NOW })
+  const service = createFtshareDataService({ transport: stubTransport({ ft_v1_finance_income: new Error('auth_required: FTShare 未收到 API Key，请检查配置后重试。') }), now: FIXED_NOW })
   const result = await service.call('ft_v1_finance_income')
   assert.equal(result.state, 'denied')
   assert.equal(result.notice.code, 'auth_required')
@@ -119,7 +119,7 @@ const FIXED_NOW = () => new Date('2026-10-13T06:00:00.000Z')
 
 // —— listTools 在调通之后刷新 ——
 {
-  const service = createFtshareMarketService({ transport: stubTransport({ ft_v1_finance_income: { data: [{ a: 1 }] } }), now: FIXED_NOW })
+  const service = createFtshareDataService({ transport: stubTransport({ ft_v1_finance_income: { data: [{ a: 1 }] } }), now: FIXED_NOW })
   assert.deepEqual(service.listTools(), [], '刷新完成前是空清单，不是错误')
   await service.call('ft_v1_finance_income')
   await new Promise(resolve => setImmediate(resolve))
@@ -136,16 +136,14 @@ assert.deepEqual(normalizeRows({ ok: true, history: [{ a: 1 }] }), [{ a: 1 }], '
 assert.deepEqual(normalizeRows(undefined), [])
 assert.deepEqual(normalizeRows('text'), [])
 
-// —— 解析与推断的直接行为 ——
+// —— 解析与归一的直接行为 ——
 assert.deepEqual(parseUpstreamError(new Error('{"error":{"code":"403","message":"forbidden"}}')), { code: '403', message: 'forbidden' })
 assert.equal(classifyFailure(new Error('timeout'), 'ft_v1_finance_income').state, 'failed')
 assert.equal(classifyFailure(new Error('权限不足'), 'ft_v1_finance_income').state, 'denied')
-assert.equal(planForTool('ft_v4_stock_realtime_day_kline'), 'Pro')
-assert.equal(planForTool('ft_v9_future_dataset'), 'Free', '未知版本按免费档提示，不夸大')
 assert.equal(permissionNoticeFromPayload('ft_v1_finance_income', { data: [] }), undefined, '普通空数组不触发权限遮罩')
 assert.ok(permissionNoticeFromPayload('ft_v1_finance_income', { metadata: { access_denied: true, message: '订阅未开通' } }))
 
-console.log('ftshareMarket.call: four-state normalization, notices, rows and tool listing passed')
+console.log('ftshareData.call: four-state normalization, notices, rows and tool listing passed')
 
 // —— 宿主入口（全局平面）：只能 provide 服务，凭据只从设置服务取 ——
 {
@@ -158,9 +156,9 @@ console.log('ftshareMarket.call: four-state normalization, notices, rows and too
     provide: (name, value) => { provided.set(name, value) },
   }
   apply(hostCtx)
-  assert.ok(provided.has('ftshareMarket'), '宿主入口必须 provide ftshareMarket')
-  assert.deepEqual([...provided.keys()], ['ftshareMarket'], '宿主入口只提供这一个服务')
-  assert.deepEqual(provided.get('ftshareMarket').listTools(), [], '刷新前工具清单为空，且不抛异常')
+  assert.ok(provided.has('ftshareData'), '宿主入口必须 provide ftshareData')
+  assert.deepEqual([...provided.keys()], ['ftshareData'], '宿主入口只提供这一个服务')
+  assert.deepEqual(provided.get('ftshareData').listTools(), [], '刷新前工具清单为空，且不抛异常')
   // 凭据在每次调用时重新 resolve；这里只验证注入的是设置服务的那个函数，
   // 不触发任何网络请求（真实 transport 只在这一步之后才会被用到）。
   assert.equal(resolved.length, 0, 'apply 阶段不读凭据')
@@ -173,7 +171,7 @@ console.log('ftshareMarket.call: four-state normalization, notices, rows and too
   const toolCtx = {
     logger: () => ({ warn: () => {} }),
     tools: { register: definition => { registered.push(definition); return () => {} } },
-    ftshareMarket: {
+    ftshareData: {
       async call(tool, args) {
         if (tool === 'ft_v1_finance_income') {
           return { ok: true, state: 'available', rows: [{ title: '600519', value: '1.00亿', detail: '收入' }], source: { name: 'FTShare', fetchedAt: '2026-10-13T06:00:00.000Z' } }
@@ -212,4 +210,4 @@ console.log('ftshareMarket.call: four-state normalization, notices, rows and too
   assert.ok(!denied.text.includes('=0'))
 }
 
-console.log('provider plane: provide ftshareMarket, credentials deferred to settings; tools plane: 10 ftshare_* tools, four states in the body passed')
+console.log('provider plane: provide ftshareData, credentials deferred to settings; tools plane: 10 ftshare_* tools, four states in the body passed')

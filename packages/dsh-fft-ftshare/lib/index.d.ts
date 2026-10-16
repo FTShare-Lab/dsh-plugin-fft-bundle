@@ -1,5 +1,5 @@
 /**
- * 宿主平面（**全局**）入口：`provide('ftshareMarket')`。
+ * 宿主平面（**全局**）入口：`provide('ftshareData')`。
  *
  * 为什么这一行必须挂在全局、而不是金融 preset 里：preset 内 `provide` 会直接抛
  * `Preset services require isolate realms`
@@ -12,25 +12,25 @@
  * @module @ft/dsh-fft-ftshare
  */
 import type { Context, Logger } from '@deepseek-ai/cordis';
-import { type FtshareMarketService } from './contract.js';
+import { type FtshareDataService } from './contract.js';
 import { type FtshareTransport } from './transport.js';
 export * from './contract.js';
-export { FTSHARE_MARKET_ENDPOINT } from './transport.js';
+export { FTSHARE_GATEWAY_ENDPOINT } from './transport.js';
 /** Cordis 插件名。 */
 export declare const name = "@ft/dsh-fft-ftshare";
 /** 凭据来自设置服务；缺这一项本行挂起等待，属刻意的 fail-loud。 */
 export declare const inject: string[];
 /** 本行发布的服务名。 */
-export declare const provide: "ftshareMarket"[];
+export declare const provide: "ftshareData"[];
 /** 宿主行的可选配置。 */
-export interface FtshareMarketConfig {
-    /** 覆盖网关地址；默认 {@link FTSHARE_MARKET_ENDPOINT}。 */
+export interface FtshareDataConfig {
+    /** 覆盖网关地址；默认 {@link FTSHARE_GATEWAY_ENDPOINT}。 */
     endpoint?: string;
     /** MCP 客户端自称的名字，只影响上游日志。 */
     clientName?: string;
 }
 /** 建服务所需的依赖，全部可注入，便于测试。 */
-export interface FtshareMarketServiceOptions {
+export interface FtshareDataServiceOptions {
     /** 传输层；测试注入假实现即可完全不联网。 */
     transport: FtshareTransport;
     /** 具名 logger。 */
@@ -50,15 +50,15 @@ export interface FtshareMarketServiceOptions {
  */
 export declare function normalizeRows(value: unknown): Record<string, unknown>[];
 /**
- * 建一个 `ctx.ftshareMarket`。
- * @param options - 见 {@link FtshareMarketServiceOptions}。
+ * 建一个 `ctx.ftshareData`。
+ * @param options - 见 {@link FtshareDataServiceOptions}。
  * @returns 服务实现；`call` 不抛异常，失败走 `state`/`notice`。
  */
-export declare function createFtshareMarketService(options: FtshareMarketServiceOptions): FtshareMarketService;
+export declare function createFtshareDataService(options: FtshareDataServiceOptions): FtshareDataService;
 /**
- * 注册 `ctx.ftshareMarket`。
+ * 注册 `ctx.ftshareData`。
  * @param ctx - 宿主上下文；必须是全局（根 loader）子树，preset 子树会抛错。
  * @param config - 可选配置。
  */
-export declare function apply(ctx: Context, config?: FtshareMarketConfig): void;
+export declare function apply(ctx: Context, config?: FtshareDataConfig): void;
 //# sourceMappingURL=index.d.ts.map

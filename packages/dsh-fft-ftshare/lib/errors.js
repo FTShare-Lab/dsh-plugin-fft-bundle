@@ -38,10 +38,6 @@ const API_KEY_TEXT = /(?:未收到|未通过|未配置|缺失|无效|不受支�
 const RETRYABLE_CODES = new Set(['429', 'rate_limited', 'timeout', 'etimedout', 'econnreset', 'econnrefused', 'enotfound', 'fetch_failed', '502', '503', '504', 'upstream_error']);
 /** 凭据类拒绝：API Key 缺失或无效，与套餐档位无关，措辞要分开。 */
 const CREDENTIAL_CODES = new Set(['401', 'unauthorized', 'invalid_key', 'invalid_api_key', 'auth_required']);
-/** 各 API 版本所属的最低订阅档位，用于推断 `requiredPlan`。属提示，不是断言。 */
-const PLAN_BY_VERSION = { v1: 'Free', v2: 'Basic', v3: 'Advanced', v4: 'Pro' };
-/** 订阅档位的中文名。 */
-const PLAN_LABELS = { Free: '免费版', Basic: '基础版', Advanced: '进阶版', Pro: '专业版（Pro）' };
 /** 判断一个值是不是可当对象读的记录。 */
 export function isRecord(value) {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -49,16 +45,6 @@ export function isRecord(value) {
 /** 读一个非空字符串；其余一律 undefined。 */
 export function asText(value) {
     return typeof value === 'string' && value.trim() !== '' ? value.trim() : undefined;
-}
-/**
- * 从工具名推断所需订阅档位（`ft_v3_*` → Advanced 等）。
- * 网关没有权威的版本→档位映射，这只是一个升级提示的默认值。
- * @param tool - 上游工具名。
- * @returns 档位名。
- */
-export function planForTool(tool) {
-    const version = /^ft_(v\d+)_/u.exec(tool)?.[1];
-    return (version !== undefined ? PLAN_BY_VERSION[version] : undefined) ?? 'Free';
 }
 /**
  * 一个码或一句话是否表达「无权访问」。
@@ -117,24 +103,25 @@ export function parseUpstreamError(value) {
 /**
  * 造一条「无权访问」提示。措辞刻意把「不是没有数据」写进去：P8 的病根就是这句
  * 缺失，让「套餐没开通」看起来像「今天什么都没有」。
+ *
+ * 档位只在上游自己给了 `required_plan` 时才写进提示：接口名里的版本号与订阅档位
+ * 没有可复核的对应关系，按它猜一个档位会把用户引向错误的套餐。
  * @param tool - 上游工具名。
  * @param code - 上游错误码，缺省按 `route_not_allowed` 记。
  * @param message - 上游说明。
- * @param requiredPlan - 已知的所需档位；未知时按工具版本推断。
+ * @param requiredPlan - 上游信封里给出的所需档位；没给就不猜。
  * @returns 可直接展示的提示。
  */
 export function deniedNotice(tool, code, message, requiredPlan) {
-    const plan = requiredPlan ?? planForTool(tool);
-    const label = PLAN_LABELS[plan] ?? plan;
     const credential = code !== undefined && CREDENTIAL_CODES.has(code.toLowerCase());
     const cause = credential
         ? `凭据未配置或无效（${code}）`
         : `当前套餐未开通该数据能力（上游 ${code ?? '403 route_not_allowed'}）`;
-    const remedy = credential ? '有效的 API Key' : `${label} 或更高订阅`;
+    const remedy = credential ? '有效的 API Key' : `订阅 ${requiredPlan ?? '更高的档位'}`;
     return {
         code: code ?? 'route_not_allowed',
         message: `FTShare 无权访问 ${tool}：${cause}，需要 ${remedy}。这不代表「没有数据」。上游说明：${message}`,
-        requiredPlan: plan,
+        ...requiredPlan !== undefined ? { requiredPlan } : {},
         upgradeUrl: FTSHARE_UPGRADE_URL,
         retryable: false,
     };
@@ -142,7 +129,7 @@ export function deniedNotice(tool, code, message, requiredPlan) {
 /**
  * 把一次失败折成结局与提示。
  * @param error - 抛出物。
- * @param tool - 上游工具名，用于推断所需档位。
+ * @param tool - 上游工具名，出现在提示正文里。
  * @returns 结局（`denied` 或 `failed`）与可直接展示的提示。
  */
 export function classifyFailure(error, tool) {

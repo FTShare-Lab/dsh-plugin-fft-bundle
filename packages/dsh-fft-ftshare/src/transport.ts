@@ -22,7 +22,7 @@ import type { FtshareToolInfo } from './contract.js'
 import { asText, isRecord } from './errors.js'
 
 /** 默认网关地址：FTShare 的 MCP StreamableHTTP 入口。 */
-export const FTSHARE_MARKET_ENDPOINT = 'https://market.ft.tech/gateway/mcp'
+export const FTSHARE_GATEWAY_ENDPOINT = 'https://market.ft.tech/gateway/mcp'
 
 /** 承载 API Key 的请求头名。 */
 export const FTSHARE_API_KEY_HEADER = 'FTSHARE_API_KEY'
@@ -42,7 +42,7 @@ export interface FtshareTransport {
 
 /** 建传输层所需的依赖。 */
 export interface FtshareTransportOptions {
-  /** 网关地址，默认 {@link FTSHARE_MARKET_ENDPOINT}。 */
+  /** 网关地址，默认 {@link FTSHARE_GATEWAY_ENDPOINT}。 */
   endpoint?: string
   /** 每次操作重新取凭据；返回空串/undefined 表示未配置。 */
   resolveApiKey: () => Promise<string | undefined>
@@ -99,7 +99,7 @@ function payloadOf(result: unknown, tool: string, logger?: Logger): unknown {
  * @returns 传输层实现。
  */
 export function createFtshareTransport(options: FtshareTransportOptions): FtshareTransport {
-  const endpoint = options.endpoint?.trim() || FTSHARE_MARKET_ENDPOINT
+  const endpoint = options.endpoint?.trim() || FTSHARE_GATEWAY_ENDPOINT
   const clientName = options.clientName ?? 'dsh-fft-ftshare'
   const clientVersion = options.clientVersion ?? '0.1.0'
 

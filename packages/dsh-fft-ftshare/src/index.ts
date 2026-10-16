@@ -1,5 +1,5 @@
 /**
- * 宿主平面（**全局**）入口：`provide('ftshareMarket')`。
+ * 宿主平面（**全局**）入口：`provide('ftshareData')`。
  *
  * 为什么这一行必须挂在全局、而不是金融 preset 里：preset 内 `provide` 会直接抛
  * `Preset services require isolate realms`
@@ -15,12 +15,12 @@
 import type { Context, Logger } from '@deepseek-ai/cordis'
 import type {} from '@ft/dsh-fft-settings'
 
-import { FTSHARE_MARKET_SERVICE, type FtshareCallResult, type FtshareMarketService, type FtshareToolInfo } from './contract.js'
+import { FTSHARE_DATA_SERVICE, type FtshareCallResult, type FtshareDataService, type FtshareToolInfo } from './contract.js'
 import { asText, classifyFailure, isRecord, permissionNoticeFromPayload } from './errors.js'
-import { createFtshareTransport, FTSHARE_MARKET_ENDPOINT, type FtshareTransport } from './transport.js'
+import { createFtshareTransport, FTSHARE_GATEWAY_ENDPOINT, type FtshareTransport } from './transport.js'
 
 export * from './contract.js'
-export { FTSHARE_MARKET_ENDPOINT } from './transport.js'
+export { FTSHARE_GATEWAY_ENDPOINT } from './transport.js'
 
 /** Cordis 插件名。 */
 export const name = '@ft/dsh-fft-ftshare'
@@ -29,7 +29,7 @@ export const name = '@ft/dsh-fft-ftshare'
 export const inject = ['ftshareSettings']
 
 /** 本行发布的服务名。 */
-export const provide = [FTSHARE_MARKET_SERVICE]
+export const provide = [FTSHARE_DATA_SERVICE]
 
 /**
  * cordis 把 `provide` 混在 `ctx` 上，其类型来自 cordis 内部的**相对路径**模块增强
@@ -43,15 +43,15 @@ interface ProviderHost extends Context {
 }
 
 /** 宿主行的可选配置。 */
-export interface FtshareMarketConfig {
-  /** 覆盖网关地址；默认 {@link FTSHARE_MARKET_ENDPOINT}。 */
+export interface FtshareDataConfig {
+  /** 覆盖网关地址；默认 {@link FTSHARE_GATEWAY_ENDPOINT}。 */
   endpoint?: string
   /** MCP 客户端自称的名字，只影响上游日志。 */
   clientName?: string
 }
 
 /** 建服务所需的依赖，全部可注入，便于测试。 */
-export interface FtshareMarketServiceOptions {
+export interface FtshareDataServiceOptions {
   /** 传输层；测试注入假实现即可完全不联网。 */
   transport: FtshareTransport
   /** 具名 logger。 */
@@ -107,11 +107,11 @@ export function normalizeRows(value: unknown): Record<string, unknown>[] {
 }
 
 /**
- * 建一个 `ctx.ftshareMarket`。
- * @param options - 见 {@link FtshareMarketServiceOptions}。
+ * 建一个 `ctx.ftshareData`。
+ * @param options - 见 {@link FtshareDataServiceOptions}。
  * @returns 服务实现；`call` 不抛异常，失败走 `state`/`notice`。
  */
-export function createFtshareMarketService(options: FtshareMarketServiceOptions): FtshareMarketService {
+export function createFtshareDataService(options: FtshareDataServiceOptions): FtshareDataService {
   const now = options.now ?? (() => new Date())
   let tools: readonly FtshareToolInfo[] = []
 
@@ -175,11 +175,11 @@ async function resolveApiKey(ctx: Context, logger: Logger): Promise<string | und
 }
 
 /**
- * 注册 `ctx.ftshareMarket`。
+ * 注册 `ctx.ftshareData`。
  * @param ctx - 宿主上下文；必须是全局（根 loader）子树，preset 子树会抛错。
  * @param config - 可选配置。
  */
-export function apply(ctx: Context, config?: FtshareMarketConfig): void {
+export function apply(ctx: Context, config?: FtshareDataConfig): void {
   const logger = ctx.logger('dsh-fft-ftshare')
   const transport = createFtshareTransport({
     endpoint: config?.endpoint,
@@ -188,5 +188,5 @@ export function apply(ctx: Context, config?: FtshareMarketConfig): void {
     logger,
   })
   const host = ctx as ProviderHost
-  host.provide(FTSHARE_MARKET_SERVICE, createFtshareMarketService({ transport, logger }))
+  host.provide(FTSHARE_DATA_SERVICE, createFtshareDataService({ transport, logger }))
 }

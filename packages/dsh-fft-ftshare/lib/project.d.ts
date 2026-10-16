@@ -102,7 +102,7 @@ export declare function projectContent(name: string, result: {
     content: ContentBlock[];
 }): ContentBlock[] | undefined;
 /**
- * 把一次 `ctx.ftshareMarket.call()` 的结果渲染成模型可见文本（工具平面与投影平面共用）。
+ * 把一次 `ctx.ftshareData.call()` 的结果渲染成模型可见文本（工具平面与投影平面共用）。
  * @param title - 中文标题。
  * @param tool - 上游工具名。
  * @param result - 归一结果。

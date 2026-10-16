@@ -16,7 +16,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { asText, isRecord } from './errors.js';
 /** 默认网关地址：FTShare 的 MCP StreamableHTTP 入口。 */
-export const FTSHARE_MARKET_ENDPOINT = 'https://market.ft.tech/gateway/mcp';
+export const FTSHARE_GATEWAY_ENDPOINT = 'https://market.ft.tech/gateway/mcp';
 /** 承载 API Key 的请求头名。 */
 export const FTSHARE_API_KEY_HEADER = 'FTSHARE_API_KEY';
 /**
@@ -65,7 +65,7 @@ function payloadOf(result, tool, logger) {
  * @returns 传输层实现。
  */
 export function createFtshareTransport(options) {
-    const endpoint = options.endpoint?.trim() || FTSHARE_MARKET_ENDPOINT;
+    const endpoint = options.endpoint?.trim() || FTSHARE_GATEWAY_ENDPOINT;
     const clientName = options.clientName ?? 'dsh-fft-ftshare';
     const clientVersion = options.clientVersion ?? '0.1.0';
     /**

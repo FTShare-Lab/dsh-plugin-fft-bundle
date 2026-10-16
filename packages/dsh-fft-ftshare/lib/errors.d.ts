@@ -21,13 +21,6 @@ export declare function isRecord(value: unknown): value is Record<string, unknow
 /** 读一个非空字符串；其余一律 undefined。 */
 export declare function asText(value: unknown): string | undefined;
 /**
- * 从工具名推断所需订阅档位（`ft_v3_*` → Advanced 等）。
- * 网关没有权威的版本→档位映射，这只是一个升级提示的默认值。
- * @param tool - 上游工具名。
- * @returns 档位名。
- */
-export declare function planForTool(tool: string): string;
-/**
  * 一个码或一句话是否表达「无权访问」。
  * @param code - 上游错误码，可能没有。
  * @param message - 上游错误文案，可能为空串。
@@ -48,17 +41,20 @@ export declare function parseUpstreamError(value: unknown): UpstreamErrorEnvelop
 /**
  * 造一条「无权访问」提示。措辞刻意把「不是没有数据」写进去：P8 的病根就是这句
  * 缺失，让「套餐没开通」看起来像「今天什么都没有」。
+ *
+ * 档位只在上游自己给了 `required_plan` 时才写进提示：接口名里的版本号与订阅档位
+ * 没有可复核的对应关系，按它猜一个档位会把用户引向错误的套餐。
  * @param tool - 上游工具名。
  * @param code - 上游错误码，缺省按 `route_not_allowed` 记。
  * @param message - 上游说明。
- * @param requiredPlan - 已知的所需档位；未知时按工具版本推断。
+ * @param requiredPlan - 上游信封里给出的所需档位；没给就不猜。
  * @returns 可直接展示的提示。
  */
 export declare function deniedNotice(tool: string, code: string | undefined, message: string, requiredPlan?: string): FtshareNotice;
 /**
  * 把一次失败折成结局与提示。
  * @param error - 抛出物。
- * @param tool - 上游工具名，用于推断所需档位。
+ * @param tool - 上游工具名，出现在提示正文里。
  * @returns 结局（`denied` 或 `failed`）与可直接展示的提示。
  */
 export declare function classifyFailure(error: unknown, tool: string): {

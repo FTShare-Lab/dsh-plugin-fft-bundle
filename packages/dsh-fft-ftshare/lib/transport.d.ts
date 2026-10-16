@@ -15,7 +15,7 @@
 import type { Logger } from '@deepseek-ai/cordis';
 import type { FtshareToolInfo } from './contract.js';
 /** 默认网关地址：FTShare 的 MCP StreamableHTTP 入口。 */
-export declare const FTSHARE_MARKET_ENDPOINT = "https://market.ft.tech/gateway/mcp";
+export declare const FTSHARE_GATEWAY_ENDPOINT = "https://market.ft.tech/gateway/mcp";
 /** 承载 API Key 的请求头名。 */
 export declare const FTSHARE_API_KEY_HEADER = "FTSHARE_API_KEY";
 /** 一次上游调用的原始结果。`value` 是上游自己的结构化载荷，未做任何解释。 */
@@ -33,7 +33,7 @@ export interface FtshareTransport {
 }
 /** 建传输层所需的依赖。 */
 export interface FtshareTransportOptions {
-    /** 网关地址，默认 {@link FTSHARE_MARKET_ENDPOINT}。 */
+    /** 网关地址，默认 {@link FTSHARE_GATEWAY_ENDPOINT}。 */
     endpoint?: string;
     /** 每次操作重新取凭据；返回空串/undefined 表示未配置。 */
     resolveApiKey: () => Promise<string | undefined>;

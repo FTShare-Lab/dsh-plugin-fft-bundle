@@ -3,7 +3,7 @@
 FTShare 公用底座。两件事：
 
 1. 一处取数：把 `https://market.ft.tech/gateway/mcp` 的 StreamableHTTP MCP 网关包成
-   `ctx.ftshareMarket`，结果统一归一成 `available / empty / denied / failed` 四态，
+   `ctx.ftshareData`，结果统一归一成 `available / empty / denied / failed` 四态，
    登录凭据只从设置服务取。
 2. 一处修投影：把 `@ftshare-lab/dsh-kline` 摘要式 MCP 工具藏在 `structuredContent`
    里的明细投影回**模型可见文本**，并把三态显式说清楚。
@@ -34,8 +34,8 @@ FTShare 公用底座。两件事：
 
 | 入口 | 平面 | 职责 |
 |---|---|---|
-| 裸包名 `@ft/dsh-fft-ftshare` | **全局** | `provide('ftshareMarket')`，`inject: ['ftshareSettings']`，出站 HTTPS 到网关。凭据只走 `ctx.ftshareSettings.apiKey.resolve()`。 |
-| `/tools` | preset | 把白名单注册成 `ftshare_*` 工具（`inject: ['tools','ftshareMarket']`）。只覆盖 `dsh_kline` 没有的能力。 |
+| 裸包名 `@ft/dsh-fft-ftshare` | **全局** | `provide('ftshareData')`，`inject: ['ftshareSettings']`，出站 HTTPS 到网关。凭据只走 `ctx.ftshareSettings.apiKey.resolve()`。 |
+| `/tools` | preset | 把白名单注册成 `ftshare_*` 工具（`inject: ['tools','ftshareData']`）。只覆盖 `dsh_kline` 没有的能力。 |
 | `/project` | preset | 注册 `tools/post-execute` 投影钩子（`inject: ['tools']`）。P7/P8 的修复本体。 |
 
 **provider 必须挂全局**：preset 内 `provide` 会直接抛
@@ -49,15 +49,15 @@ FTShare 公用底座。两件事：
 ## 消费方式
 
 ```ts
-import type { FtshareMarketService, FtshareCallResult } from '@ft/dsh-fft-ftshare/contract'
+import type { FtshareDataService, FtshareCallResult } from '@ft/dsh-fft-ftshare/contract'
 
-export const inject = ['ftshareMarket']
+export const inject = ['ftshareData']
 
 export function apply(ctx: Context): void {
-  ctx.inject(['ftshareMarket'], scoped => {
-    const market: FtshareMarketService = scoped.ftshareMarket
+  ctx.inject(['ftshareData'], scoped => {
+    const data: FtshareDataService = scoped.ftshareData
     // 只有 available 才能说「有数据」；empty 才是「没有」；denied 是套餐/凭据问题。
-    const result: FtshareCallResult = await market.call('ft_v1_finance_income', { stock_code: '600519' })
+    const result: FtshareCallResult = await data.call('ft_v1_finance_income', { stock_code: '600519' })
   })
 }
 ```

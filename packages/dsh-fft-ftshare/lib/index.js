@@ -1,5 +1,5 @@
 /**
- * 宿主平面（**全局**）入口：`provide('ftshareMarket')`。
+ * 宿主平面（**全局**）入口：`provide('ftshareData')`。
  *
  * 为什么这一行必须挂在全局、而不是金融 preset 里：preset 内 `provide` 会直接抛
  * `Preset services require isolate realms`
@@ -11,17 +11,17 @@
  * 凭据一律走 `ctx.ftshareSettings.apiKey.resolve()`，本包不读任何凭据文件。
  * @module @ft/dsh-fft-ftshare
  */
-import { FTSHARE_MARKET_SERVICE } from './contract.js';
+import { FTSHARE_DATA_SERVICE } from './contract.js';
 import { asText, classifyFailure, isRecord, permissionNoticeFromPayload } from './errors.js';
 import { createFtshareTransport } from './transport.js';
 export * from './contract.js';
-export { FTSHARE_MARKET_ENDPOINT } from './transport.js';
+export { FTSHARE_GATEWAY_ENDPOINT } from './transport.js';
 /** Cordis 插件名。 */
 export const name = '@ft/dsh-fft-ftshare';
 /** 凭据来自设置服务；缺这一项本行挂起等待，属刻意的 fail-loud。 */
 export const inject = ['ftshareSettings'];
 /** 本行发布的服务名。 */
-export const provide = [FTSHARE_MARKET_SERVICE];
+export const provide = [FTSHARE_DATA_SERVICE];
 /**
  * 载荷里当「明细容器」看待的键，按优先级排列。
  *
@@ -71,11 +71,11 @@ export function normalizeRows(value) {
     return meaningful.length > 0 ? [value] : [];
 }
 /**
- * 建一个 `ctx.ftshareMarket`。
- * @param options - 见 {@link FtshareMarketServiceOptions}。
+ * 建一个 `ctx.ftshareData`。
+ * @param options - 见 {@link FtshareDataServiceOptions}。
  * @returns 服务实现；`call` 不抛异常，失败走 `state`/`notice`。
  */
-export function createFtshareMarketService(options) {
+export function createFtshareDataService(options) {
     const now = options.now ?? (() => new Date());
     let tools = [];
     /**
@@ -139,7 +139,7 @@ async function resolveApiKey(ctx, logger) {
     }
 }
 /**
- * 注册 `ctx.ftshareMarket`。
+ * 注册 `ctx.ftshareData`。
  * @param ctx - 宿主上下文；必须是全局（根 loader）子树，preset 子树会抛错。
  * @param config - 可选配置。
  */
@@ -152,6 +152,6 @@ export function apply(ctx, config) {
         logger,
     });
     const host = ctx;
-    host.provide(FTSHARE_MARKET_SERVICE, createFtshareMarketService({ transport, logger }));
+    host.provide(FTSHARE_DATA_SERVICE, createFtshareDataService({ transport, logger }));
 }
 //# sourceMappingURL=index.js.map
