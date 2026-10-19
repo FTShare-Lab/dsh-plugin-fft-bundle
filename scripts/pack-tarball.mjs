@@ -3,7 +3,7 @@
  * Pack the bundle and every plugin it installs into one self-contained tarball.
  *
  * A plain `pnpm pack` of `packages/dsh-fft-bundle` is not self-contained: its
- * five dependency edges are git specs, so installing it still needs the git
+ * dependency edges are git specs, so installing it still needs the git
  * hosts (internal GitLab on `dev`, GitHub on `public`), pnpm's
  * `blockExoticSubdeps: false` escape hatch, and — because a tag's edges may
  * carry no committish — it can pair this bundle with sub-plugins from another
