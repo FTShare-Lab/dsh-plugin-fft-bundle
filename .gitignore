@@ -12,3 +12,5 @@ __pycache__/
 .worktrees/
 # 发布产物是构建输出：平时放在 releases/ 下（stable 上单独 `git add -f` 归档一份）。
 /releases/
+# 路线图是本机工作稿（含录屏与生成的 HTML），整目录不入库
+/docs/specs/roadmap/
