@@ -6,7 +6,7 @@
 
 ## 0. 落地状态（2026-10-14 更新）
 
-kline 侧已实现**凭据这一段**，但不是本文设想的私有 IPC，而是更小的文件契约：`FTShare-Lab/dsh_kline` PR #10（分支 `feat/ftshare-settings-bridge`，提交 `21539cd`，基线 `v0.3.5`）。
+kline 侧已实现**凭据这一段**，但不是本文设想的私有 IPC，而是更小的文件契约：`FTShare-Lab/dsh_kline` PR #10（分支 `feat/ftshare-settings-bridge`，提交 `21539cd`，基线 `v0.3.5`）。该实现已随上游 `v0.4.0` 发布（上游未合 PR，而是本地整合并加了校验修正），本包现在钉的是这个上游版本，不再跟 `-ft` 补丁 tag。
 
 - 已实现：`src/ftshare-settings-bridge.ts` 用 `apiKey.resolve()` + `subscribe()` 把当前 Key 发布到 `<runtime>/credentials/ftshare-<hostPid>.json`（`0600`/目录 `0700`、原子替换、宿主退出即删、启动时清理已死宿主的残留）；`src/index.ts` 以 `ctx.inject(['ftshareSettings'], …)` 起桥，`inject` 仍是 `['webServer']`，没有该服务的宿主行为不变；启动器仅在拿到 `DSH_KLINE_HOST_PID` 时注入 `DSH_KLINE_SETTINGS_KEY_FILE`；`tools/fetch.py` 在**每次**建 FTShare 客户端前重读该文件，来源标记为 `settings_bridge` 且 `can_clear=false`（该 Key 归设置页所有）。
 - 取代 IPC 的理由：两侧本就共享运行时目录（`services/<hostPid>.json` 已是同一约定），文件无需握手、实例认证与 Python 重连，跨 MCP 重启依然成立；`createEnvironment()` 仍未使用（它只是启动快照，本文档对它的判断不变）。

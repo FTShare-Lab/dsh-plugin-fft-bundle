@@ -1,11 +1,12 @@
 /**
  * The bundle's one dependency edge to a plugin outside this repository.
  *
- * `@ftshare-lab/dsh_kline` is pinned to a release tag of its own repository,
- * and while the FTShare settings bridge waits upstream, to a tag of the fork
- * that carries it.  Either way the ref must be immutable: a branch would let
- * one `pnpm install` produce a different plugin than the next, and would move
- * every installed DSH the moment someone pushes to it.
+ * `@ftshare-lab/dsh_kline` is pinned to a release tag of the fork that mirrors
+ * upstream — upstream itself is fetched and pushed there tag for tag, so the
+ * fork is where a `-ft` build would hang off the same release.  Either way the
+ * ref must be immutable: a branch would let one `pnpm install` produce a
+ * different plugin than the next, and would move every installed DSH the moment
+ * someone pushes to it.
  */
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'

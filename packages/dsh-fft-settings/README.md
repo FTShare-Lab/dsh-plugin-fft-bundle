@@ -153,7 +153,7 @@ Connection 返回 `{ ok: true, value }` 或 `{ ok: false, error: { code, message
 
 ## dsh_kline 接入示例与改动清单
 
-完整对照见 [dsh_kline 实际源码 → 接入后代码](docs/kline-integration.md)，基于 `d6253f0` 核对了 `src/index.ts`、`server.py`、`tools/fetch.py` 与启动配置。包括 Host 注入／适配器、Python MCP 和图表 HTTP 共用调用点、SDK 动态取 Key，以及哪些私有 IPC 代码仍需 kline 自己实现。
+完整对照见 [dsh_kline 实际源码 → 接入后代码](docs/kline-integration.md)，基于 `d6253f0` 核对了 `src/index.ts`、`server.py`、`tools/fetch.py` 与启动配置；凭据桥那一段已随上游 `v0.4.0` 发布，对照里的「接入后」示例只作历史记录读。包括 Host 注入／适配器、Python MCP 和图表 HTTP 共用调用点、SDK 动态取 Key，以及哪些私有 IPC 代码仍需 kline 自己实现。
 
 当前真实代码（`dsh_kline/tools/fetch.py::_ftshare_market_api`）：
 
