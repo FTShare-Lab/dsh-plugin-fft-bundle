@@ -1,19 +1,25 @@
 /**
- * The finance preset's composition is a snapshot of the official `standard`
- * preset's.
+ * The finance preset mirrors the official `standard` composition of the
+ * **lowest supported host**, DSH 0.2.0-rc.2 — not whatever checkout happens to
+ * be on the developer's disk.
  *
- * A preset's `plugins` list is complete — it inherits nothing — so the finance
- * mode has to restate the 19 rows the web app ships and then append the FT
- * workstream. Nothing else in this repository would notice when DSH edits the
- * official composition: the copy would silently keep a retired plugin, or lose
- * a tool the moment the upstream list grows. This test is that guard, and it
- * reports drift by key path (`config.plugins[3].disabled: …`) so a failure
- * names the row and the field that moved.
+ * A preset's `plugins` list is complete: it inherits nothing. DSH 0.2.1 added
+ * `time-context`, `tool-schedule` and `tool-plugin-market`, and dropped
+ * `tool-ralph`; a bundle that must still load on 0.2.0 cannot adopt those
+ * rows. Two guards therefore run:
+ *
+ * 1. the floor: the composition equals the `dsh-v0.2.0-rc.2` tag's preset, row
+ *    for row, except the disabled `tool-ralph` template this bundle retired
+ *    (it stopped resolving from the host's dependency set in 0.2.1);
+ * 2. the current host: every divergence from the reachable `standard`
+ *    composition is one of the deltas recorded below, so a later host bump
+ *    fails loudly instead of silently widening the compatibility gap.
  *
  * The official file is not tracked here — `thirdparty/` is ignored, and the
- * public branch ships no harness checkout at all — so the guard resolves a
- * reachable copy in the order a developer machine can offer one, and skips
- * with an explicit recipe when none is reachable.
+ * public branch ships no harness checkout at all. The floor is read from the
+ * checkout's git tag; the current host falls back through the layouts a
+ * developer machine can offer, and each guard skips with a recipe when its
+ * source is unreachable.
  */
 import { closeSync, existsSync, openSync, readFileSync, readSync } from 'node:fs'
 import { describe, it } from 'node:test'
@@ -21,6 +27,7 @@ import assert from 'node:assert/strict'
 import { fileURLToPath } from 'node:url'
 import { dirname, resolve } from 'node:path'
 import { createHash } from 'node:crypto'
+import { execFileSync } from 'node:child_process'
 import { load } from 'js-yaml'
 import { schema } from './lib/patch-yaml.mjs'
 import { diffRows } from './lib/patch-compare.mjs'
@@ -59,8 +66,16 @@ const GLOBAL_ROWS = ['dsh-fft-settings', 'dsh-fft-ftshare', 'newapi-wechat-sso',
  * which is exactly what mounting them from the preset (and nowhere else) buys.
  */
 const PRESET_ONLY_ROWS = ['mcp-dsh-kline', 'ft-ftshare-tools', 'ft-ftshare-mask', 'ft-ftshare-project', 'dsh-fft-factor-intake-standard']
-/** The official composition this copy was taken from; growing requires a re-sync. */
-const UPSTREAM_PLUGIN_COUNT = 19
+/** The host tag whose composition is the compatibility floor. */
+const FLOOR_TAG = 'dsh-v0.2.0-rc.2'
+/** The floor composition this copy was taken from; growing requires a re-sync. */
+const FLOOR_PLUGIN_COUNT = 19
+/** Floor rows this bundle deliberately no longer carries. */
+const RETIRED_FLOOR_ROWS = ['tool-ralph']
+/** Rows DSH 0.2.1 added to `standard`; the 0.2.0 floor cannot load them. */
+const CURRENT_ADDED_ROWS = ['time-context', 'tool-schedule', 'tool-plugin-market']
+/** Rows DSH 0.2.1 dropped from `standard` but 0.2.0 still needs; kept disabled. */
+const CURRENT_DROPPED_ROWS = ['tool-subagent-codex', 'tool-subagent-claude-code']
 
 /** Path of the preset file, relative to the upstream `web-app` package. */
 const PRESET_FILE = 'presets/standard.patch.yml'
@@ -92,7 +107,7 @@ function readIfPresent(webAppDir, relative) {
  * @returns a source whose `read` yields text or `null`.
  */
 function directorySource(label, webAppDir) {
-  return { label, read: relative => readIfPresent(webAppDir, relative) }
+  return { label, dir: webAppDir, read: relative => readIfPresent(webAppDir, relative) }
 }
 
 /**
@@ -238,10 +253,134 @@ function requirePlugins(parsed, presetId, source) {
   return plugins
 }
 
+/**
+ * Read a file from a git ref of the checkout a directory source points at.
+ * @param webAppDir - the `packages/bundle/web-app` directory.
+ * @param relative - path relative to that directory.
+ * @param ref - tag or commit to read.
+ * @returns the file's text, or `null` when git or the ref is unavailable.
+ */
+function gitShow(webAppDir, relative, ref) {
+  try {
+    const repo = resolve(webAppDir, '../../..')
+    if (!existsSync(resolve(repo, '.git'))) return null
+    return execFileSync(
+      'git',
+      ['-C', repo, 'show', `${ref}:packages/bundle/web-app/${relative}`],
+      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] },
+    )
+  } catch {
+    return null
+  }
+}
+
+/**
+ * The compatibility floor's preset: the official composition at `FLOOR_TAG`.
+ *
+ * Reading the tag rather than the working tree is what keeps this guard
+ * meaningful after the checkout moves to a newer host.
+ * @returns `{ label, preset }`, or `null` when no checkout carries the tag.
+ */
+function findFloor() {
+  for (const source of upstreamSources()) {
+    if (!source.dir) continue
+    const preset = gitShow(source.dir, PRESET_FILE, FLOOR_TAG)
+    if (preset) return { label: `${source.dir} @ ${FLOOR_TAG}`, preset }
+  }
+  return null
+}
+
+const isRow = value => value !== null && typeof value === 'object' && typeof value.id === 'string'
+
+/**
+ * Compare two row lists by id, so a row inserted or retired upstream does not
+ * shift every following index and turn one change into a hundred differences.
+ * @param expected - official rows.
+ * @param actual - bundle rows.
+ * @param path - key path of the list, used in the messages.
+ * @param options - `dropped`/`added` id sets and an `except` predicate.
+ * @returns human-readable differences; empty means the lists agree.
+ */
+function diffRowLists(expected, actual, path, options = {}) {
+  const dropped = options.dropped ?? new Set()
+  const added = options.added ?? new Set()
+  const except = options.except ?? (() => false)
+  const expectedIds = expected.map(row => row.id)
+  const actualIds = actual.map(row => row.id)
+  const drift = []
+
+  for (const id of expectedIds) {
+    if (dropped.has(id)) {
+      if (actualIds.includes(id)) drift.push(`${path}: retired row "${id}" is still present`)
+      continue
+    }
+    if (!actualIds.includes(id)) drift.push(`${path}: missing row "${id}"`)
+  }
+  for (const id of actualIds) {
+    if (!expectedIds.includes(id) && !added.has(id)) drift.push(`${path}: unexpected row "${id}"`)
+  }
+
+  const expectedOrder = expectedIds.filter(id => !dropped.has(id) && actualIds.includes(id))
+  const actualOrder = actualIds.filter(id => expectedIds.includes(id) && !dropped.has(id))
+  if (expectedOrder.join('\0') !== actualOrder.join('\0')) {
+    drift.push(`${path}: row order changed (official ${expectedOrder.join(', ')}; bundle ${actualOrder.join(', ')})`)
+  }
+
+  for (const id of expectedOrder) {
+    const at = actualIds.indexOf(id)
+    drift.push(...diffRow(
+      expected.find(row => row.id === id),
+      actual[at],
+      `${path}[${at}]`,
+      options,
+    ))
+  }
+  return drift
+}
+
+/**
+ * Compare two rows, descending into a `config` array when it is itself a row
+ * list (the delegation group), and into a quoted name list otherwise.
+ * @param expected - official row.
+ * @param actual - bundle row.
+ * @param path - key path of the row, used in the messages.
+ * @param options - forwarded to `diffRowLists`.
+ * @returns human-readable differences; empty means the rows agree.
+ */
+function diffRow(expected, actual, path, options = {}) {
+  const expectedConfig = expected.config
+  const actualConfig = actual.config
+  const expectedRows = Array.isArray(expectedConfig) && expectedConfig.every(isRow)
+  const actualRows = Array.isArray(actualConfig) && actualConfig.every(isRow)
+  const except = options.except ?? (() => false)
+
+  if (!expectedRows && !actualRows) {
+    return diffRows(expected, actual, path)
+      .filter(difference => !except(expected.id, path, difference))
+  }
+
+  const expectedRest = { ...expected }
+  const actualRest = { ...actual }
+  delete expectedRest.config
+  delete actualRest.config
+  const drift = diffRows(expectedRest, actualRest, path)
+    .filter(difference => !except(expected.id, path, difference))
+  if (expectedRows !== actualRows) {
+    drift.push(`${path}.config: kind changed (official ${expectedRows ? 'row list' : 'value'}, bundle ${actualRows ? 'row list' : 'value'})`)
+    return drift
+  }
+  drift.push(...diffRowLists(expectedConfig, actualConfig, `${path}.config`, options))
+  return drift
+}
+
 const upstream = findUpstream()
+const floor = findFloor()
 const SKIP_REASON = `cannot reach the official ${PRESET_FILE}: set DSH_UPSTREAM_PRESET to that file, or DSH_HARNESS_ROOT to a harness checkout, to run the drift guard`
+const FLOOR_SKIP_REASON = `cannot read ${FLOOR_TAG}:${PRESET_FILE} from a git checkout; run "git fetch --tags" in thirdparty/deepseek-harness, or set DSH_HARNESS_ROOT to one that has the tag`
 /** Passed to every test that needs the official file, so an unreachable copy skips with the recipe. */
 const skipUnreachable = upstream === null && SKIP_REASON
+/** The floor guard needs a checkout that still carries the tag. */
+const skipFloor = floor === null && FLOOR_SKIP_REASON
 
 describe('the finance preset in this bundle', () => {
   const bundlePlugins = requirePlugins(parsedPatch, PRESET_ID, patchPath)
@@ -261,7 +400,7 @@ describe('the finance preset in this bundle', () => {
   })
 
   it('appends exactly the seven finance rows, each id once', () => {
-    const appended = bundlePlugins.slice(UPSTREAM_PLUGIN_COUNT).map(row => row.id)
+    const appended = bundlePlugins.slice(FLOOR_PLUGIN_COUNT).map(row => row.id)
     assert.deepEqual(
       appended,
       ADDED_PLUGINS,
@@ -318,61 +457,64 @@ describe('the finance preset in this bundle', () => {
     )
   })
 
-  describe('against the official standard composition', () => {
-    const officialPatch = upstream ? load(upstream.preset, { schema }) : null
+  describe('against the 0.2.0 floor composition', () => {
+    const floorPatch = floor ? load(floor.preset, { schema }) : null
+    /**
+     * The persona identity is this bundle's one intended rewrite: the prefix
+     * becomes the FT identity, and the `{{cwd}}` suffix is dropped because
+     * DSH 0.2.1 rejects that unregistered variable.
+     */
+    const personaException = (id, path, difference) => id === PERSONA_ID
+      && (difference.startsWith(`${path}.config.prefix:`)
+        || difference.startsWith(`${path}.config.suffix:`))
 
-    it('is pinned to the official composition size', { skip: skipUnreachable }, () => {
-      const official = requirePlugins(officialPatch, UPSTREAM_PRESET_ID, upstream.label)
+    it('is pinned to the floor composition size', { skip: skipFloor }, () => {
+      const official = requirePlugins(floorPatch, UPSTREAM_PRESET_ID, floor.label)
       assert.equal(
         official.length,
-        UPSTREAM_PLUGIN_COUNT,
-        `the official standard preset changed size (${UPSTREAM_PLUGIN_COUNT} → ${official.length}); re-sync "${PRESET_ID}" and update this count`,
+        FLOOR_PLUGIN_COUNT,
+        `the ${FLOOR_TAG} standard preset changed size (${FLOOR_PLUGIN_COUNT} → ${official.length}); re-sync "${PRESET_ID}" and update this count`,
       )
       assert.equal(
         bundlePlugins.length,
         official.length + ADDED_PLUGINS.length,
-        `"${PRESET_ID}" must hold the ${official.length} official rows plus the ${ADDED_PLUGINS.length} finance rows`,
+        `"${PRESET_ID}" must hold the ${official.length} floor rows plus the ${ADDED_PLUGINS.length} finance rows`,
       )
     })
 
-    it('mirrors every official plugin row, field for field', { skip: skipUnreachable }, () => {
-      const official = requirePlugins(officialPatch, UPSTREAM_PRESET_ID, upstream.label)
-      const drift = []
-      const shared = Math.min(official.length, bundlePlugins.length)
-      for (let index = 0; index < shared; index += 1) {
-        const upstreamRow = official[index]
-        const bundleRow = bundlePlugins[index]
-        const path = `config.plugins[${index}]`
-        for (const difference of diffRows(upstreamRow, bundleRow, path)) {
-          // The FT persona is the one field this bundle changes on purpose;
-          // the next test pins that the change is real and FT-shaped.
-          const personaIdentity = upstreamRow.id === PERSONA_ID
-            && difference.startsWith(`${path}.config.prefix:`)
-          if (!personaIdentity) {
-            drift.push(`${difference}\n    (row "${bundleRow.id}" against official "${upstreamRow.id}")`)
-          }
-        }
-      }
+    it('mirrors the floor composition, field for field', { skip: skipFloor }, () => {
+      const official = requirePlugins(floorPatch, UPSTREAM_PRESET_ID, floor.label)
+      const drift = diffRowLists(official, bundlePlugins, 'config.plugins', {
+        dropped: new Set(RETIRED_FLOOR_ROWS),
+        added: new Set(ADDED_PLUGINS),
+        except: personaException,
+      })
       assert.deepEqual(
         drift,
         [],
-        `"${PRESET_ID}" drifted from ${upstream.label} ("${UPSTREAM_PRESET_ID}"); only the persona prefix may differ`,
+        `"${PRESET_ID}" drifted from ${floor.label} ("${UPSTREAM_PRESET_ID}"); only the persona prefix and suffix may differ, and only ${RETIRED_FLOOR_ROWS.join(', ')} may be retired`,
       )
     })
 
-    it('replaces the persona identity, and nothing else about that row', { skip: skipUnreachable }, () => {
-      const official = requirePlugins(officialPatch, UPSTREAM_PRESET_ID, upstream.label)
+    it('replaces the persona identity, and nothing else about that row', { skip: skipFloor }, () => {
+      const official = requirePlugins(floorPatch, UPSTREAM_PRESET_ID, floor.label)
       const index = official.findIndex(row => row.id === PERSONA_ID)
-      assert.ok(index !== -1, `${upstream.label} must declare a "${PERSONA_ID}" plugin`)
+      assert.ok(index !== -1, `${floor.label} must declare a "${PERSONA_ID}" plugin`)
       const upstreamPersona = official[index]
       const bundlePersona = bundlePlugins.find(row => row.id === PERSONA_ID)
       assert.ok(bundlePersona, `"${PRESET_ID}" must declare a "${PERSONA_ID}" plugin`)
 
       const path = `config.plugins[${index}]`
+      const differences = diffRows(upstreamPersona, bundlePersona, path).map(difference => difference.split(':')[0])
       assert.deepEqual(
-        diffRows(upstreamPersona, bundlePersona, path).map(difference => difference.split(':')[0]),
-        [`${path}.config.prefix`],
-        `the "${PERSONA_ID}" row may differ from the official one only in config.prefix`,
+        differences.sort(),
+        [`${path}.config.prefix`, `${path}.config.suffix`].sort(),
+        `the "${PERSONA_ID}" row may differ from the official one only in config.prefix and the dropped config.suffix`,
+      )
+      assert.equal(
+        bundlePersona.config.suffix,
+        undefined,
+        `"${PERSONA_ID}.config.suffix" must stay dropped; DSH 0.2.1 rejects "{{cwd}}" before a request is built`,
       )
       assert.notEqual(
         bundlePersona.config.prefix,
@@ -384,6 +526,62 @@ describe('the finance preset in this bundle', () => {
         /非凸|FT/u,
         `"${PERSONA_ID}".config.prefix must name the FT identity it was changed for`,
       )
+    })
+  })
+
+  describe('against the reachable host composition', () => {
+    const officialPatch = upstream ? load(upstream.preset, { schema }) : null
+
+    it('records every newer-host delta instead of mirroring it', { skip: skipUnreachable }, () => {
+      const official = requirePlugins(officialPatch, UPSTREAM_PRESET_ID, upstream.label)
+      const officialIds = official.map(row => row.id)
+      const bundleIds = bundlePlugins.map(row => row.id)
+
+      // A 0.2.0 copy has nothing missing; a 0.2.1 copy is missing exactly the
+      // rows that cannot load on the floor.
+      const expectedMissing = officialIds.includes('time-context') ? CURRENT_ADDED_ROWS : []
+      assert.deepEqual(
+        officialIds.filter(id => !bundleIds.includes(id)),
+        expectedMissing,
+        `the host standard preset added rows this bundle does not carry; decide per row whether ${FLOOR_TAG} can load it, then record it in CURRENT_ADDED_ROWS`,
+      )
+      assert.deepEqual(
+        bundleIds.filter(id => !officialIds.includes(id) && !ADDED_PLUGINS.includes(id)),
+        [],
+        `"${PRESET_ID}" carries a top-level row the reachable host no longer ships`,
+      )
+
+      const shared = officialIds.filter(id => bundleIds.includes(id))
+      assert.deepEqual(
+        bundleIds.filter(id => shared.includes(id)),
+        shared,
+        `"${PRESET_ID}" reordered the rows it shares with ${upstream.label}`,
+      )
+
+      const upstreamDelegation = official.find(row => row.id === 'delegation')
+      const bundleDelegation = bundlePlugins.find(row => row.id === 'delegation')
+      assert.ok(upstreamDelegation && bundleDelegation, 'both compositions must declare the "delegation" group')
+      const upstreamNested = upstreamDelegation.config.map(row => row.id)
+      const bundleNested = bundleDelegation.config.map(row => row.id)
+      assert.deepEqual(
+        upstreamNested.filter(id => !bundleNested.includes(id)),
+        [],
+        `the host "delegation" group added a row that the floor composition lacks`,
+      )
+      const nestedExtra = bundleNested.filter(id => !upstreamNested.includes(id))
+      assert.deepEqual(
+        nestedExtra,
+        upstreamNested.includes('tool-subagent-codex') ? [] : CURRENT_DROPPED_ROWS,
+        `the bundle "delegation" group keeps rows the host dropped; record them in CURRENT_DROPPED_ROWS`,
+      )
+      for (const id of nestedExtra) {
+        const row = bundleDelegation.config.find(entry => entry.id === id)
+        assert.equal(
+          row.disabled,
+          true,
+          `"${id}" is absent from the reachable host, so it must stay disabled on the floor composition`,
+        )
+      }
     })
 
     it('restates every key the official registry row declares', { skip: skipUnreachable }, t => {

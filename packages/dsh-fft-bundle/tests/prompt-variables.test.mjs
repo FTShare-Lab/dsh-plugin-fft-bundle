@@ -12,10 +12,11 @@
  * every finance session broke on DSH 0.2.1. This guard reads the patches
  * instead of trusting review.
  *
- * Vendored payloads are skipped: an internal bundle ships an upstream
- * `cordis.patch.yml` kept byte-identical for the next re-vendor (see its
- * PROVENANCE.md), and it is not the effective entry — the composition rows in
- * this bundle's own patch are.
+ * Vendored payloads are scanned too. an internal bundle is not the
+ * effective entry while it is installed through the composition, but it is
+ * also published standalone; a re-vendor that reintroduces `{{cwd}}` must
+ * fail here rather than only in the standalone install (see its
+ * PROVENANCE.md, local change ⑤).
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { describe, it } from 'node:test'
@@ -40,21 +41,18 @@ const repoRoot = fileURLToPath(new URL('../../..', import.meta.url))
 const packagesDir = resolve(repoRoot, 'packages')
 
 /**
- * Every patch file this repository owns.
+ * Every patch file this repository ships, including vendored payloads.
  *
- * A package shipping a `PROVENANCE.md` is a vendored upstream payload whose
- * files must stay byte-identical, so its patch is not this repository's text.
+ * A vendor copy still reaches users through its own package entry, so it is
+ * held to the same prompt-variable rule as the composition patch.
  * @returns an array of absolute paths.
  */
 function ownedPatches() {
   const found = []
   for (const entry of readdirSync(packagesDir, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue
-    const dir = resolve(packagesDir, entry.name)
-    const patch = resolve(dir, 'cordis.patch.yml')
-    if (!existsSync(patch)) continue
-    if (existsSync(resolve(dir, 'PROVENANCE.md'))) continue
-    found.push(patch)
+    const patch = resolve(packagesDir, entry.name, 'cordis.patch.yml')
+    if (existsSync(patch)) found.push(patch)
   }
   return found.sort()
 }

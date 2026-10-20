@@ -143,6 +143,11 @@
                 name: '@deepseek-ai/dsh-tool-subagent-control'
               - id: tool-subagent-list-agents
                 name: '@deepseek-ai/dsh-tool-subagent-control/list-agents'
+              # `backgroundMode` is a DSH 0.2.0 key. 0.2.1 removed it from the
+              # Config schema, but schemastery validates with strict=false and
+              # merges unknown keys, so the row still loads there while keeping
+              # continuable subagents on the 0.2.0 floor. Do not delete until
+              # the floor moves past 0.2.0.
               - id: tool-subagent
                 name: '@deepseek-ai/dsh-tool-subagent'
                 config:
@@ -178,12 +183,6 @@
                   provider: spawn
               - id: tool-workflow
                 name: '@deepseek-ai/dsh-tool-workflow'
-              - id: tool-ralph
-                name: '@deepseek-ai/dsh-tool-ralph'
-                disabled: true
-                config:
-                  subagentProvider: spawn
-                  maxRounds: 64
           - id: tool-ask-user
             name: '@deepseek-ai/dsh-tool-ask-user'
           - id: tool-todo
