@@ -691,12 +691,15 @@ window.__ModuleLoader__.load({
 		* names.
 		*
 		* `--ftshare-accent*` is the plugin's own brand and has no host equivalent. The
-		* fill and its ink are scheme-invariant; `--ftshare-accent-on-surface` mixes the
-		* same yellow towards the host's text colour, so the brand stays legible as the
-		* 11px eyebrow and as the focus ring on either surface.
+		* values come from the FT brand layer's `--ft-*` tokens (`src/brand.ts`), with
+		* the same literal as the fallback so the card keeps its colors when that layer
+		* is absent. The fill and its ink are scheme-invariant;
+		* `--ftshare-accent-on-surface` mixes the same yellow towards the host's text
+		* colour, so the brand stays legible as the 11px eyebrow and as the focus ring
+		* on either surface.
 		*/
 		const SETTINGS_CSS = `
-.ftshare-settings { --ftshare-text:var(--dsw-alias-label-primary,#f4f4f5); --ftshare-muted:var(--dsw-alias-label-secondary,#aeb2bd); --ftshare-panel:var(--dsw-alias-settings-card-fill,#292a30); --ftshare-border:var(--dsw-alias-settings-card-stroke,#44464f); --ftshare-control:var(--dsw-alias-border-l4,#696c77); --ftshare-input:var(--dsw-alias-bg-layer-1,#1d1e23); --ftshare-link:var(--dsw-alias-link,#d8c4fc); --ftshare-error:var(--dsw-alias-state-error-primary,#ffb5ad); --ftshare-accent:#f0c433; --ftshare-accent-ink:#171717; --ftshare-accent-on-surface:color-mix(in srgb,var(--ftshare-accent) 50%,var(--dsw-alias-label-primary,#f4f4f5)); }
+.ftshare-settings { --ftshare-text:var(--dsw-alias-label-primary,#f4f4f5); --ftshare-muted:var(--dsw-alias-label-secondary,#aeb2bd); --ftshare-panel:var(--dsw-alias-settings-card-fill,#292a30); --ftshare-border:var(--dsw-alias-settings-card-stroke,#44464f); --ftshare-control:var(--dsw-alias-border-l4,#696c77); --ftshare-input:var(--dsw-alias-bg-layer-1,#1d1e23); --ftshare-link:var(--dsw-alias-link,#d8c4fc); --ftshare-error:var(--dsw-alias-state-error-primary,#ffb5ad); --ftshare-accent:var(--ft-accent,#f0c433); --ftshare-accent-ink:var(--ft-accent-ink,#171717); --ftshare-accent-on-surface:color-mix(in srgb,var(--ftshare-accent) 50%,var(--dsw-alias-label-primary,#f4f4f5)); }
 .ftshare-settings { color:var(--ftshare-text); max-width:760px; font-size:14px; line-height:1.6; }
 .ftshare-settings * { box-sizing:border-box; }
 .ftshare-settings h2 { font-size:26px; margin:4px 0 8px; }
@@ -739,10 +742,46 @@ window.__ModuleLoader__.load({
 			}, FtshareSettingsSection));
 		}
 		//#endregion
+		//#region src/brand.ts
+		/** One value for both palettes: brand fills are scheme-invariant. */
+		const invariant = (value) => ({
+			light: value,
+			dark: value
+		});
+		/** Layer identity reported to `ctx.theme.overrideTokens` (one layer per source). */
+		const FT_BRAND_SOURCE = "@ft/dsh-fft-settings";
+		/**
+		* The published brand colors.
+		*
+		* `accent` is the FT yellow used by this plugin's primary action and eyebrow;
+		* `wechat` is the enterprise-WeChat green the SSO card keeps as its identity.
+		* Both inks are the text colors that sit on those fills.
+		*/
+		const FT_BRAND_TOKENS = Object.freeze({
+			"--ft-accent": invariant("#f0c433"),
+			"--ft-accent-ink": invariant("#171717"),
+			"--ft-wechat": invariant("#2ebd68"),
+			"--ft-wechat-ink": invariant("#102419")
+		});
+		/**
+		* Stack the brand layer once the host theme service exists.
+		*
+		* The deferred `inject` is deliberate: this plugin's declared client context
+		* names only the services its cards read, and a host without `theme` must
+		* still load the settings page — the CSS fallbacks then carry the colors.
+		* @param ctx - client context carrying the host theme service.
+		*/
+		function applyBrandTokens(ctx) {
+			ctx.inject(["theme"], (scope) => {
+				scope.effect(() => scope.theme.overrideTokens(FT_BRAND_SOURCE, FT_BRAND_TOKENS), "ft-settings: FT brand tokens");
+			});
+		}
+		//#endregion
 		//#region src/client.tsx
 		const inject = ["slots", "remote"];
 		function apply(ctx) {
 			registerFtshareSettings(ctx);
+			applyBrandTokens(ctx);
 		}
 		/** Contribute the section shell, then the built-in cards through the slot it declares. */
 		function registerFtshareSettings(ctx) {

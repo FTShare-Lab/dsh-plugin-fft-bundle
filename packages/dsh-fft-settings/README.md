@@ -128,7 +128,20 @@ Connection 返回 `{ ok: true, value }` 或 `{ ok: false, error: { code, message
 
 不接受任意 URL、请求参数或方法名称。`resolve`、`createEnvironment`、`subscribe` 不对 RPC 暴露。HTTP 直接调用需要 Connection 的完整 envelope 与认证，优先使用适配器，不要对 URL 裸 POST 业务参数。
 
-设置页自带样式，支持只读来源、加载反馈、保存结果、远端服务／API Key 分项结果、手动读取与凭据事件刷新。“测试当前连接”不会使用输入框中的草稿。另一个页面完成测试后，可点击“重新读取状态”读取其结果；当前没有独立的验证完成推送事件。核心只声明 `--ftshare-text`、`--ftshare-muted`、`--ftshare-panel`、`--ftshare-border`、`--ftshare-control`、`--ftshare-input`、`--ftshare-link`、`--ftshare-error`、`--ftshare-accent`、`--ftshare-accent-ink`、`--ftshare-accent-on-surface`（声明在卡片根 `.ftshare-settings` 上，前八项取值来自宿主调色板 `--dsw-alias-*`，因此跟随 DSH 的黑夜／白天以及任何已注册的主题）与 section 外壳样式；卡片自己的 CSS 随卡片组件渲染，见「新增一种设置」。这不是主题设置 API。
+设置页自带样式，支持只读来源、加载反馈、保存结果、远端服务／API Key 分项结果、手动读取与凭据事件刷新。“测试当前连接”不会使用输入框中的草稿。另一个页面完成测试后，可点击“重新读取状态”读取其结果；当前没有独立的验证完成推送事件。核心只声明 `--ftshare-text`、`--ftshare-muted`、`--ftshare-panel`、`--ftshare-border`、`--ftshare-control`、`--ftshare-input`、`--ftshare-link`、`--ftshare-error`、`--ftshare-accent`、`--ftshare-accent-ink`、`--ftshare-accent-on-surface`（声明在卡片根 `.ftshare-settings` 上，前八项取值来自宿主调色板 `--dsw-alias-*`，因此跟随 DSH 的黑夜／白天以及任何已注册的主题；后三项读下面说的品牌 token，并带同值 fallback）与 section 外壳样式；卡片自己的 CSS 随卡片组件渲染，见「新增一种设置」。
+
+### 品牌 token（`--ft-*`）
+
+浏览器半在 `theme` 服务就绪后调用一次 `ctx.theme.overrideTokens`，往 `body` 上叠一层**只增不改**的 FT 品牌色，不覆盖任何 `--dsw-alias-*`：
+
+| token | 值 | 用途 |
+| --- | --- | --- |
+| `--ft-accent` | `#f0c433` | FT 黄：设置页主按钮、eyebrow、焦点环 |
+| `--ft-accent-ink` | `#171717` | 黄底上的文字 |
+| `--ft-wechat` | `#2ebd68` | 品牌绿：SSO 卡片的品牌色 |
+| `--ft-wechat-ink` | `#102419` | 绿底上的文字 |
+
+约束：这层是**便利层，不是依赖层**。本插件缺席、或宿主没有 `theme` 服务时，消费者必须继续用同值 CSS fallback 显示，所以每个 `var(--ft-*)` 都要带 fallback，且与上表逐字一致；`tests/brand.test.mjs` 会扫描所有子插件并挡住漂移。它只发布颜色，不是主题设置 API：没有持久化、没有设置项，也不注册可选主题。
 
 ## 运行日志（`logs` 命名空间）
 
