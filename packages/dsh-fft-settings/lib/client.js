@@ -256,16 +256,16 @@ window.__ModuleLoader__.load({
 		*/
 		const API_KEY_CARD_CSS = `
 .ftshare-settings .ftshare-eyebrow { color:var(--ftshare-accent-on-surface); font-size:11px; letter-spacing:.12em; }
-.ftshare-settings .ftshare-card { padding:22px; background:var(--ftshare-panel); border:1px solid var(--ftshare-border); border-radius:12px; margin-top:16px; }
-.ftshare-settings label { display:block; font-weight:600; }
-.ftshare-settings input { width:100%; height:44px; border:1px solid var(--ftshare-control); border-radius:7px; padding:0 12px; background:var(--ftshare-input); color:inherit; font:inherit; }
+.ftshare-settings .ftshare-card { padding:22px; background:var(--ftshare-panel); border:0.5px solid var(--ftshare-border); border-radius:var(--dsw-radius-xl); margin-top:16px; }
+.ftshare-settings label { display:block; font-weight:500; }
+.ftshare-settings input { width:100%; height:32px; border:0.5px solid var(--ftshare-control); border-radius:var(--dsw-radius-md); padding:0 12px; background:var(--ftshare-input); color:inherit; font:inherit; }
 .ftshare-settings input::placeholder { color:var(--ftshare-muted); opacity:1; }
 .ftshare-settings .ftshare-actions { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:16px; }
-.ftshare-settings button { min-height:44px; border:1px solid var(--ftshare-control); border-radius:7px; padding:8px 14px; font:inherit; background:transparent; color:inherit; cursor:pointer; }
-.ftshare-settings button.primary { background:var(--ftshare-accent); color:var(--ftshare-accent-ink); border-color:var(--ftshare-accent); font-weight:600; }
+.ftshare-settings button { min-height:36px; border:0.5px solid var(--ftshare-control); border-radius:var(--dsw-radius-md); padding:0 14px; font:inherit; background:transparent; color:inherit; cursor:pointer; }
+.ftshare-settings button.primary { background:var(--ftshare-accent); color:var(--ftshare-accent-ink); border-color:var(--ftshare-accent); font-weight:500; }
 .ftshare-settings button:disabled { opacity:.5; cursor:not-allowed; }
 .ftshare-settings dl { margin:0; }
-.ftshare-settings .ftshare-result { display:grid; grid-template-columns:130px 1fr; gap:12px; padding:10px 0; border-top:1px solid var(--ftshare-border); }
+.ftshare-settings .ftshare-result { display:grid; grid-template-columns:130px 1fr; gap:12px; padding:10px 0; border-top:0.5px solid var(--ftshare-border); }
 .ftshare-settings dd { margin:0; overflow-wrap:anywhere; }
 .ftshare-settings .ftshare-error { color:var(--ftshare-error); }
 @media(max-width:540px) { .ftshare-settings .ftshare-card { padding:16px; } .ftshare-settings .ftshare-result { grid-template-columns:1fr; gap:4px; } }
@@ -464,9 +464,9 @@ window.__ModuleLoader__.load({
 		* another card's markup.
 		*/
 		const LOGS_CARD_CSS = `
-.ftshare-settings select { height:44px; border:1px solid var(--ftshare-control); border-radius:7px; padding:0 10px; background:var(--ftshare-input); color:inherit; font:inherit; }
-.ftshare-settings .ftshare-download { display:inline-flex; align-items:center; min-height:44px; padding:8px 14px; border:1px solid var(--ftshare-control); border-radius:7px; color:inherit; text-decoration:none; cursor:pointer; }
-.ftshare-settings .ftshare-log-preview { max-height:320px; overflow:auto; margin:0 0 12px; padding:12px; background:var(--ftshare-input); border:1px solid var(--ftshare-border); border-radius:7px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px; line-height:1.5; white-space:pre-wrap; overflow-wrap:anywhere; }
+.ftshare-settings select { height:32px; border:0.5px solid var(--ftshare-control); border-radius:var(--dsw-radius-md); padding:0 10px; background:var(--ftshare-input); color:inherit; font:inherit; }
+.ftshare-settings .ftshare-download { display:inline-flex; align-items:center; min-height:32px; padding:0 14px; border:0.5px solid var(--ftshare-control); border-radius:var(--dsw-radius-md); color:inherit; text-decoration:none; cursor:pointer; }
+.ftshare-settings .ftshare-log-preview { max-height:320px; overflow:auto; margin:0 0 12px; padding:12px; background:var(--ftshare-input); border:0.5px solid var(--ftshare-border); border-radius:var(--dsw-radius-lg); font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px; line-height:1.5; white-space:pre-wrap; overflow-wrap:anywhere; }
 `;
 		//#endregion
 		//#region src/features/logs/card.tsx

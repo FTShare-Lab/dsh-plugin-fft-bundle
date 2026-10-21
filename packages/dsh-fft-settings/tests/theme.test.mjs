@@ -3,12 +3,13 @@
 // 本插件的 UI 曾把深色调色板写死在 CSS 字面量里，于是在 DSH 白天主题下它仍然是
 // 一块深色卡片。现在调色板只有一个来源：`SETTINGS_CSS` 中声明在 `.ftshare-settings`
 // （每张卡片的根元素）上的 `--ftshare-*`，取值来自宿主调色板 `--dsw-alias-*`。
-// 这组用例钉住四件事：
+// 这组用例钉住五件事：
 //   1. 调色板只声明一处，卡片不自带颜色字面量，也不引用无人声明的 token；
 //   2. 声明落在卡片根而不是 `:root`——自定义属性在它被声明的地方求值，而
 //      `--dsw-alias-*` 只在 `body` 及其后代存在，写到 `:root` 上会静默退回字面量；
 //   3. 用到的宿主 token 真的在 DSH 的调色板样式表里，且解析值随主题一起变；
-//   4. 文字与其所在表面满足对比度下限，白天主题下品牌黄依然可读。
+//   4. 文字与其所在表面满足对比度下限，白天主题下品牌黄依然可读；
+//   5. 组件几何只消费共享圆角尺度（`--dsw-radius-*`），不写 7/12px 这类私值。
 // 第 3、4 条要读 DSH 源码（`thirdparty/` 不入库），取不到时按配方跳过。
 
 import assert from 'node:assert/strict'
@@ -231,5 +232,11 @@ test('text and the brand stay legible on the surface they sit on', { skip: SKIP_
     ]) {
       assert.ok(contrast(colour, surface) >= 4.5, `${what} is only ${contrast(colour, surface).toFixed(2)}:1 in the ${scheme} theme`)
     }
+  }
+})
+
+test('component geometry consumes the shared radius scale', () => {
+  for (const [sheet, css] of Object.entries(ALL_SHEETS)) {
+    assert.doesNotMatch(css, /border-radius:\s*[0-9]/, `${sheet} hard-codes a corner radius`)
   }
 })
