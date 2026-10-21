@@ -754,12 +754,30 @@ window.__ModuleLoader__.load({
 		* The published brand colors.
 		*
 		* `accent` is the FT yellow used by this plugin's primary action and eyebrow;
-		* `wechat` is the enterprise-WeChat green the SSO card keeps as its identity.
-		* Both inks are the text colors that sit on those fills.
+		* `accent-warm` is the orange trading accent shared by market and trade
+		* surfaces (it is the only palette-aware group); `wechat` is the enterprise-
+		* WeChat green the SSO card keeps as its identity. Inks are the text colors on
+		* those fills, and `-soft` is the tinted surface behind the accent.
 		*/
 		const FT_BRAND_TOKENS = Object.freeze({
 			"--ft-accent": invariant("#f0c433"),
 			"--ft-accent-ink": invariant("#171717"),
+			"--ft-accent-warm": {
+				light: "#cf5623",
+				dark: "#ff8352"
+			},
+			"--ft-accent-warm-hover": {
+				light: "#b8481b",
+				dark: "#ff9a72"
+			},
+			"--ft-accent-warm-ink": {
+				light: "#ffffff",
+				dark: "#1a120e"
+			},
+			"--ft-accent-warm-soft": {
+				light: "#fbeee8",
+				dark: "#2b1d16"
+			},
 			"--ft-wechat": invariant("#2ebd68"),
 			"--ft-wechat-ink": invariant("#102419")
 		});

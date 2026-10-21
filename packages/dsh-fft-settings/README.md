@@ -138,10 +138,14 @@ Connection 返回 `{ ok: true, value }` 或 `{ ok: false, error: { code, message
 | --- | --- | --- |
 | `--ft-accent` | `#f0c433` | FT 黄：设置页主按钮、eyebrow、焦点环 |
 | `--ft-accent-ink` | `#171717` | 黄底上的文字 |
+| `--ft-accent-warm` | 亮 `#cf5623` / 暗 `#ff8352` | 交易橙：模拟盘等行情/交易界面的主色 |
+| `--ft-accent-warm-hover` | 亮 `#b8481b` / 暗 `#ff9a72` | 交易橙按钮的 hover |
+| `--ft-accent-warm-ink` | 亮 `#ffffff` / 暗 `#1a120e` | 橙底上的文字 |
+| `--ft-accent-warm-soft` | 亮 `#fbeee8` / 暗 `#2b1d16` | 选中态的浅橙底 |
 | `--ft-wechat` | `#2ebd68` | 品牌绿：SSO 卡片的品牌色 |
 | `--ft-wechat-ink` | `#102419` | 绿底上的文字 |
 
-约束：这层是**便利层，不是依赖层**。本插件缺席、或宿主没有 `theme` 服务时，消费者必须继续用同值 CSS fallback 显示，所以每个 `var(--ft-*)` 都要带 fallback，且与上表逐字一致；`tests/brand.test.mjs` 会扫描所有子插件并挡住漂移。它只发布颜色，不是主题设置 API：没有持久化、没有设置项，也不注册可选主题。
+约束：这层是**便利层，不是依赖层**。本插件缺席、或宿主没有 `theme` 服务时，消费者必须继续用同值 CSS fallback 显示，所以每个 `var(--ft-*)` 都要带 fallback，且与上表逐字一致（按调色板取值的 token 用 `var(--ft-accent-warm, light-dark(#cf5623, #ff8352))` 写全两套）；`tests/brand.test.mjs` 会扫描所有子插件并挡住漂移。它只发布颜色，不是主题设置 API：没有持久化、没有设置项，也不注册可选主题。
 
 ## 运行日志（`logs` 命名空间）
 

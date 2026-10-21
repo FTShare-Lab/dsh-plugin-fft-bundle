@@ -3,8 +3,9 @@
 // 主题层由本包 client 半发布（`src/brand.ts`），但它是"有则用、无则回退"的
 // 变量：fft-settings 缺席、或宿主根本没有 theme 服务时，其它子插件必须靠 CSS
 // fallback 保持同一配色。因此这里钉两件事：
-//   1. token 只有一处来源，且都是两种调色板同值；
-//   2. 任何 `var(--ft-*)` 都必须带 fallback，且 fallback 与 token 值逐字相同。
+//   1. token 只有一处来源；身份色两种调色板同值，暖强调色按调色板分别取值；
+//   2. 任何 `var(--ft-*)` 都必须带 fallback，且 fallback 与 token 值逐字相同
+//      （调色板相关的写成 `light-dark(<light>, <dark>)`）。
 // 新增品牌色时，先改 `src/brand.ts`，再改消费者，最后这里会替你对齐。
 
 import assert from 'node:assert/strict'
@@ -45,18 +46,26 @@ function packageSources() {
 
 /** One `var(--ft-*)` read: name, whether a fallback was supplied, and its value. */
 function reads(source) {
-  return [...source.matchAll(/var\(\s*(--ft-[a-z0-9-]+)\s*(,?)\s*([^)]*?)\)/g)]
-    .map(([, name, comma, fallback]) => ({ name, fallback: comma === '' ? undefined : fallback.trim() }))
+  return [...source.matchAll(/var\(\s*(--ft-[a-z0-9-]+)\s*(?:,\s*((?:[^()]|\([^()]*\))*))?\)/g)]
+    .map(([, name, fallback]) => ({ name, fallback: fallback === undefined ? undefined : fallback.trim() }))
 }
 
-test('the layer publishes only scheme-invariant FT brand tokens', () => {
+/** A fallback written as one value, or as `light-dark(<light>, <dark>)`. */
+function fallbackModes(value) {
+  const match = /^light-dark\(\s*([^,]+?)\s*,\s*(.+?)\s*\)$/i.exec(value)
+  return match ? { light: match[1], dark: match[2] } : { light: value, dark: value }
+}
+
+test('the layer publishes FT brand tokens with a canonical value per palette', () => {
   assert.equal(FT_BRAND_SOURCE, '@ft/dsh-fft-settings')
   assert.deepEqual(Object.keys(FT_BRAND_TOKENS).sort(), [
-    '--ft-accent', '--ft-accent-ink', '--ft-wechat', '--ft-wechat-ink',
+    '--ft-accent', '--ft-accent-ink', '--ft-accent-warm', '--ft-accent-warm-hover',
+    '--ft-accent-warm-ink', '--ft-accent-warm-soft', '--ft-wechat', '--ft-wechat-ink',
   ])
   for (const [name, modes] of Object.entries(FT_BRAND_TOKENS)) {
     assert.match(name, /^--ft-/, `${name} stays inside the FT namespace`)
-    assert.equal(modes.light, modes.dark, `${name} must not flip with the palette`)
+    assert.match(modes.light, /^#[0-9a-f]{6}$/i, `${name} light must be a hex colour`)
+    assert.match(modes.dark, /^#[0-9a-f]{6}$/i, `${name} dark must be a hex colour`)
   }
 })
 
@@ -68,13 +77,18 @@ test('every FT token read carries the canonical value as its fallback', () => {
       const canonical = FT_BRAND_TOKENS[name]
       assert.ok(canonical !== undefined, `${label} reads undeclared ${name}`)
       assert.ok(fallback !== undefined, `${label} reads ${name} without a fallback; fft-settings may be absent`)
-      assert.equal(fallback.toLowerCase(), canonical.light.toLowerCase(), `${label} fallback for ${name} drifted from src/brand.ts`)
+      const modes = fallbackModes(fallback)
+      assert.equal(modes.light.toLowerCase(), canonical.light.toLowerCase(), `${label} light fallback for ${name} drifted from src/brand.ts`)
+      assert.equal(modes.dark.toLowerCase(), canonical.dark.toLowerCase(), `${label} dark fallback for ${name} drifted from src/brand.ts`)
       seen.add(label)
     }
   }
   // A scan that finds nothing must fail: these are the current consumers, and a
   // move should show up here rather than silently drop the guard.
-  for (const expected of ['dsh-fft-settings/src/core/styles.ts', 'dsh-newapi-wechat-sso/client.js']) {
+  for (const expected of [
+    'dsh-fft-settings/src/core/styles.ts',
+    'dsh-newapi-wechat-sso/client.js',
+  ]) {
     assert.ok(seen.has(expected), `${expected} no longer reads an --ft-* token; update the guard if that is intended`)
   }
 })
