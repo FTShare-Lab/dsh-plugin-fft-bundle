@@ -34,6 +34,9 @@ export const repoRoot = resolve(fileURLToPath(new URL('..', import.meta.url)))
 /** The bundle package that owns the patch layer and the dependency edges. */
 const BUNDLE_DIR = 'packages/dsh-fft-bundle'
 
+/** The third-party plugin `--kline-dir` substitutes. */
+const KLINE = '@ftshare-lab/dsh-kline'
+
 /** Where the tarball lands when `--out` is not given. */
 const DEFAULT_OUT = 'releases/gitlab'
 
@@ -299,7 +302,9 @@ function installedCopy(name, ref) {
  * @returns {string} the absolute directory holding the package.
  */
 function externalSource(name, spec, options) {
-  if (options.klineDir !== undefined) return options.klineDir
+  // `--kline-dir` names one package; apply it to that edge only, or every other
+  // external edge would be filled with the kline payload.
+  if (name === KLINE && options.klineDir !== undefined) return options.klineDir
   const ref = refOf(spec)
   const localDir = options.pluginDirs?.get(name)
   if (localDir !== undefined) {
