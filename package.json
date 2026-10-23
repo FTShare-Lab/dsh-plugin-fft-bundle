@@ -10,6 +10,7 @@
     "test": "pnpm -r run test && node scripts/ui-audit.mjs",
     "typecheck": "pnpm -r run typecheck",
     "ui:audit": "node scripts/ui-audit.mjs",
-    "pack:tarball": "node scripts/pack-tarball.mjs"
+    "pack:tarball": "node scripts/pack-tarball.mjs",
+    "upload:asset": "node scripts/upload-release-asset.mjs"
   }
 }

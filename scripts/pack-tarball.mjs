@@ -512,7 +512,7 @@ Install it (the desktop profile is owned by the app, so quit the app first for t
           plugin --profile desktop add ${result.tarball}
 
 Publish it:
-  GitLab (internal)  git add -f ${result.tarball} on the stable branch, so the default branch carries it
+  GitLab (internal)  node scripts/upload-release-asset.mjs ${result.tarball} --version ${result.manifest.version} --release v${result.manifest.version}
   GitHub (public)    gh release create <tag> --repo gigaflw/dsh-fft-bundle <this file>
 `)
 }
