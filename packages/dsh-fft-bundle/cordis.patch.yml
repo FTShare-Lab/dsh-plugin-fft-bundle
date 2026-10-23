@@ -47,6 +47,12 @@
         redirectUri: https://llm-proxy.ftai.chat/oauth/ft-sso
     - id: dsh-kline-sidebar
       name: '@ftshare-lab/dsh-kline'
+    # 模拟盘：一行同时承载宿主半（RPC 路由与 paper_* / futures_* 工具）与浏览器半
+    # （侧栏「模拟交易」标签）。bare-name 全局行是 DSH 浏览器模块扫描唯一能看到的
+    # 形态，不能放进 preset（preset 行不产生浏览器模块源）。它从依赖边取得本包，
+    # 因此本行必须与 package.json 的 @ft/dsh-fft-paper-trading 边成对存在。
+    - id: ft-paper-trading
+      name: '@ft/dsh-fft-paper-trading'
     # Carrier only: the bare package name is what DSH's browser module scan can
     # see, so this row is what composes the cockpit's report card, session
     # "报告" view and sidebar tab. It registers no tools (see src/index.ts).

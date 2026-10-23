@@ -48,6 +48,33 @@ const EDGE_TEXT = /(git\+ssh:\/\/[^"']*(?:FTShare-Lab\/dsh-plugin-fft-bundle|git
 const RELEASE_TAG = /^v\d+\.\d+\.\d+(?:[-+].*)?$/u
 
 /**
+ * Dependency edges into another repository. They do not follow this repository's
+ * `#dev`/tag flip: the other repository has its own release line, so the edge
+ * always pins one of *its* release tags. `dev` and the release commit both keep
+ * the tag, which is also what makes a dev install pair the bundle with a known
+ * plugin build.
+ */
+export const EXTERNAL_EDGES = [
+  {
+    manifestPath: 'packages/dsh-fft-bundle/package.json',
+    name: '@ft/dsh-fft-paper-trading',
+    repo: /github\.com\/gigaflw\/dsh-fft-paper-trading(?:\.git)?#/u,
+  },
+]
+
+/**
+ * Every cross-repository edge declared above, read from its manifest.
+ * @returns {Array<{ name: string, spec: string, manifestPath: string }>} the edges.
+ */
+export function readExternalEdges() {
+  return EXTERNAL_EDGES.flatMap(({ manifestPath, name, repo }) => {
+    const manifest = JSON.parse(readFileSync(resolve(repoRoot, manifestPath), 'utf8'))
+    const spec = manifest.dependencies?.[name]
+    return spec !== undefined && repo.test(spec) ? [{ name, spec, manifestPath }] : []
+  })
+}
+
+/**
  * Read one edge's committish the way pnpm's git resolver does: the fragment is a
  * list of `&`-joined parameters where `path:` and `semver:` are named and
  * anything else is the committish.
@@ -140,9 +167,21 @@ function headSubject() {
  */
 export function check({ prePush = false } = {}) {
   const edges = readEdges()
+  const external = readExternalEdges()
   const ref = sharedRef()
+  const badExternal = external.filter(edge => !RELEASE_TAG.test(refOf(edge.spec)))
+  if (badExternal.length > 0) {
+    console.error(
+      'edge-refs: refusing cross-repository edges that do not pin a release tag:\n'
+      + badExternal.map(edge => `  ${edge.manifestPath}: ${edge.name} -> ${edge.spec}`).join('\n')
+      + '\n  Cross-repository edges do not follow this bundle\'s #dev flip; tag that repository and pin'
+      + ' its vX.Y.Z here.',
+    )
+    process.exitCode = 1
+    return
+  }
   if (!prePush) {
-    console.log(`edge-refs: ${edges.length} edges carry #${ref || '(no ref)'}`)
+    console.log(`edge-refs: ${edges.length} edges carry #${ref || '(no ref)'}; ${external.length} cross-repository edges pinned to release tags`)
     return
   }
   const subject = headSubject()

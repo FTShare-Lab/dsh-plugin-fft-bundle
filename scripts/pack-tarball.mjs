@@ -241,6 +241,37 @@ export function httpsUrl(spec) {
 }
 
 /**
+ * The URL to clone for an edge: https for every host so a fresh machine needs no ssh key.
+ * @param {string} spec - one dependency spec.
+ * @returns {string} a clone URL.
+ */
+export function cloneUrl(spec) {
+  const url = spec.split('#')[0].replace(/^git\+/u, '')
+  return httpsUrl(spec)
+}
+
+/**
+ * Extract one package from a local sibling repository at the edge's ref. The
+ * package sits at that repository's root, so the extraction is the package.
+ * @param {string} name - package name.
+ * @param {string} dir - repository root.
+ * @param {string} ref - tag or commit to extract.
+ * @param {string} cache - cache root.
+ * @returns {string} the extracted package directory.
+ */
+function localRepoSource(name, dir, ref, cache) {
+  const dest = join(cache, `${name.replace(/[^a-z0-9.-]/giu, '_')}-${ref}`)
+  if (existsSync(join(dest, 'package.json'))) return dest
+  rmSync(dest, { recursive: true, force: true })
+  mkdirSync(dest, { recursive: true })
+  const archive = spawnSync('git', ['-C', dir, 'archive', '--format=tar', ref], { maxBuffer: 1 << 30 })
+  if (archive.status !== 0) throw new Error(`git archive ${ref} in ${dir} failed: ${archive.stderr.toString()}`)
+  const untar = spawnSync('tar', ['-x', '-C', dest], { input: archive.stdout, maxBuffer: 1 << 30 })
+  if (untar.status !== 0) throw new Error(`tar extraction failed: ${untar.stderr.toString()}`)
+  return dest
+}
+
+/**
  * Find an installed copy of a plugin whose version matches the edge's tag.
  * @param {string} name - package name.
  * @param {string} ref - the edge's committish, `v0.3.5` or empty.
@@ -260,15 +291,21 @@ function installedCopy(name, ref) {
 }
 
 /**
- * Obtain one external dependency's files: an explicit directory, an installed copy, a cache, or a clone.
+ * Obtain one external dependency's files: an explicit directory, a local
+ * sibling repository, an installed copy, a cache, or a clone.
  * @param {string} name - package name.
  * @param {string} spec - the dependency spec.
- * @param {{klineDir?: string, cache: string}} options - the run's sources.
+ * @param {{klineDir?: string, pluginDirs?: Map<string, string>, cache: string}} options - the run's sources.
  * @returns {string} the absolute directory holding the package.
  */
 function externalSource(name, spec, options) {
   if (options.klineDir !== undefined) return options.klineDir
   const ref = refOf(spec)
+  const localDir = options.pluginDirs?.get(name)
+  if (localDir !== undefined) {
+    console.log(`pack-tarball: ${name} from the local repository (${localDir} at ${ref || 'HEAD'})`)
+    return localRepoSource(name, localDir, ref === '' ? 'HEAD' : ref, options.cache)
+  }
   const installed = installedCopy(name, ref)
   if (installed !== undefined) {
     console.log(`pack-tarball: ${name} from the installed profile (${installed})`)
@@ -277,8 +314,9 @@ function externalSource(name, spec, options) {
   const cache = join(options.cache, `${name.replace(/[^a-z0-9.-]/giu, '_')}-${ref === '' ? 'default' : ref}`)
   if (!existsSync(join(cache, 'package.json'))) {
     rmSync(cache, { recursive: true, force: true })
-    const args = ['clone', '--depth', '1', ...ref === '' ? [] : ['--branch', ref], httpsUrl(spec), cache]
-    console.log(`pack-tarball: cloning ${httpsUrl(spec)}${ref === '' ? '' : ` at ${ref}`}`)
+    const url = cloneUrl(spec)
+    const args = ['clone', '--depth', '1', ...ref === '' ? [] : ['--branch', ref], url, cache]
+    console.log(`pack-tarball: cloning ${url}${ref === '' ? '' : ` at ${ref}`}`)
     execFileSync('git', args, { stdio: 'inherit' })
   }
   return cache
@@ -303,7 +341,7 @@ function pack(staging, out, manifest) {
 
 /**
  * Resolve the ref, assemble the payload, and pack it.
- * @param {{ref?: string, out?: string, klineDir?: string, keepStaging?: boolean}} options - the run's inputs.
+ * @param {{ref?: string, out?: string, klineDir?: string, pluginDirs?: Map<string, string>, keepStaging?: boolean}} options - the run's inputs.
  * @returns {{tarball: string, manifest: object, bundled: string[], bytes: number, files: number, ref: string}} the result.
  */
 export function packTarball(options = {}) {
@@ -326,7 +364,11 @@ export function packTarball(options = {}) {
       const manifest = JSON.parse(readFileSync(join(staged, 'package.json'), 'utf8'))
       bundled.push({ name, manifest, source: staged })
     } else {
-      const source = externalSource(name, spec, { klineDir: options.klineDir, cache: join(repoRoot, 'tmp', 'standalone', '.cache') })
+      const source = externalSource(name, spec, {
+        klineDir: options.klineDir,
+        pluginDirs: options.pluginDirs,
+        cache: join(repoRoot, 'tmp', 'standalone', '.cache'),
+      })
       const manifest = JSON.parse(readFileSync(join(source, 'package.json'), 'utf8'))
       bundled.push({ name, manifest, source })
     }
@@ -369,6 +411,9 @@ OPTIONS
                        --out releases/github.
   --kline-dir <dir>    Directory of an already installed
                        @ftshare-lab/dsh-kline. Skips the source lookup below.
+  --plugin-dir <name>=<dir>
+                       Take one external plugin from a local sibling repository:
+                       extract it with git archive at the edge's ref. Repeatable.
   --keep-staging       Keep tmp/standalone/.staging-<ref>/ for inspection.
   -h, --help           Print this help.
 
@@ -381,9 +426,10 @@ WHAT IT DOES
   single git edge.
 
 EXTERNAL SOURCES
-  An edge that is not in this repository is resolved in order: an installed
-  profile (~/.dsh/profiles/*/node_modules), the cache under
-  tmp/standalone/.cache, then a git clone with git+ssh rewritten to https.
+  An edge that is not in this repository is resolved in order: an explicit
+  --plugin-dir, an installed profile (~/.dsh/profiles/*/node_modules), the cache
+  under tmp/standalone/.cache, then a git clone — https for public hosts, ssh for
+  the internal GitLab, whose https endpoint is not reachable.
 
 OUTPUT
   Prints the tarball path, size, payload file count, sha256, the inlined
@@ -413,6 +459,16 @@ function parseArgs(argv) {
       if (value === undefined || value.startsWith('-')) throw new Error(`${arg} needs a directory`)
       if (arg === '--out') options.out = value
       else options.klineDir = value
+      index += 1
+      continue
+    }
+    if (arg === '--plugin-dir') {
+      const value = argv[index + 1]
+      if (value === undefined || value.startsWith('-')) throw new Error('--plugin-dir needs <package-name>=<directory>')
+      const separator = value.indexOf('=')
+      if (separator <= 0) throw new Error(`--plugin-dir needs <package-name>=<directory>: ${value}`)
+      options.pluginDirs ??= new Map()
+      options.pluginDirs.set(value.slice(0, separator), resolve(value.slice(separator + 1)))
       index += 1
       continue
     }
