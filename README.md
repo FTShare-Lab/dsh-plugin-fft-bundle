@@ -6,7 +6,7 @@ pnpm workspace 组织，组合包 `@ft/dsh-fft-bundle` 是终端用户的安装�
 
 ### 方式一：tarball（推荐，不需要 ssh）
 
-1. 取得 `ft-dsh-fft-bundle-X.Y.Z.tgz`：进本仓的 `releases/gitlab/` 目录，用该文件页上的「下载」把它存到本地（下载后不要移动或删除）；
+1. 取得 `ft-dsh-fft-bundle-X.Y.Z.tgz`：打开本仓 GitLab 的「Releases」页，在该版本的资产里下载（下载后不要移动或删除）；
 2. 安装官方 Deepseek Harness 桌面版并启动：<https://deepseek-harness.github.io/deepseek-harness>
 3. 「设置」→「插件管理」→「添加插件」，粘贴文件的**绝对路径**，或直接粘贴 Release 资产 URL（形如 `https://github.com/FTShare-Lab/dsh-plugin-fft-bundle/releases/download/vX.Y.Z/dsh-ft-finance-all-in-one-X.Y.Z.tgz`）：
 
