@@ -238,6 +238,17 @@ declare module '@ft/dsh-fft-settings' {
 
 ## 8. 落地清单
 
+改造前的六处硬编码断点（下表「落地清单」的「对应断点」列引用这些编号）：
+
+| # | 断点 | 证据 | 后果 |
+| --- | --- | --- | --- |
+| G1 | Host 命名空间是 apply 时快照 | `module-registry.ts:14-25`、`rpc-core.ts:26-37` | 后注册的命名空间既不在服务对象上，也没有 RPC 路由（`not_found`） |
+| G2 | 浏览器卡片是源码常量、装配一次 | `cards.ts:3`、`client.tsx:10-16` | 运行时注册永远不渲染；卡片不订阅注册表 |
+| G3 | 类型从静态元组推导 | `contract.ts:71-73`、`module-registry.ts:11-13` | 动态命名空间没有编译期类型面 |
+| G4 | 插件级 `inject` 由静态清单合并 | `src/index.ts:9` | 动态模块不能自带宿主服务依赖（如 `credentials`） |
+| G5 | 往 `ctx.ftshareSettings` 上加 `register` 方法 | `rpc-core.ts:22-24` 只保留 `apiVersion`/原型名 | 命名空间 `register` 合法但会与方法名相撞 |
+| G6 | 卸载/HMR 语义 | 路由只在 `connection` 出现时注册一次（`index.ts:17-20`） | 注册表本身要保证 dispose 后服务属性、RPC 路由、卡片同时消失 |
+
 | 文件 | 改动 | 对应断点 |
 | --- | --- | --- |
 | `src/module-registry.ts` | `assembleSettings` → 活注册表：`register(module, owner)`、`namespaces()`、原子写入与撤销；内置模块走同一路径 | G1/G4 |
