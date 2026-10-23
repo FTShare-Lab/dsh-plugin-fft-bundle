@@ -1,6 +1,6 @@
 {
   "name": "@ft/dsh-fft-bundle",
-  "version": "0.7.2",
+  "version": "0.8.0",
   "description": "Composition bundle for the FT financial workbench: installs and wires the dsh-fft plugin set with shared defaults.",
   "type": "module",
   "main": "lib/index.js",
@@ -33,8 +33,8 @@
     "@ft/dsh-fft-factor-intake-standard": "git+ssh://git@github.com/FTShare-Lab/dsh-plugin-fft-bundle.git#path:packages/dsh-fft-factor-intake-standard",
     "@ft/dsh-fft-research-cockpit": "git+ssh://git@github.com/FTShare-Lab/dsh-plugin-fft-bundle.git#path:packages/dsh-fft-research-cockpit",
     "@ft/dsh-fft-settings": "git+ssh://git@github.com/FTShare-Lab/dsh-plugin-fft-bundle.git#path:packages/dsh-fft-settings",
-    "@ftshare-lab/dsh-kline": "git+ssh://git@github.com/gigaflw/dsh_kline.git#v0.4.0",
-    "@ft/dsh-fft-paper-trading": "git+ssh://git@github.com/gigaflw/dsh-fft-paper-trading.git#v0.3.1"
+    "@ftshare-lab/dsh-kline": "git+ssh://git@github.com/gigaflw/dsh_kline.git#v0.4.0-ft.1",
+    "@ft/dsh-fft-paper-trading": "git+ssh://git@github.com/gigaflw/dsh-fft-paper-trading.git#v0.3.2"
   },
   "engines": {
     "node": ">=22.19.0"

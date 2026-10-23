@@ -23,6 +23,9 @@ importers:
       '@ft/dsh-fft-ftshare':
         specifier: link:../dsh-fft-ftshare
         version: link:../dsh-fft-ftshare
+      '@ft/dsh-fft-paper-trading':
+        specifier: git+ssh://git@github.com/gigaflw/dsh-fft-paper-trading.git#v0.3.2
+        version: git+ssh://git@github.com/gigaflw/dsh-fft-paper-trading.git#f10a2443d4cc54cce65456da547d587ebaffccb5(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-tools@0.2.0-rc.2(c6e351a6a6cfd1c2a664558bffcd410d))(react@18.3.1)
       '@ft/dsh-fft-research-cockpit':
         specifier: link:../dsh-fft-research-cockpit
         version: link:../dsh-fft-research-cockpit
@@ -30,8 +33,8 @@ importers:
         specifier: link:../dsh-fft-settings
         version: link:../dsh-fft-settings
       '@ftshare-lab/dsh-kline':
-        specifier: git+ssh://git@github.com/gigaflw/dsh_kline.git#v0.4.0
-        version: https://codeload.github.com/gigaflw/dsh_kline/tar.gz/d727206320d884120c4922b0e38464baf48b723f
+        specifier: git+ssh://git@github.com/gigaflw/dsh_kline.git#v0.4.0-ft.1
+        version: https://codeload.github.com/gigaflw/dsh_kline/tar.gz/136fa8b368bc5f02705c0e229328d3a6d49d53b4
     devDependencies:
       js-yaml:
         specifier: ^4.3.2
@@ -583,8 +586,17 @@ packages:
     resolution: {integrity: sha512-EriSTlt5OC9/7SXkRSCAhfSxxoSUgBm33OH+IkwbdpgoqsSsUg7y3uh+IICI/Qg4BBWr3U2i39RpmycbxMq4ew==}
     engines: {node: ^12.0.0 || ^14.0.0 || >=16.0.0}
 
-  '@ftshare-lab/dsh-kline@https://codeload.github.com/gigaflw/dsh_kline/tar.gz/d727206320d884120c4922b0e38464baf48b723f':
-    resolution: {gitHosted: true, integrity: sha512-+6qhBNHsnnFAEhKq9Zm9kVJht3ky23m+3oAvDU2+OcIekj20+OIr7qKyN9wVvI3W2FaNlEbwanac9H9zYhZ2mA==, tarball: https://codeload.github.com/gigaflw/dsh_kline/tar.gz/d727206320d884120c4922b0e38464baf48b723f}
+  '@ft/dsh-fft-paper-trading@git+ssh://git@github.com/gigaflw/dsh-fft-paper-trading.git#f10a2443d4cc54cce65456da547d587ebaffccb5':
+    resolution: {commit: f10a2443d4cc54cce65456da547d587ebaffccb5, repo: ssh://git@github.com/gigaflw/dsh-fft-paper-trading.git, type: git}
+    version: 0.3.2
+    engines: {node: '>=22.19.0'}
+    peerDependencies:
+      '@deepseek-ai/cordis': 4.0.4
+      '@deepseek-ai/dsh-tools': '>=0.2.0-rc.2'
+      react: ^18.2.0
+
+  '@ftshare-lab/dsh-kline@https://codeload.github.com/gigaflw/dsh_kline/tar.gz/136fa8b368bc5f02705c0e229328d3a6d49d53b4':
+    resolution: {gitHosted: true, integrity: sha512-x4FfKCTgKbeWlJGBXNU4kfARlB+s86e3DlpNXfLymkIFurhcDHH1vVzlVOxhLai9TwTlmMCkb6bMHJWF85RT7Q==, tarball: https://codeload.github.com/gigaflw/dsh_kline/tar.gz/136fa8b368bc5f02705c0e229328d3a6d49d53b4}
     version: 0.4.0
     engines: {node: '>=22.19.0'}
 
@@ -2553,7 +2565,13 @@ snapshots:
 
   '@eslint-community/regexpp@4.12.2': {}
 
-  '@ftshare-lab/dsh-kline@https://codeload.github.com/gigaflw/dsh_kline/tar.gz/d727206320d884120c4922b0e38464baf48b723f': {}
+  '@ft/dsh-fft-paper-trading@git+ssh://git@github.com/gigaflw/dsh-fft-paper-trading.git#f10a2443d4cc54cce65456da547d587ebaffccb5(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-tools@0.2.0-rc.2(c6e351a6a6cfd1c2a664558bffcd410d))(react@18.3.1)':
+    dependencies:
+      '@deepseek-ai/cordis': 4.0.4(@deepseek-ai/cordis-plugin-include@1.0.9)(@deepseek-ai/cordis-plugin-loader@1.0.5)
+      '@deepseek-ai/dsh-tools': 0.2.0-rc.2(c6e351a6a6cfd1c2a664558bffcd410d)
+      react: 18.3.1
+
+  '@ftshare-lab/dsh-kline@https://codeload.github.com/gigaflw/dsh_kline/tar.gz/136fa8b368bc5f02705c0e229328d3a6d49d53b4': {}
 
   '@hono/node-server@2.1.3(hono@4.13.13)':
     dependencies:
