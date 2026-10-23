@@ -4,11 +4,11 @@
   "description": "Composition bundle for the FT financial workbench: installs and wires the dsh-fft plugin set with shared defaults.",
   "type": "module",
   "main": "lib/index.js",
-  "types": "lib/types/index.d.ts",
+  "types": "lib/index.d.ts",
   "icon": "./icon.png",
   "exports": {
     ".": {
-      "types": "./lib/types/index.d.ts",
+      "types": "./lib/index.d.ts",
       "default": "./lib/index.js"
     },
     "./src/*": "./src/*",
@@ -20,7 +20,7 @@
     "icon.png",
     "locale/*.json",
     "lib/index.js",
-    "lib/types/**/*.d.ts",
+    "lib/index.d.ts",
     "cordis.patch.yml",
     "scripts/kline-mcp.mjs"
   ],
