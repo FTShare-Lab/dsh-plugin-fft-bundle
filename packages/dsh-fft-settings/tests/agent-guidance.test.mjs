@@ -61,7 +61,7 @@ async function boot(t, options = {}) {
 
 test('ships an ./agent entry that resolves to a built file', async () => {
   // 防的是"改了 src 忘了 build"：git 安装只送达被跟踪文件，lib/ 缺了就装出空壳。
-  assert.equal(agentEntry.name, '@ft/dsh-fft-settings/agent')
+  assert.equal(agentEntry.name, '@dsh-ft/dsh-fft-settings/agent')
   assert.deepEqual(agentEntry.inject, ['systemPrompt'], 'the entry declares exactly the registry it needs')
   assert.equal(typeof agentEntry.apply, 'function')
   const manifest = JSON.parse(readFileSync(new URL('package.json', PACKAGE_ROOT), 'utf8'))

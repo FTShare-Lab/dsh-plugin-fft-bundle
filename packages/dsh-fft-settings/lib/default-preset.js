@@ -15,7 +15,7 @@
  * profile row too. Because it is still the one change this plugin ever makes to
  * the user's own profile patch, the file is copied into this plugin's data
  * directory first, and a claim without that copy never happens.
- * @module @ft/dsh-fft-settings/default-preset
+ * @module @dsh-ft/dsh-fft-settings/default-preset
  */
 import { existsSync } from 'node:fs';
 import { copyFile, mkdir, writeFile } from 'node:fs/promises';

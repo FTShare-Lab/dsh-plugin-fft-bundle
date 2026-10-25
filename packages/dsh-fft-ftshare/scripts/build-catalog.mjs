@@ -13,7 +13,7 @@
  *
  * 产物必须可复现：同样输入产出字节相同的结果，所以时间戳只写进 `catalog.meta.json`，
  * 条目按接口名排序，JSON 用固定缩进。
- * @module @ft/dsh-fft-ftshare/build-catalog
+ * @module @dsh-ft/dsh-fft-ftshare/build-catalog
  */
 
 import { readFileSync, writeFileSync } from 'node:fs'

@@ -2,7 +2,7 @@
 
 安装包名为 `@ft/dsh-fft-research-cockpit`（用于 npm/pnpm 和 DeepSeek Harness 包解析），运行时插件显示名为 `FT 投研舱`，profile 行 id 仍为 `ft-research-cockpit`。
 
-> **本包沿革（2026-10）**：源码自 `dsh-ft/submodules/dsh-ft-research-cockpit@b91ff2a` 整包搬入本包，包名由 `ft-research-cockpit` 改为 `@ft/dsh-fft-research-cockpit`，并按 DSH 0.2.0-rc.2 校准宿主 API。共享设置依赖由 `@ft/dsh-ftshare-settings` 改为 `@ft/dsh-fft-settings`（Host 服务名 `ftshareSettings` 与路由未变）。
+> **本包沿革（2026-10）**：源码自 `dsh-ft/submodules/dsh-ft-research-cockpit@b91ff2a` 整包搬入本包，包名由 `ft-research-cockpit` 改为 `@ft/dsh-fft-research-cockpit`，并按 DSH 0.2.0-rc.2 校准宿主 API。共享设置依赖由 `@ft/dsh-ftshare-settings` 改为 `@dsh-ft/dsh-fft-settings`（Host 服务名 `ftshareSettings` 与路由未变）。
 
 已有 profile 若仍保留旧的 `investment-research` 或 `ft-个人投研-kit` 条目，请将该条目的 `id` 更新为 `ft-research-cockpit`，并将依赖名改为本包的 `@ft/dsh-fft-research-cockpit`；这是一次插件身份改名，不会自动迁移旧条目。
 
@@ -52,11 +52,11 @@ dsh-investment-research/                 # 当前 checkout 目录
 
 包根入口 `index.ts` 是**纯载体**：不带 `inject`、不注册任何工具。原因是 DSH 只从根 loader 的 entries 组合浏览器模块图，而 preset 把自己的行挂在扫描看不到的子树里；只有一行裸包名的全局行才能让报告卡片、会话「报告」视图和侧栏 tab 加载出来。工具注册全部在 `agent.ts`（`@ft/dsh-fft-research-cockpit/agent`），由 preset 或本包 patch 的 `/agent` 行挂载——子路径行不产生浏览器模块源，因此两行不会重复注册。
 
-本包的 `cordis.patch.yml` 因此插入两行（都在全局层）：裸包名载体行 + `/agent` 工具行。取数服务 `ftshareData` 由 FTShare 底座 `@ft/dsh-fft-ftshare` 在全局层 `provide`，所以本包单独安装时必须同时安装底座（`dsh plugin --profile <name> add @ft/dsh-fft-ftshare`），否则 `/agent` 行会挂起等待该服务——这是刻意的 fail-loud，不会退回任何自建客户端。
+本包的 `cordis.patch.yml` 因此插入两行（都在全局层）：裸包名载体行 + `/agent` 工具行。取数服务 `ftshareData` 由 FTShare 底座 `@dsh-ft/dsh-fft-ftshare` 在全局层 `provide`，所以本包单独安装时必须同时安装底座（`dsh plugin --profile <name> add @dsh-ft/dsh-fft-ftshare`），否则 `/agent` 行会挂起等待该服务——这是刻意的 fail-loud，不会退回任何自建客户端。
 
 ## FTShare 数据来源
 
-本包**不连接 FTShare 网关**，也不读任何凭据：网关地址、API Key 解析与四态归一全部归公用底座 `@ft/dsh-fft-ftshare`，本包只注入它的服务取数：
+本包**不连接 FTShare 网关**，也不读任何凭据：网关地址、API Key 解析与四态归一全部归公用底座 `@dsh-ft/dsh-fft-ftshare`，本包只注入它的服务取数：
 
 ```ts
 export const inject = ['tools', 'llm', 'ftshareData']
@@ -149,7 +149,7 @@ pnpm dsh --profile headless '请调用 cockpit_deep_read_report，对 300750 生
 
 插件需要两类完全不同的凭证：
 
-- FTShare 的 API Key：由 FTShare 底座（`@ft/dsh-fft-ftshare`）经设置服务的 `ftshareSettings.apiKey` 解析一次，本包不读凭据、不持有网关地址；
+- FTShare 的 API Key：由 FTShare 底座（`@dsh-ft/dsh-fft-ftshare`）经设置服务的 `ftshareSettings.apiKey` 解析一次，本包不读凭据、不持有网关地址；
 - `DEEPSEEK_API_KEY`：由 Harness 的 `deepseek-official` provider 使用，负责 `ctx.llm.stream`。
 
 DSH 会优先从其本地凭证库 `$DSH_HOME/.credentials.yaml`（本机默认为

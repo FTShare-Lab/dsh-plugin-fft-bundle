@@ -1,4 +1,4 @@
-# @ft/dsh-fft-ftshare
+# @dsh-ft/dsh-fft-ftshare
 
 FTShare 数据底座：bundle 内所有 FTShare 取数都经过它。
 
@@ -13,7 +13,7 @@ FTShare 数据底座：bundle 内所有 FTShare 取数都经过它。
 
 | 入口 | 平面 | 职责 |
 |---|---|---|
-| 裸包名 `@ft/dsh-fft-ftshare` | **全局** | `provide('ftshareData')`，`inject: ['ftshareSettings']`。唯一出站、唯一四态。 |
+| 裸包名 `@dsh-ft/dsh-fft-ftshare` | **全局** | `provide('ftshareData')`，`inject: ['ftshareSettings']`。唯一出站、唯一四态。 |
 | `/tools` | preset | 接口表里带 `expose` 的条目 → `ftshare_*` 工具；外加长尾直调 `ftshare_call(interface, args)`。 |
 | `/mask` | preset | 按 agent 掩掉 `dsh_kline` 的三个 FTShare wrapper 工具（`market_pulse` / `market_board_detail` / `security_intelligence`）。 |
 | `/project` | preset | `tools/post-execute` 钩子：把保留的 kline 摘要式结果投影成模型可见文本，不输出裸计数。 |
@@ -32,7 +32,7 @@ preset 之外的消费方再也 inject 不到。工具、掩码、投影三行�
 宿主侧：
 
 ```ts
-import type { FtshareCallResult } from '@ft/dsh-fft-ftshare/contract'
+import type { FtshareCallResult } from '@dsh-ft/dsh-fft-ftshare/contract'
 
 export const inject = ['ftshareData']
 

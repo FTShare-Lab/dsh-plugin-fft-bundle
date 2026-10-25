@@ -15,7 +15,7 @@
 /** One value for both palettes: brand fills are scheme-invariant. */
 const invariant = (value) => ({ light: value, dark: value });
 /** Layer identity reported to `ctx.theme.overrideTokens` (one layer per source). */
-export const FT_BRAND_SOURCE = '@ft/dsh-fft-settings';
+export const FT_BRAND_SOURCE = '@dsh-ft/dsh-fft-settings';
 /**
  * The published brand colors.
  *

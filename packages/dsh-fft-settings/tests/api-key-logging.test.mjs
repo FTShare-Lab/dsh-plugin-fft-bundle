@@ -157,12 +157,12 @@ test('插件入口传插件名 logger：warn 带字段落进采集器，且不�
   const warn = messages.find(message => message.type === 'warn' && message.args[0] === 'FTShare API Key 保存失败')
   assert.ok(warn, '保存失败没有写 warn')
   // 无参 ctx.logger() ⇒ logger name 就是插件名（规格 §2 第 4 条）。
-  assert.equal(warn.name, '@ft/dsh-fft-settings')
+  assert.equal(warn.name, '@dsh-ft/dsh-fft-settings')
   assert.deepEqual(warn.args[1], { code: 'save_failed' })
   assert.ok(!JSON.stringify(messages).includes('test-secret'))
 
   await ctx.ftshareSettings.logs.flush()
   const text = await readFile(join(home, 'logs', 'ft', 'current.log'), 'utf8')
-  assert.match(text, /WARN {2}@ft\/dsh-fft-settings FTShare API Key 保存失败 code=save_failed/)
+  assert.match(text, /WARN {2}@dsh-ft\/dsh-fft-settings FTShare API Key 保存失败 code=save_failed/)
   assert.ok(!text.includes('test-secret'))
 })

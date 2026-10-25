@@ -8,7 +8,7 @@
 #     and mounts this package's `/tools`, `/mask` and `/project` entries from
 #     `preset-ft-finance`; DO NOT add this package separately, or every row
 #     lands twice (see README).
-#   * standalone (`dsh plugin --profile <name> add @ft/dsh-fft-ftshare`) —
+#   * standalone (`dsh plugin --profile <name> add @dsh-ft/dsh-fft-ftshare`) —
 #     there is no preset, so all four rows go on the global plane: the tools and
 #     the mask apply to every agent, and the projection hook covers every MCP
 #     result.
@@ -18,10 +18,10 @@
 # source and the client half-plane question does not arise.
 - insert:
     - id: dsh-fft-ftshare
-      name: '@ft/dsh-fft-ftshare'
+      name: '@dsh-ft/dsh-fft-ftshare'
     - id: ft-ftshare-tools
-      name: '@ft/dsh-fft-ftshare/tools'
+      name: '@dsh-ft/dsh-fft-ftshare/tools'
     - id: ft-ftshare-mask
-      name: '@ft/dsh-fft-ftshare/mask'
+      name: '@dsh-ft/dsh-fft-ftshare/mask'
     - id: ft-ftshare-project
-      name: '@ft/dsh-fft-ftshare/project'
+      name: '@dsh-ft/dsh-fft-ftshare/project'

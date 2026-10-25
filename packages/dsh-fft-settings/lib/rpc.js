@@ -1,5 +1,5 @@
 /**
- * `@ft/dsh-fft-settings/client-api` — the generic browser caller entry.
+ * `@dsh-ft/dsh-fft-settings/client-api` — the generic browser caller entry.
  *
  * Transport plus envelope helpers and their types, nothing feature-specific: a
  * card for any namespace uses `callSettingsRpc` against the namespace and

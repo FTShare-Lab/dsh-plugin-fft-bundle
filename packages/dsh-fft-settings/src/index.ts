@@ -10,7 +10,7 @@ import { createSettingsRoute } from './core/transport.js'
 import { installDefaultPresetOnce } from './default-preset.js'
 export * from './contract.js'
 export { defineSettingsModule } from './core/module-registry.js'
-export const name = '@ft/dsh-fft-settings'
+export const name = '@dsh-ft/dsh-fft-settings'
 /**
  * Host services this plugin's own built-in modules resolve at registration.
  * A consuming plugin declares its own requirement; settings never declares

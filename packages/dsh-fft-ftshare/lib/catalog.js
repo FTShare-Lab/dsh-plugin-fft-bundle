@@ -6,7 +6,7 @@
  * `catalog.json`（完整，含 `description` 与 `inputSchema`）与 `catalog.txt`
  * （一线索引，供模型 `grep`）。本模块只做纯函数——查名字、读必填入参——因此宿主
  * 与浏览器两侧都能用；读文件的那一半在 `catalog-host.ts`。
- * @module @ft/dsh-fft-ftshare/catalog
+ * @module @dsh-ft/dsh-fft-ftshare/catalog
  */
 /** 判断一个值是不是可当对象读的记录。 */
 function isRecord(value) {

@@ -26,11 +26,11 @@
  *    重复 append 限制。
  * 4. **清单只有一处**：{@link MASKED_KLINE_TOOLS}，由 `dsh-fft-bundle` 的契约测试
  *    断言它是 kline `server.py` 里 `@mcp.tool` 名字集合的子集。
- * @module @ft/dsh-fft-ftshare/mask
+ * @module @dsh-ft/dsh-fft-ftshare/mask
  */
 import type { Context } from '@deepseek-ai/cordis';
 /** Cordis 插件名。 */
-export declare const name = "@ft/dsh-fft-ftshare/mask";
+export declare const name = "@dsh-ft/dsh-fft-ftshare/mask";
 /**
  * 被掩掉的 kline 工具（MCP 公共名去掉 `mcp__<server>__` 前缀之后的那一段）。
  *

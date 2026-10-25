@@ -10,7 +10,7 @@
  *
  * 上游接口名必须能在目录里找到（守护测试断言），不在目录就当不可调：不猜别名，
  * 也不按版本前缀推断订阅档位（见 {@link ./errors.ts} 与设计文档附录 B）。
- * @module @ft/dsh-fft-ftshare/capabilities
+ * @module @dsh-ft/dsh-fft-ftshare/capabilities
  */
 /** 常用入参文案。 */
 const STOCK_CODE = 'A 股代码，支持 6 位纯代码、.SH/.SZ/.BJ 短后缀或 .XSHG/.XSHE/.BJSE 长后缀';

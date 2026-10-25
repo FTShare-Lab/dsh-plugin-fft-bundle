@@ -4,7 +4,7 @@ import { type FtshareSettingsService } from './contract.js';
 import { DEFAULT_LOGS_CONFIG, type LogsConfig } from './features/logs/config.js';
 export * from './contract.js';
 export { defineSettingsModule } from './core/module-registry.js';
-export declare const name = "@ft/dsh-fft-settings";
+export declare const name = "@dsh-ft/dsh-fft-settings";
 /**
  * Host services this plugin's own built-in modules resolve at registration.
  * A consuming plugin declares its own requirement; settings never declares

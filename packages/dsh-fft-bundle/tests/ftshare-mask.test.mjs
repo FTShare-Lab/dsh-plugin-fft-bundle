@@ -17,7 +17,7 @@ import { createRequire } from 'node:module'
 import { dirname, resolve } from 'node:path'
 import { describe, it } from 'node:test'
 
-import { MASKED_KLINE_TOOLS, publicToolName } from '@ft/dsh-fft-ftshare/mask'
+import { MASKED_KLINE_TOOLS, publicToolName } from '@dsh-ft/dsh-fft-ftshare/mask'
 
 const require = createRequire(import.meta.url)
 

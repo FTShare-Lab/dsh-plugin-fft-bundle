@@ -12,9 +12,9 @@
  * - **发现靠本地 `search()`**，是对目录的纯函数，不发网络。
  *
  * 这个模块是**只读子集**：不碰凭据、不碰网关地址、不维护接口表。它只认两样输入——
- * 随包的目录与被注入的 `fetch`；`@ft/dsh-fft-ftshare/route` 与网关常量都不在这里的
+ * 随包的目录与被注入的 `fetch`；`@dsh-ft/dsh-fft-ftshare/route` 与网关常量都不在这里的
  * 依赖里，`scripts/test-crossplane.mjs` 会 grep 产物把这条钉住。
- * @module @ft/dsh-fft-ftshare/client
+ * @module @dsh-ft/dsh-fft-ftshare/client
  */
 
 import { asCatalog, catalogEntryOf, missingRequiredArgs, type Catalog, type CatalogEntry } from './catalog.js'

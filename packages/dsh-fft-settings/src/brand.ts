@@ -23,7 +23,7 @@ export interface BrandTokenModes {
 const invariant = (value: string): BrandTokenModes => ({ light: value, dark: value })
 
 /** Layer identity reported to `ctx.theme.overrideTokens` (one layer per source). */
-export const FT_BRAND_SOURCE = '@ft/dsh-fft-settings'
+export const FT_BRAND_SOURCE = '@dsh-ft/dsh-fft-settings'
 
 /**
  * The published brand colors.

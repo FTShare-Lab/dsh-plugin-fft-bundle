@@ -10,7 +10,7 @@
  * 2. **每次调用开一个新会话**（`initialize` → `callTool` → `close`）。会话里带
  *    着凭据，缓存会话就等于缓存秘密，而设置契约要求「每次操作重新 resolve」；
  *    连接成本换正确性是划算的，这条与投研舱的既有做法一致。
- * @module @ft/dsh-fft-ftshare/transport
+ * @module @dsh-ft/dsh-fft-ftshare/transport
  */
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';

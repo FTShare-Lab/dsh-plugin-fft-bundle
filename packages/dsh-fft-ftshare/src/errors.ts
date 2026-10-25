@@ -7,7 +7,7 @@
  * 只留下一个 `0`；调用方于是无法区分「今天真的没有涨停事件」和「这个套餐根本
  * 调不了这个接口」。本模块只做一件事：把权限失败与真实失败分开，并各自带上
  * 用户能看懂的中文说明。
- * @module @ft/dsh-fft-ftshare/errors
+ * @module @dsh-ft/dsh-fft-ftshare/errors
  */
 
 import { FTSHARE_UPGRADE_URL, type FtshareNotice } from './contract.js'

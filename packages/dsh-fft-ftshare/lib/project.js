@@ -25,7 +25,7 @@
  *
  * 钩子用 `ctx.on` 注册在 preset 子树里，DSH 对瀑布按 `exec.agent` 做作用域过滤，
  * 因此**只有金融模式的 agent 受影响**，标准模式一个字都不变。
- * @module @ft/dsh-fft-ftshare/project
+ * @module @dsh-ft/dsh-fft-ftshare/project
  */
 import { asText, isRecord } from './errors.js';
 /** MCP 公共名的服务器段：`mcp__<server>__<tool>`。缺省只接管 dsh-kline。 */

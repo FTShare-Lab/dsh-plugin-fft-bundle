@@ -12,7 +12,7 @@
  * @module
  */
 import type { Logger } from '@deepseek-ai/cordis';
-import { type FtshareCallResult, type FtshareCallState, type FtshareDataService, type FtshareNotice } from '@ft/dsh-fft-ftshare/contract';
+import { type FtshareCallResult, type FtshareCallState, type FtshareDataService, type FtshareNotice } from '@dsh-ft/dsh-fft-ftshare/contract';
 import type { JsonRecord, PermissionNotice } from './types.js';
 /** 叶子函数依赖的最小服务面，由 `ctx.ftshareData` 提供（测试可传假实现）。 */
 export type FtshareCaller = Pick<FtshareDataService, 'call'>;

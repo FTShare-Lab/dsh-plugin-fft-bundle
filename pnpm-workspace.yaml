@@ -8,7 +8,7 @@ overrides:
   # public 侧全部指 GitHub。
   # 仓库改名时须同步：此处 4 条 + packages/*/package.json 内的 4 处 `#path:` 地址
   # （另有 kline 指向上游仓，不随本仓改名）。
-  '@ft/dsh-fft-settings': link:packages/dsh-fft-settings
-  '@ft/dsh-fft-ftshare': link:packages/dsh-fft-ftshare
+  '@dsh-ft/dsh-fft-settings': link:packages/dsh-fft-settings
+  '@dsh-ft/dsh-fft-ftshare': link:packages/dsh-fft-ftshare
   '@ft/dsh-fft-research-cockpit': link:packages/dsh-fft-research-cockpit
   '@ft/dsh-fft-factor-intake-standard': link:packages/dsh-fft-factor-intake-standard

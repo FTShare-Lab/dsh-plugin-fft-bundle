@@ -10,7 +10,7 @@
  *
  * 上游接口名必须能在目录里找到（守护测试断言），不在目录就当不可调：不猜别名，
  * 也不按版本前缀推断订阅档位（见 {@link ./errors.ts} 与设计文档附录 B）。
- * @module @ft/dsh-fft-ftshare/capabilities
+ * @module @dsh-ft/dsh-fft-ftshare/capabilities
  */
 import type { ParameterSchemaSpec } from '@deepseek-ai/dsh-tools';
 /** 接口表里的一条：一个上游接口，外加我们给它的本地身份与暴露方式。 */

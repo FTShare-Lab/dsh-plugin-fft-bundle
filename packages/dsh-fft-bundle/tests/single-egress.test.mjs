@@ -104,7 +104,7 @@ describe('single egress into FTShare', () => {
         if (allowed(rule, relativePath)) continue
         if (rule.pattern.test(readFileSync(path, 'utf8'))) offenders.push(relativePath)
       }
-      assert.deepEqual(offenders, [], `${offenders.join(', ')} 里出现了${rule.what}：FTShare 取数应当只走 @ft/dsh-fft-ftshare`)
+      assert.deepEqual(offenders, [], `${offenders.join(', ')} 里出现了${rule.what}：FTShare 取数应当只走 @dsh-ft/dsh-fft-ftshare`)
     })
   }
 

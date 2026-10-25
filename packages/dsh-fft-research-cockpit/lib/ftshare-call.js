@@ -11,7 +11,7 @@
  * 读成「空数组」，正是底座要治的病。
  * @module
  */
-import { FTSHARE_UPGRADE_URL, } from '@ft/dsh-fft-ftshare/contract';
+import { FTSHARE_UPGRADE_URL, } from '@dsh-ft/dsh-fft-ftshare/contract';
 /** 同一份主体可以被切断的最大尝试次数：首次 + 2 次重试。 */
 const MAX_ATTEMPTS = 3;
 /** 订阅档位的中文名；档位只来自上游信封，本包不按接口版本号猜。 */

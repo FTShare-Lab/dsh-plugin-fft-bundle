@@ -13,7 +13,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-tools'
-import type {} from '@ft/dsh-fft-ftshare/contract'
+import type {} from '@dsh-ft/dsh-fft-ftshare/contract'
 
 import { Config } from './config.js'
 import { registerReportTool } from './report-tool.js'

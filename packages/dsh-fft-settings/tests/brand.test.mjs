@@ -57,7 +57,7 @@ function fallbackModes(value) {
 }
 
 test('the layer publishes FT brand tokens with a canonical value per palette', () => {
-  assert.equal(FT_BRAND_SOURCE, '@ft/dsh-fft-settings')
+  assert.equal(FT_BRAND_SOURCE, '@dsh-ft/dsh-fft-settings')
   assert.deepEqual(Object.keys(FT_BRAND_TOKENS).sort(), [
     '--ft-accent', '--ft-accent-ink', '--ft-accent-warm', '--ft-accent-warm-hover',
     '--ft-accent-warm-ink', '--ft-accent-warm-soft', '--ft-wechat', '--ft-wechat-ink',

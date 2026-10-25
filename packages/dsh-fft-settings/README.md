@@ -1,14 +1,14 @@
 # FTShare Settings：共享设置、远端服务与 API Key 检测
 
-`@ft/dsh-fft-settings`（原 `@ft/dsh-ftshare-settings`）是 DSH 共享设置插件。Host 服务为 **`ctx.ftshareSettings`**，API Key 的所有能力位于 **`apiKey` 命名空间**，运行日志采集与导出位于 **`logs` 命名空间**；未来主题、用户偏好应作为 `theme`、`preferences` 等同级命名空间扩展，不能混入 `apiKey`。
+`@dsh-ft/dsh-fft-settings`（原 `@ft/dsh-ftshare-settings`）是 DSH 共享设置插件。Host 服务为 **`ctx.ftshareSettings`**，API Key 的所有能力位于 **`apiKey` 命名空间**，运行日志采集与导出位于 **`logs` 命名空间**；未来主题、用户偏好应作为 `theme`、`preferences` 等同级命名空间扩展，不能混入 `apiKey`。
 
 当前只实现 API Key 管理、远端服务检查与 Key 验证，以及**常驻的运行日志采集器**（落盘 `$DSH_HOME/logs/ft/`）与设置页导出卡片；未实现主题／用户偏好的持久化接口，也不提供行情查询、图表、通用 SDK 代理或 Python 凭据桥。Key 由 DSH `credentials` 服务存储，本插件不保存第二份密钥文件。原未发布的 `ftshareCredentials` 草案已替换，不保留旧服务别名。
 
 ## 给开发者和 agent 的接入约定
 
 - Host 消费者声明 `inject = ['ftshareSettings']`，通过 `ctx.ftshareSettings.<namespace>` 调用；不要依赖插件排列顺序，也不要解构缓存命名空间属性（它随注册出现与消失）。
-- 包名为 `@ft/dsh-fft-settings`（Host API 服务名 `ftshareSettings`、RPC 路由 `/api/ftshare-settings` 维持不变，旧消费者无需适配），bundle 入口仍为 `cordis.patch.yml`；设置页 ID 为 `dsh-fft`（显示名「非凸金融终端」，`order: 120`），旧 ID `ftshare` 不再注册。
-- 类型来源分两处：包主入口 `@ft/dsh-fft-settings` 是 Host 装配与 Host 类型；`/contract` 是**无 Node 运行时依赖**的汇总入口（纯类型、常量与输入校验），Host 类型来自 `src/core/` 与各 feature 的契约，浏览器 UI 类型来自 `/client`（SlotMap 合并与卡片 props）。`/client-api` 只导出 `createSettingsTransport`、`callSettingsRpc` 与通用类型，不再有特性适配器。
+- 包名为 `@dsh-ft/dsh-fft-settings`（Host API 服务名 `ftshareSettings`、RPC 路由 `/api/ftshare-settings` 维持不变，旧消费者无需适配），bundle 入口仍为 `cordis.patch.yml`；设置页 ID 为 `dsh-fft`（显示名「非凸金融终端」，`order: 120`），旧 ID `ftshare` 不再注册。
+- 类型来源分两处：包主入口 `@dsh-ft/dsh-fft-settings` 是 Host 装配与 Host 类型；`/contract` 是**无 Node 运行时依赖**的汇总入口（纯类型、常量与输入校验），Host 类型来自 `src/core/` 与各 feature 的契约，浏览器 UI 类型来自 `/client`（SlotMap 合并与卡片 props）。`/client-api` 只导出 `createSettingsTransport`、`callSettingsRpc` 与通用类型，不再有特性适配器。
 - 两条公开缝：Host 侧 `ctx.ftshareSettings.modules.register(module, owner)`，浏览器侧槽位 `ftshare.settings.card`。新增设置由插件自己写一个 feature 注册，不需要改本包源码，见「新增一种设置」。
 - `apiVersion = 1`。新增设置领域应新增命名空间；破坏公开语义的修改需要重新评估协议版本。
 - 本包没有修改 dsh_kline。下面的 kline 代码是接入示例，不代表消费者已经完成适配。
@@ -101,7 +101,7 @@ const result = await apiKey.configureAndTest(userInput)
 调用示例（内置 API Key 卡的适配器在 `src/features/api-key/client-api.ts`，随 feature 走；通用入口只提供传输与信封）：
 
 ```ts
-import { callSettingsRpc, createSettingsTransport } from '@ft/dsh-fft-settings/client-api'
+import { callSettingsRpc, createSettingsTransport } from '@dsh-ft/dsh-fft-settings/client-api'
 const transport = createSettingsTransport()          // 每个插件建一次，复用
 const status = await callSettingsRpc<ApiKeyStatus>(transport, 'apiKey', 'describe')
 const result = await callSettingsRpc<ConfigureResult>(transport, 'apiKey', 'configureAndTest', { value: input })
@@ -197,7 +197,7 @@ return ft.market_api(timeout=timeout, headers={"FTSHARE_API_KEY": key})
 
 ```ts
 import type { Context } from '@deepseek-ai/cordis'
-import type {} from '@ft/dsh-fft-settings'
+import type {} from '@dsh-ft/dsh-fft-settings'
 
 export const inject = ['webServer', 'ftshareSettings']
 export function apply(ctx: Context): void {
@@ -284,7 +284,7 @@ Node >=22.19。`test` 先构建，再运行 Node 测试：Cordis 服务生命周
 
 ```ts
 import type { Context } from '@deepseek-ai/cordis'
-import type { SettingsModule } from '@ft/dsh-fft-settings/contract'
+import type { SettingsModule } from '@dsh-ft/dsh-fft-settings/contract'
 
 export const klineSettingsModule: SettingsModule<'kline', KlineSettings> = {
   namespace: 'kline',
@@ -322,15 +322,15 @@ export function apply(ctx: Context): void {
 消费者要读别人的命名空间时，自己 merge 一行（生产者靠 `register` 的泛型推断，不需要 merge）：
 
 ```ts
-declare module '@ft/dsh-fft-settings/contract' {
+declare module '@dsh-ft/dsh-fft-settings/contract' {
   interface FtshareSettingsNamespaces { cockpit: CockpitSettings }
 }
 ```
 
-**浏览器半**：卡片注册进槽位，`import type {} from '@ft/dsh-fft-settings/client'` 只为拿到 SlotMap 合并（type-only，运行时零依赖）。
+**浏览器半**：卡片注册进槽位，`import type {} from '@dsh-ft/dsh-fft-settings/client'` 只为拿到 SlotMap 合并（type-only，运行时零依赖）。
 
 ```tsx
-import type {} from '@ft/dsh-fft-settings/client'
+import type {} from '@dsh-ft/dsh-fft-settings/client'
 
 export function apply(ctx: Context): void {
   ctx.slots.inject('ftshare.settings.card', () => ctx.slots.register(
@@ -350,7 +350,7 @@ export function apply(ctx: Context): void {
 卡片组件拿到的是槽位标准份额（runtime / renderSlot / store / inject face / locale），**拿不到 settings 的内部状态**：没有服务对象、没有凭据协调、没有验证模型。卡片要的数据走 `/client-api`：
 
 ```ts
-import { callSettingsRpc, createSettingsTransport } from '@ft/dsh-fft-settings/client-api'
+import { callSettingsRpc, createSettingsTransport } from '@dsh-ft/dsh-fft-settings/client-api'
 const transport = createSettingsTransport()          // 每个插件建一次，复用
 const value = await callSettingsRpc<Value>(transport, 'kline', 'get')
 await callSettingsRpc(transport, 'kline', 'set', { key: 'kline setting 1', value })

@@ -4,7 +4,7 @@
  *
  * 单独一个模块，是为了让浏览器侧只引 `./catalog`（纯函数），不把 `node:fs` 拖进
  * 打包图里。
- * @module @ft/dsh-fft-ftshare/catalog-host
+ * @module @dsh-ft/dsh-fft-ftshare/catalog-host
  */
 import { readFileSync } from 'node:fs';
 import { asCatalog } from './catalog.js';

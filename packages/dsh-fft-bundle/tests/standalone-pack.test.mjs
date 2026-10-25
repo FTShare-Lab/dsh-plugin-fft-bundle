@@ -45,15 +45,15 @@ describe('the standalone manifest', () => {
     name: '@ft/dsh-fft-bundle',
     version: '0.5.0',
     dependencies: {
-      '@ft/dsh-fft-settings': `${EDGE}dsh-fft-settings`,
+      '@dsh-ft/dsh-fft-settings': `${EDGE}dsh-fft-settings`,
       '@ftshare-lab/dsh-kline': 'git+ssh://git@github.com/FTShare-Lab/dsh_kline.git#v0.3.5',
     },
   }
   const bundled = [
     {
-      name: '@ft/dsh-fft-settings',
+      name: '@dsh-ft/dsh-fft-settings',
       manifest: {
-        name: '@ft/dsh-fft-settings',
+        name: '@dsh-ft/dsh-fft-settings',
         version: '0.2.0',
         dependencies: { '@ft/dsh-fft-research-cockpit': `${EDGE}dsh-fft-research-cockpit`, '@deepseek-ai/schemastery': '>=3.18.4', nunjucks: '3.2.4' },
         peerDependencies: { react: '^18.2.0' },
@@ -64,7 +64,7 @@ describe('the standalone manifest', () => {
       manifest: {
         name: '@ft/dsh-fft-research-cockpit',
         version: '0.2.0',
-        dependencies: { '@ft/dsh-fft-settings': `${EDGE}dsh-fft-settings`, '@deepseek-ai/schemastery': '>=3.18.2', nunjucks: '3.2.4' },
+        dependencies: { '@dsh-ft/dsh-fft-settings': `${EDGE}dsh-fft-settings`, '@deepseek-ai/schemastery': '>=3.18.2', nunjucks: '3.2.4' },
         peerDependencies: { '@deepseek-ai/dsh-tools': '>=0.2.0-rc.2' },
       },
     },
@@ -73,11 +73,11 @@ describe('the standalone manifest', () => {
   const manifest = rewriteManifest(bundle, bundled)
 
   it('inlines every plugin at the version the ref carries', () => {
-    assert.equal(manifest.dependencies['@ft/dsh-fft-settings'], '0.2.0')
+    assert.equal(manifest.dependencies['@dsh-ft/dsh-fft-settings'], '0.2.0')
     assert.equal(manifest.dependencies['@ft/dsh-fft-research-cockpit'], '0.2.0')
     assert.equal(manifest.dependencies['@ftshare-lab/dsh-kline'], '0.3.5')
     assert.deepEqual(manifest.bundledDependencies, [
-      '@ft/dsh-fft-settings', '@ft/dsh-fft-research-cockpit', '@ftshare-lab/dsh-kline',
+      '@dsh-ft/dsh-fft-settings', '@ft/dsh-fft-research-cockpit', '@ftshare-lab/dsh-kline',
     ])
   })
 

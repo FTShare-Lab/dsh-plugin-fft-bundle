@@ -9,11 +9,11 @@
  * **provider 全局，工具与投影钩子在 preset**（见 `./tools`、`./project`）。
  *
  * 凭据一律走 `ctx.ftshareSettings.apiKey.resolve()`，本包不读任何凭据文件。
- * @module @ft/dsh-fft-ftshare
+ * @module @dsh-ft/dsh-fft-ftshare
  */
 
 import type { Context, Logger } from '@deepseek-ai/cordis'
-import type {} from '@ft/dsh-fft-settings'
+import type {} from '@dsh-ft/dsh-fft-settings'
 
 import { FTSHARE_DATA_SERVICE, type FtshareCallResult, type FtshareDataService, type FtshareToolInfo } from './contract.js'
 import { asText, classifyFailure, isRecord, permissionNoticeFromPayload } from './errors.js'
@@ -23,7 +23,7 @@ export * from './contract.js'
 export { FTSHARE_GATEWAY_ENDPOINT } from './transport.js'
 
 /** Cordis 插件名。 */
-export const name = '@ft/dsh-fft-ftshare'
+export const name = '@dsh-ft/dsh-fft-ftshare'
 
 /** 凭据来自设置服务；缺这一项本行挂起等待，属刻意的 fail-loud。 */
 export const inject = ['ftshareSettings']

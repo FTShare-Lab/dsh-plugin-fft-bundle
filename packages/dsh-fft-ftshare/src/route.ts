@@ -17,7 +17,7 @@
  * - **接口名校验**：只接受目录里的接口名，否则 400 —— 底座不能变成任意上游的穿透代理；
  * - **取消与超时**：`request.signal` 原样转给 `call({ signal })`，面板的连点与切标的
  *   因此能真的取消掉在途请求。
- * @module @ft/dsh-fft-ftshare/route
+ * @module @dsh-ft/dsh-fft-ftshare/route
  */
 
 import type { Context } from '@deepseek-ai/cordis'

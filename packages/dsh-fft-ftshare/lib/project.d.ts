@@ -25,7 +25,7 @@
  *
  * 钩子用 `ctx.on` 注册在 preset 子树里，DSH 对瀑布按 `exec.agent` 做作用域过滤，
  * 因此**只有金融模式的 agent 受影响**，标准模式一个字都不变。
- * @module @ft/dsh-fft-ftshare/project
+ * @module @dsh-ft/dsh-fft-ftshare/project
  */
 import type { Context } from '@deepseek-ai/cordis';
 import type { ContentBlock } from '@deepseek-ai/dsh-llm';

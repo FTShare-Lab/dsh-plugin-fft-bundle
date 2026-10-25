@@ -11,7 +11,7 @@
  * A section is paid for on every request and any edit invalidates the prompt's
  * KV-cache prefix, so the contract stays short; methodology that needs examples,
  * checklists, or branch flow belongs in a skill instead.
- * @module @ft/dsh-fft-settings/guidance
+ * @module @dsh-ft/dsh-fft-settings/guidance
  */
 
 import type { Context } from '@deepseek-ai/cordis'

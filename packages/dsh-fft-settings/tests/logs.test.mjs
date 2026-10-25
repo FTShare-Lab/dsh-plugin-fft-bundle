@@ -417,7 +417,7 @@ test('设置页接口：stats / preview / export 走 RPC 全链路，dispose 后
   const exported = await logs.export()
   assert.match(exported.text, /RPC-导出标记/)
   assert.match(exported.text, /# 生成时间：/)
-  assert.match(exported.text, /# 插件版本：@ft\/dsh-fft-settings \d+\.\d+\.\d+/)
+  assert.match(exported.text, /# 插件版本：@dsh-ft\/dsh-fft-settings \d+\.\d+\.\d+/)
   assert.match(exported.text, /# 运行时：node v/)
   assert.equal(exported.fileName.endsWith('.log'), true)
 

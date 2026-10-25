@@ -18,7 +18,7 @@ export interface BrandTokenModes {
     readonly dark: string;
 }
 /** Layer identity reported to `ctx.theme.overrideTokens` (one layer per source). */
-export declare const FT_BRAND_SOURCE = "@ft/dsh-fft-settings";
+export declare const FT_BRAND_SOURCE = "@dsh-ft/dsh-fft-settings";
 /**
  * The published brand colors.
  *

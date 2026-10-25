@@ -38,7 +38,7 @@ ARGUMENTS
 
 OPTIONS
   --pkg <name=version> Also set one package's version (repeatable), e.g.
-                       --pkg @ft/dsh-fft-settings=0.4.3. Only packages you name
+                       --pkg @dsh-ft/dsh-fft-settings=0.4.3. Only packages you name
                        are touched; use this for the "组件更新" of a release.
   --ref <ref>          Committish for every edge. Default v<version>. Use
                        \`dev\` for the development line, or \`none\` to drop the
@@ -58,7 +58,7 @@ WHAT IT CHANGES
 
 EXAMPLES
   node scripts/bump-version.mjs 0.6.1
-  node scripts/bump-version.mjs 0.6.1 --pkg @ft/dsh-fft-settings=0.4.3 --pkg @ft/dsh-fft-research-cockpit=0.2.3
+  node scripts/bump-version.mjs 0.6.1 --pkg @dsh-ft/dsh-fft-settings=0.4.3 --pkg @ft/dsh-fft-research-cockpit=0.2.3
   node scripts/bump-version.mjs 0.6.1 --ref dev          # release commit, then back to dev
   node scripts/bump-version.mjs 0.6.1 --ref none --dry-run
 

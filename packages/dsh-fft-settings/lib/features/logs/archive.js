@@ -103,7 +103,7 @@ export async function buildLogArchive(options) {
     }
     const manifest = {
         generatedAt: formatLogTimestamp(generatedAt),
-        pluginVersion: `@ft/dsh-fft-settings ${pluginVersion}`,
+        pluginVersion: `@dsh-ft/dsh-fft-settings ${pluginVersion}`,
         runtime: options.environment ?? process.version,
         home: options.homeDisplay,
         limits: {

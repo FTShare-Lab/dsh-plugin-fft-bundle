@@ -226,7 +226,7 @@ export function renderLogExport(options: RenderExportOptions): { text: string; b
   const header = [
     '# ===== FT 运行日志 =====',
     `# 生成时间：${formatLogTimestamp(options.generatedAt)}`,
-    `# 插件版本：@ft/dsh-fft-settings ${options.pluginVersion}`,
+    `# 插件版本：@dsh-ft/dsh-fft-settings ${options.pluginVersion}`,
     `# 运行时：${options.environment ?? process.version}`,
     `# 日志目录：${options.homeDisplay}/logs/ft`,
     `# 导出上限：单来源 ${LOGS_SOURCE_MAX_BYTES / 1024 / 1024} MiB、合计 ${LOGS_EXPORT_MAX_BYTES / 1024 / 1024} MiB、目录最多 ${LOGS_MAX_SOURCE_FILES} 个 *${LOGS_FILE_SUFFIX}`,

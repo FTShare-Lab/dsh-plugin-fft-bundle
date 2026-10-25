@@ -1,5 +1,5 @@
 window.__ModuleLoader__.load({
-	id: "@ft/dsh-fft-settings",
+	id: "@dsh-ft/dsh-fft-settings",
 	factory: (require) => {
 		var module = { exports: {} };
 		var exports = module.exports;
@@ -749,7 +749,7 @@ window.__ModuleLoader__.load({
 			dark: value
 		});
 		/** Layer identity reported to `ctx.theme.overrideTokens` (one layer per source). */
-		const FT_BRAND_SOURCE = "@ft/dsh-fft-settings";
+		const FT_BRAND_SOURCE = "@dsh-ft/dsh-fft-settings";
 		/**
 		* The published brand colors.
 		*

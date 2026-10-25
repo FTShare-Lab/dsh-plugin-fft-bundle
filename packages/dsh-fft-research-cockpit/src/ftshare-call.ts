@@ -20,7 +20,7 @@ import {
   type FtshareCallState,
   type FtshareDataService,
   type FtshareNotice,
-} from '@ft/dsh-fft-ftshare/contract'
+} from '@dsh-ft/dsh-fft-ftshare/contract'
 
 import type { JsonRecord, PermissionNotice } from './types.js'
 

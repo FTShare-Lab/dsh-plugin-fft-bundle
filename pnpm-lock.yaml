@@ -6,8 +6,8 @@ settings:
 
 overrides:
   '@deepseek-ai/cordis': 4.0.4
-  '@ft/dsh-fft-settings': link:packages/dsh-fft-settings
-  '@ft/dsh-fft-ftshare': link:packages/dsh-fft-ftshare
+  '@dsh-ft/dsh-fft-settings': link:packages/dsh-fft-settings
+  '@dsh-ft/dsh-fft-ftshare': link:packages/dsh-fft-ftshare
   '@ft/dsh-fft-research-cockpit': link:packages/dsh-fft-research-cockpit
   '@ft/dsh-fft-factor-intake-standard': link:packages/dsh-fft-factor-intake-standard
 
@@ -17,21 +17,21 @@ importers:
 
   packages/dsh-fft-bundle:
     dependencies:
+      '@dsh-ft/dsh-fft-ftshare':
+        specifier: link:../dsh-fft-ftshare
+        version: link:../dsh-fft-ftshare
+      '@dsh-ft/dsh-fft-settings':
+        specifier: link:../dsh-fft-settings
+        version: link:../dsh-fft-settings
       '@ft/dsh-fft-factor-intake-standard':
         specifier: link:../dsh-fft-factor-intake-standard
         version: link:../dsh-fft-factor-intake-standard
-      '@ft/dsh-fft-ftshare':
-        specifier: link:../dsh-fft-ftshare
-        version: link:../dsh-fft-ftshare
       '@ft/dsh-fft-paper-trading':
         specifier: git+ssh://git@github.com/gigaflw/dsh-fft-paper-trading.git#v0.3.2
         version: git+ssh://git@github.com/gigaflw/dsh-fft-paper-trading.git#f10a2443d4cc54cce65456da547d587ebaffccb5(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-tools@0.2.0-rc.2(c6e351a6a6cfd1c2a664558bffcd410d))(react@18.3.1)
       '@ft/dsh-fft-research-cockpit':
         specifier: link:../dsh-fft-research-cockpit
         version: link:../dsh-fft-research-cockpit
-      '@ft/dsh-fft-settings':
-        specifier: link:../dsh-fft-settings
-        version: link:../dsh-fft-settings
       '@ftshare-lab/dsh-kline':
         specifier: git+ssh://git@github.com/gigaflw/dsh_kline.git#v0.4.0-ft.1
         version: https://codeload.github.com/gigaflw/dsh_kline/tar.gz/136fa8b368bc5f02705c0e229328d3a6d49d53b4
@@ -60,7 +60,7 @@ importers:
       '@deepseek-ai/dsh-tools':
         specifier: '>=0.2.0-rc.2'
         version: 0.2.0-rc.2(c6e351a6a6cfd1c2a664558bffcd410d)
-      '@ft/dsh-fft-settings':
+      '@dsh-ft/dsh-fft-settings':
         specifier: link:../dsh-fft-settings
         version: link:../dsh-fft-settings
       '@modelcontextprotocol/sdk':
@@ -88,10 +88,10 @@ importers:
       '@deepseek-ai/schemastery':
         specifier: '>=3.18.2'
         version: 3.18.4
-      '@ft/dsh-fft-ftshare':
+      '@dsh-ft/dsh-fft-ftshare':
         specifier: link:../dsh-fft-ftshare
         version: link:../dsh-fft-ftshare
-      '@ft/dsh-fft-settings':
+      '@dsh-ft/dsh-fft-settings':
         specifier: link:../dsh-fft-settings
         version: link:../dsh-fft-settings
       dsh-better-sidebar:

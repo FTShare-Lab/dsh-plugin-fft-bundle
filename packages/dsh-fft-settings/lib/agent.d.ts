@@ -6,11 +6,11 @@
  * must not be mounted from a preset (a service row there needs an isolate
  * realm). The texts and the registration both live in `./guidance.ts`, so this
  * entry adds no second copy.
- * @module @ft/dsh-fft-settings/agent
+ * @module @dsh-ft/dsh-fft-settings/agent
  */
 import type { Context } from '@deepseek-ai/cordis';
 /** Cordis plugin name. */
-export declare const name = "@ft/dsh-fft-settings/agent";
+export declare const name = "@dsh-ft/dsh-fft-settings/agent";
 /**
  * The prompt registry this entry contributes to. `ftshareSettings` is optional
  * and mounted in `installGuidance`, so a missing settings row costs only the

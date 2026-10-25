@@ -95,7 +95,7 @@ test('诊断包含 manifest、ft-runtime.log 与来源原文，日志文本与�
 
   const manifest = JSON.parse(asText(files[LOGS_ARCHIVE_MANIFEST]))
   assert.equal(manifest.generatedAt, '2026-10-12T15:04:05.123+08:00')
-  assert.equal(manifest.pluginVersion, '@ft/dsh-fft-settings 0.3.0')
+  assert.equal(manifest.pluginVersion, '@dsh-ft/dsh-fft-settings 0.3.0')
   assert.equal(manifest.runtime, 'node v22.19.0 darwin arm64')
   assert.equal(manifest.home, '~/.dsh')
   assert.deepEqual(manifest.limits, {
@@ -147,7 +147,7 @@ test('归档以未压缩字节共用 8 MiB 预算：原文被截断、后续来�
   const files = unzipSync(archive.bytes)
   const manifest = JSON.parse(asText(files[LOGS_ARCHIVE_MANIFEST]))
 
-  assert.equal(manifest.pluginVersion, '@ft/dsh-fft-settings 0.3.0')
+  assert.equal(manifest.pluginVersion, '@dsh-ft/dsh-fft-settings 0.3.0')
   assert.equal(archive.truncated, true)
   assert.equal(manifest.truncated, true)
   // 未压缩总量（含 header/manifest 的一点点开销）不越过同一预算。
