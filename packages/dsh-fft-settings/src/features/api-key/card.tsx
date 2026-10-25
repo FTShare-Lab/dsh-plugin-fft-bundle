@@ -51,6 +51,7 @@ export function ApiKeyCard({ api, subscribeChanges }: { readonly api: ApiKeyPubl
     <style>{API_KEY_CARD_CSS}</style>
     <section className="ftshare-settings" aria-label="FTShare 设置" aria-busy={busy}>
     <header><div><span className="ftshare-eyebrow">FTSHARE / API KEY</span><h2>访问凭据</h2></div></header>
+    <p>目前集成 FTShare 数据源。</p>
     {status && !status.writable && <p>当前来源为只读，可测试连接；修改密钥请到对应来源操作。</p>}
     <div className="ftshare-card"><label htmlFor="ftshare-api-key">FTShare API Key</label>
       <input id="ftshare-api-key" type="password" value={draft} placeholder={status?.configured ? status.maskedValue ?? '••••••••' : '请输入 API Key'} onChange={e => setDraft(e.target.value)} disabled={disabled} autoComplete="new-password" maxLength={512} />

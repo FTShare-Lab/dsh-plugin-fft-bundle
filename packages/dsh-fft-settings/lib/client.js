@@ -19,13 +19,14 @@ window.__ModuleLoader__.load({
 		/**
 		* Identity of the settings section that carries this plugin's cards.
 		*
-		* The id replaces the old `ftshare`; the label is the brand this plugin shows
-		* for itself, independent of any host application name.
+		* The id replaces the old `ftshare`. The label is a neutral product name, not
+		* the internal brand: the page ships publicly, and the data source it
+		* integrates is named inside the cards instead.
 		*/
 		const FTSHARE_SETTINGS_SECTION = {
 			id: "dsh-fft",
 			order: 120,
-			label: "非凸金融终端"
+			label: "金融终端"
 		};
 		/**
 		* Child slot of {@link FTSHARE_SETTINGS_SECTION} that carries its cards.
@@ -320,6 +321,7 @@ window.__ModuleLoader__.load({
 						className: "ftshare-eyebrow",
 						children: "FTSHARE / API KEY"
 					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("h2", { children: "访问凭据" })] }) }),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: "目前集成 FTShare 数据源。" }),
 					status && !status.writable && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: "当前来源为只读，可测试连接；修改密钥请到对应来源操作。" }),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 						className: "ftshare-card",

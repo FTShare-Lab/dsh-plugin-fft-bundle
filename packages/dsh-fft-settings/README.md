@@ -7,7 +7,7 @@
 ## 给开发者和 agent 的接入约定
 
 - Host 消费者声明 `inject = ['ftshareSettings']`，通过 `ctx.ftshareSettings.<namespace>` 调用；不要依赖插件排列顺序，也不要解构缓存命名空间属性（它随注册出现与消失）。
-- 包名为 `@dsh-ft/dsh-fft-settings`（Host API 服务名 `ftshareSettings`、RPC 路由 `/api/ftshare-settings` 维持不变，旧消费者无需适配），bundle 入口仍为 `cordis.patch.yml`；设置页 ID 为 `dsh-fft`（显示名「非凸金融终端」，`order: 120`），旧 ID `ftshare` 不再注册。
+- 包名为 `@dsh-ft/dsh-fft-settings`（Host API 服务名 `ftshareSettings`、RPC 路由 `/api/ftshare-settings` 维持不变，旧消费者无需适配），bundle 入口仍为 `cordis.patch.yml`；设置页 ID 为 `dsh-fft`（显示名「金融终端」，`order: 120`），旧 ID `ftshare` 不再注册。
 - 类型来源分两处：包主入口 `@dsh-ft/dsh-fft-settings` 是 Host 装配与 Host 类型；`/contract` 是**无 Node 运行时依赖**的汇总入口（纯类型、常量与输入校验），Host 类型来自 `src/core/` 与各 feature 的契约，浏览器 UI 类型来自 `/client`（SlotMap 合并与卡片 props）。`/client-api` 只导出 `createSettingsTransport`、`callSettingsRpc` 与通用类型，不再有特性适配器。
 - 两条公开缝：Host 侧 `ctx.ftshareSettings.modules.register(module, owner)`，浏览器侧槽位 `ftshare.settings.card`。新增设置由插件自己写一个 feature 注册，不需要改本包源码，见「新增一种设置」。
 - `apiVersion = 1`。新增设置领域应新增命名空间；破坏公开语义的修改需要重新评估协议版本。

@@ -12,10 +12,11 @@ export const FTSHARE_SETTINGS_API_VERSION = 1 as const
 /**
  * Identity of the settings section that carries this plugin's cards.
  *
- * The id replaces the old `ftshare`; the label is the brand this plugin shows
- * for itself, independent of any host application name.
+ * The id replaces the old `ftshare`. The label is a neutral product name, not
+ * the internal brand: the page ships publicly, and the data source it
+ * integrates is named inside the cards instead.
  */
-export const FTSHARE_SETTINGS_SECTION = { id: 'dsh-fft', order: 120, label: '非凸金融终端' } as const
+export const FTSHARE_SETTINGS_SECTION = { id: 'dsh-fft', order: 120, label: '金融终端' } as const
 /**
  * Child slot of {@link FTSHARE_SETTINGS_SECTION} that carries its cards.
  *
