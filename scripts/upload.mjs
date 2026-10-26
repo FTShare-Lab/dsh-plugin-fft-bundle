@@ -103,7 +103,33 @@ const ensureAuthenticated = registry => {
   console.log(`[npm] authenticated as ${whoami.stdout.trim()}`)
 }
 
-const uploadNpm = ({ records, registry, tag, promote, otp, dryRun }) => {
+/** @param {number} ms - Milliseconds. */
+const sleep = ms => new Promise(done => setTimeout(done, ms))
+
+/**
+ * Wait for a published version to become readable.
+ *
+ * `npm publish` returns as soon as the registry accepted the PUT, but the read
+ * side is behind a CDN: a `npm view` issued immediately afterwards can still see
+ * the previous state for a few seconds. Publishing is asynchronous anyway, so
+ * poll instead of failing a publish that actually succeeded.
+ *
+ * @param {string} name - Package name.
+ * @param {string} version - Exact version.
+ * @param {string} registry - Registry URL.
+ * @param {{attempts?: number, delayMs?: number}} [options] - Poll budget.
+ * @returns {Promise<string|undefined>} The published version, when it appears.
+ */
+const waitForVersion = async (name, version, registry, { attempts = 15, delayMs = 3000 } = {}) => {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const published = publishedVersion(name, version, registry)
+    if (published !== undefined) return published
+    await sleep(delayMs)
+  }
+  return undefined
+}
+
+const uploadNpm = async ({ records, registry, tag, promote, otp, dryRun }) => {
   const work = records.map(record => ({
     ...record,
     tarballPath: resolve(repoRoot, record.tarball),
@@ -133,12 +159,25 @@ const uploadNpm = ({ records, registry, tag, promote, otp, dryRun }) => {
       const args = ['publish', record.tarballPath, '--registry', registry, '--access', 'public', '--tag', tag]
       if (otp !== undefined) args.push('--otp', otp)
       console.log(`[npm] publishing ${record.name}@${record.version} (tag ${tag})`)
-      const result = npm(args, { stdio: 'inherit' })
-      if (result.status !== 0) fail(`npm publish failed for ${record.name}@${record.version}`)
+      const result = npm(args)
+      if (result.stdout.trim() !== '') console.log(result.stdout.trim())
+      if (result.stderr.trim() !== '') console.error(result.stderr.trim())
+      if (result.status !== 0) {
+        // A rejected PUT is not always a failed publish: npm rejects a version
+        // that is already on the registry (a previous run whose PUT succeeded
+        // but whose read side had not caught up), and the read side can lag the
+        // write by minutes for a brand-new scoped package. Treat the registry's
+        // own duplicate verdict as success; poll before failing anything else.
+        if (/previously published versions|EPUBLISHCONFLICT|Cannot publish over/iu.test(result.stderr)) {
+          console.log(`[npm] ${record.name}@${record.version} was already on the registry, keeping it`)
+        } else if (await waitForVersion(record.name, record.version, registry, { attempts: 4, delayMs: 3000 }) === undefined) {
+          fail(`npm publish failed for ${record.name}@${record.version}`)
+        }
+      }
     } else {
       console.log(`[npm] ${record.name}@${record.version} is already published, keeping it`)
     }
-    if (publishedVersion(record.name, record.version, registry) === undefined) {
+    if (await waitForVersion(record.name, record.version, registry) === undefined) {
       fail(`npm publish finished but ${record.name}@${record.version} is not readable from ${registry}`)
     }
     if (promote) {
@@ -174,7 +213,7 @@ if (invokedDirectly) {
     const records = packed.packages.filter(record => selected.length === 0 || selected.includes(record.name))
     if (records.length === 0) fail(`no packed package matches ${selected.join(', ') || '(all)'}`)
     console.log(`[npm] packed by ${packed.head}${packed.generatedAt === undefined ? '' : ` at ${packed.generatedAt}`}`)
-    uploadNpm({ records, registry, tag, promote, otp, dryRun })
+    await uploadNpm({ records, registry, tag, promote, otp, dryRun })
   } catch (error) {
     console.error(`upload: ${error.message}`)
     process.exitCode = 1
