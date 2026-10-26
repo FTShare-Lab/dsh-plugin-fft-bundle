@@ -1,6 +1,7 @@
 # dsh-fft-bundle
 
 pnpm workspace 组织，组合包 `@ft/dsh-fft-bundle` 是终端用户的安装入口。
+对外变更记录见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 使用方式
 
