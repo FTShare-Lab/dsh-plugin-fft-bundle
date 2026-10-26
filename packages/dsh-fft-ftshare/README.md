@@ -9,6 +9,14 @@ FTShare 数据底座：bundle 内所有 FTShare 取数都经过它。
 - **两处接口定义**：接口表（策展，决定下发哪些模型工具）与目录（上游全量快照，随包发布）。
 - **一条跨平面通路**：两个助手，由消费方自己挂。
 
+## 从 npm 安装
+
+```sh
+dsh plugin add @dsh-ft/dsh-fft-ftshare
+```
+
+外部用户从公共 npm 安装，不需要 ssh、也不需要改 pnpm 配置。本包自带 `dsh.bundle.patch`，可单独装，但运行时仍需 settings 提供 `ftshareSettings`；工具行（`/tools`、`/mask`、`/project`）属 preset 作用域，只随模拟盘 / 工作台等入口包的 patch 挂载，单独安装只有全局 `ftshareData` 服务，不会出现 `ftshare_*` 工具。
+
 ## 入口
 
 | 入口 | 平面 | 职责 |

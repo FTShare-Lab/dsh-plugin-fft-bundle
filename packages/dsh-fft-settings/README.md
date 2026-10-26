@@ -4,6 +4,14 @@
 
 当前只实现 API Key 管理、远端服务检查与 Key 验证，以及**常驻的运行日志采集器**（落盘 `$DSH_HOME/logs/ft/`）与设置页导出卡片；未实现主题／用户偏好的持久化接口，也不提供行情查询、图表、通用 SDK 代理或 Python 凭据桥。Key 由 DSH `credentials` 服务存储，本插件不保存第二份密钥文件。原未发布的 `ftshareCredentials` 草案已替换，不保留旧服务别名。
 
+## 从 npm 安装
+
+```sh
+dsh plugin add @dsh-ft/dsh-fft-settings
+```
+
+外部用户从公共 npm 安装，不需要 ssh、也不需要改 pnpm 配置。它通常随入口包（模拟盘 / 工作台 / 画布）一起装上，单独安装只在需要独立设置页时使用。
+
 ## 给开发者和 agent 的接入约定
 
 - Host 消费者声明 `inject = ['ftshareSettings']`，通过 `ctx.ftshareSettings.<namespace>` 调用；不要依赖插件排列顺序，也不要解构缓存命名空间属性（它随注册出现与消失）。
