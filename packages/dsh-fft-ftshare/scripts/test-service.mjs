@@ -160,6 +160,30 @@ assert.deepEqual(normalizeRows('text'), [])
 assert.deepEqual(parseUpstreamError(new Error('{"error":{"code":"403","message":"forbidden"}}')), { code: '403', message: 'forbidden' })
 assert.equal(classifyFailure(new Error('timeout'), 'ft_v1_finance_income').state, 'failed')
 assert.equal(classifyFailure(new Error('权限不足'), 'ft_v1_finance_income').state, 'denied')
+// —— 额度用尽：上游只给人话，code 与真实停机共用，必须按额度处理 ——
+{
+  const spent = new Error(JSON.stringify({
+    error: {
+      code: 'UPSTREAM_UNAVAILABLE',
+      message: '［用户通知］最近 1 天最多访问 500 次；请等待后再试；注册并使用 API Key 后不受匿名额度限制',
+      retryable: true,
+      upstream_code: 429,
+    },
+  }))
+  const classified = classifyFailure(spent, 'ft_v1_stock_candlesticks')
+  assert.equal(classified.state, 'failed', '额度用尽不是权限拒绝')
+  assert.equal(classified.notice.retryable, true)
+  assert.ok(classified.notice.message.includes('免费配额用尽'), '额度提示要带续期出路')
+  assert.ok(!classified.notice.message.includes('无权访问'), '不能把额度问题说成无权访问')
+  assert.equal(parseUpstreamError(spent).upstreamCode, '429', '数字型 upstream_code 也要认')
+  // 显式权限码优先：403 里出现「额度」字样仍是套餐问题。
+  assert.equal(
+    classifyFailure(new Error('{"error":{"code":"route_not_allowed","message":"当前套餐额度不足，请订阅更高档位"}}'), 'ft_v1_finance_income').state,
+    'denied',
+  )
+  // 只有 HTTP 429、没有专属码时同样按额度处理。
+  assert.equal(classifyFailure(new Error('HTTP 429 Too Many Requests'), 'ft_v1_finance_income').notice.retryable, true)
+}
 assert.equal(permissionNoticeFromPayload('ft_v1_finance_income', { data: [] }), undefined, '普通空数组不触发权限遮罩')
 assert.ok(permissionNoticeFromPayload('ft_v1_finance_income', { metadata: { access_denied: true, message: '订阅未开通' } }))
 

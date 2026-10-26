@@ -13,11 +13,21 @@ import { type FtshareNotice } from './contract.js';
 /** 上游返回的错误信封，字段全部按「可能不存在」处理。 */
 interface UpstreamErrorEnvelope {
     code?: string;
+    /** 上游 HTTP 状态码（信封里的 `upstream_code`）：429 这类码比归一码更能说明失败性质。 */
+    upstreamCode?: string;
     message: string;
     requiredPlan?: string;
 }
 /** 配额用尽时附在失败提示后的文案。 */
 export declare const FTSHARE_QUOTA_NOTICE = "\u514D\u8D39\u914D\u989D\u7528\u5C3D\uFF0C\u914D\u7F6E FTShare API Key \u6216\u7A0D\u540E\u91CD\u8BD5";
+/**
+ * 一个码或一句话是否表达「额度用尽」。
+ * @param code - 归一后的上游错误码。
+ * @param upstreamCode - 信封里的上游 HTTP 状态码，可能没有。
+ * @param message - 上游说明。
+ * @returns 是否属于额度用尽。
+ */
+export declare function isQuotaSignal(code: string | undefined, upstreamCode: string | undefined, message: string): boolean;
 /** 判断一个值是不是可当对象读的记录。 */
 export declare function isRecord(value: unknown): value is Record<string, unknown>;
 /** 读一个非空字符串；其余一律 undefined。 */

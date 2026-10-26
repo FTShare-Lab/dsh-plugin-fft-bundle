@@ -1,6 +1,6 @@
 {
   "name": "@dsh-ft/dsh-fft-ftshare",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "FTShare 数据底座：全 bundle 唯一出站、一处四态归一、一处模型可见面，并随包发布上游接口目录。",
   "type": "module",
   "main": "lib/index.js",
