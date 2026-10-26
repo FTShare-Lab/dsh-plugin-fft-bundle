@@ -39,8 +39,13 @@ export declare function asText(value: unknown): string | undefined;
  * @returns 是否属于权限失败。
  */
 export declare function isPermissionSignal(code: string | undefined, message: string): boolean;
-/** 一个码是否值得原样重试。 */
-export declare function isRetryableSignal(code: string | undefined, message: string): boolean;
+/**
+ * 一个码是否值得原样重试。
+ * @param code - 归一后的上游错误码。
+ * @param message - 上游说明。
+ * @param upstreamCode - 信封里的上游 HTTP 状态码：`UPSTREAM_UNAVAILABLE` 包裹的 502/504 仍可重试。
+ */
+export declare function isRetryableSignal(code: string | undefined, message: string, upstreamCode?: string): boolean;
 /**
  * 从 MCP 客户端抛出的错误（其 message 常是被字符串化的一段上游 JSON）里抽出码与说明。
  *

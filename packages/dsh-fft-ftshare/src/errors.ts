@@ -42,10 +42,12 @@ const PERMISSION_CODES = new Set([
 ])
 
 /**
- * 配额类错误码。实测匿名通道额度用尽时上游返回 `UPSTREAM_UNAVAILABLE`——与「上游
- * 真的挂了」同码，因此文案不冒充结论，把两条出路都写出来。`429` 是它的 HTTP 形态。
+ * 独占的配额类错误码：出现即是额度问题。`429` 是它的 HTTP 形态。
+ *
+ * `upstream_unavailable` **不在这里**：匿名额度用尽和上游真的停机共用这个码，码本身
+ * 不能定案，见 {@link isQuotaSignal}。
  */
-const QUOTA_CODES = new Set(['upstream_unavailable', 'insufficient_quota', 'quota_exceeded', 'quota_exhausted', '429'])
+const QUOTA_CODES = new Set(['insufficient_quota', 'quota_exceeded', 'quota_exhausted', '429'])
 
 /** 配额用尽时附在失败提示后的文案。 */
 export const FTSHARE_QUOTA_NOTICE = '免费配额用尽，配置 FTShare API Key 或稍后重试'
@@ -68,8 +70,10 @@ const QUOTA_TEXT = /(?:配额|额度)[^。；;]{0,10}(?:用尽|用满|耗尽|用
  * @returns 是否属于额度用尽。
  */
 export function isQuotaSignal(code: string | undefined, upstreamCode: string | undefined, message: string): boolean {
-  if (code !== undefined && QUOTA_CODES.has(code.toLowerCase())) return true
-  if (upstreamCode !== undefined && QUOTA_CODES.has(upstreamCode.toLowerCase())) return true
+  const exclusive = (candidate: string | undefined): boolean => candidate !== undefined && QUOTA_CODES.has(candidate.toLowerCase())
+  if (exclusive(code) || exclusive(upstreamCode)) return true
+  // 共用码（`upstream_unavailable`）与任何未知码都要文案佐证：真正停机也报这个码，
+  // 只说「bad gateway」时按额度处理会把停机说成额度用尽。
   return QUOTA_TEXT.test(message)
 }
 
@@ -112,9 +116,15 @@ export function isPermissionSignal(code: string | undefined, message: string): b
   return PERMISSION_TEXT.test(message) || API_KEY_TEXT.test(message)
 }
 
-/** 一个码是否值得原样重试。 */
-export function isRetryableSignal(code: string | undefined, message: string): boolean {
+/**
+ * 一个码是否值得原样重试。
+ * @param code - 归一后的上游错误码。
+ * @param message - 上游说明。
+ * @param upstreamCode - 信封里的上游 HTTP 状态码：`UPSTREAM_UNAVAILABLE` 包裹的 502/504 仍可重试。
+ */
+export function isRetryableSignal(code: string | undefined, message: string, upstreamCode?: string): boolean {
   if (code !== undefined && RETRYABLE_CODES.has(code.toLowerCase())) return true
+  if (upstreamCode !== undefined && RETRYABLE_CODES.has(upstreamCode.toLowerCase())) return true
   return /超时|限流|重试|timeout|rate[_\s-]*limit|temporar|throttl/i.test(message)
 }
 
@@ -219,7 +229,7 @@ export function classifyFailure(error: unknown, tool: string): { state: 'denied'
     return { state: 'denied', notice: deniedNotice(tool, parsed.code, parsed.message, parsed.requiredPlan) }
   }
   const code = parsed.code ?? 'upstream_error'
-  const retryable = isRetryableSignal(parsed.code, parsed.message)
+  const retryable = isRetryableSignal(parsed.code, parsed.message, parsed.upstreamCode)
   const tail = retryable ? '。可稍后重试。' : ''
   return {
     state: 'failed',

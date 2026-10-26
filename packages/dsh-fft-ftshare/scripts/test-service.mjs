@@ -184,6 +184,16 @@ assert.equal(classifyFailure(new Error('权限不足'), 'ft_v1_finance_income').
   // 只有 HTTP 429、没有专属码时同样按额度处理。
   assert.equal(classifyFailure(new Error('HTTP 429 Too Many Requests'), 'ft_v1_finance_income').notice.retryable, true)
 }
+
+// —— 真停机与额度用尽共用一个码：没有 429、没有耗尽文案时不能按额度处理 ——
+{
+  const outage = classifyFailure(new Error(JSON.stringify({
+    error: { code: 'UPSTREAM_UNAVAILABLE', message: 'bad gateway', upstream_code: 502 },
+  })), 'ft_v1_stock_candlesticks')
+  assert.equal(outage.state, 'failed')
+  assert.ok(!outage.notice.message.includes('免费配额用尽'), '停机不能说成额度用尽')
+  assert.equal(outage.notice.retryable, true)
+}
 assert.equal(permissionNoticeFromPayload('ft_v1_finance_income', { data: [] }), undefined, '普通空数组不触发权限遮罩')
 assert.ok(permissionNoticeFromPayload('ft_v1_finance_income', { metadata: { access_denied: true, message: '订阅未开通' } }))
 
