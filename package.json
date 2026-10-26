@@ -11,6 +11,8 @@
     "typecheck": "pnpm -r run typecheck",
     "ui:audit": "node scripts/ui-audit.mjs",
     "pack:tarball": "node scripts/pack-tarball.mjs",
-    "upload:asset": "node scripts/upload-release-asset.mjs"
+    "pack:npm": "node scripts/pack-npm.mjs",
+    "upload:asset": "node scripts/upload-release-asset.mjs",
+    "upload:npm": "node scripts/upload.mjs --npm"
   }
 }

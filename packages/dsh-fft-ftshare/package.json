@@ -1,7 +1,26 @@
 {
   "name": "@dsh-ft/dsh-fft-ftshare",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "FTShare 数据底座：全 bundle 唯一出站、一处四态归一、一处模型可见面，并随包发布上游接口目录。",
+  "license": "MIT",
+  "homepage": "https://github.com/gigaflw/dsh-fft-bundle/tree/dev/packages/dsh-fft-ftshare#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gigaflw/dsh-fft-bundle.git",
+    "directory": "packages/dsh-fft-ftshare"
+  },
+  "bugs": {
+    "url": "https://github.com/gigaflw/dsh-fft-bundle/issues"
+  },
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "ftshare",
+    "mcp"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -48,6 +67,7 @@
     "catalog.txt",
     "catalog.meta.json",
     "README.md",
+    "LICENSE",
     "cordis.patch.yml",
     "package.json"
   ],
@@ -75,6 +95,9 @@
     "node": ">=22.19.0"
   },
   "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
     "engines": {
       "dsh": ">=0.2.0-rc.2"
     }

@@ -1,6 +1,26 @@
 {
   "name": "@dsh-ft/dsh-fft-settings",
   "version": "0.5.0",
+  "description": "FT 设置与凭据底座：FTShare API Key、设置页卡片、运行日志与品牌主题层，供 FT 系列插件共享。",
+  "license": "MIT",
+  "homepage": "https://github.com/gigaflw/dsh-fft-bundle/tree/dev/packages/dsh-fft-settings#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gigaflw/dsh-fft-bundle.git",
+    "directory": "packages/dsh-fft-settings"
+  },
+  "bugs": {
+    "url": "https://github.com/gigaflw/dsh-fft-bundle/issues"
+  },
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "ftshare",
+    "settings"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -14,6 +34,7 @@
     "lib",
     "src",
     "README.md",
+    "LICENSE",
     "docs",
     "cordis.patch.yml",
     "package.json"
