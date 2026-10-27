@@ -70,7 +70,7 @@ function used(css) {
 
 /** The DSH theme stylesheets, or null when no harness checkout is reachable. */
 function stylesheets() {
-  const root = process.env.DSH_HARNESS_ROOT ?? resolve(PACKAGE_ROOT, '../..', 'thirdparty/deepseek-harness')
+  const root = process.env.DSH_HARNESS_ROOT ?? resolve(PACKAGE_ROOT, '../../..', 'thirdparty/deepseek-harness')
   const directory = join(root, 'packages/client/ui-theme/src/styles')
   return existsSync(directory) ? directory : null
 }

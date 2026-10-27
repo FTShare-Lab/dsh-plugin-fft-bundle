@@ -184,7 +184,7 @@ function upstreamSources() {
   sources.push(
     directorySource(
       'thirdparty/deepseek-harness',
-      resolve(root, '../../thirdparty/deepseek-harness/packages/bundle/web-app'),
+      resolve(root, '../../../thirdparty/deepseek-harness/packages/bundle/web-app'),
     ),
     directorySource(
       'the sibling dsh-ft checkout',
