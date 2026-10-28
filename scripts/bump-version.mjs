@@ -1,15 +1,19 @@
 #!/usr/bin/env node
 /**
  * Set the bundle's version (and any sub-package you name) and point every
- * dependency edge at the tag of that version, in one command.
+ * `#path:` dependency edge at the tag of that version, in one command.
  *
  * A release touches the same version string in two shapes: the `version` field
  * of the package that ships it, and the committish on every `#path:` edge that
- * decides which commit the sub-plugins come from. They must agree — pnpm never
- * inherits the ref of the spec that pulled the bundle in — so doing them by
- * hand is how a release drifts. `scripts/edge-refs.mjs` owns the edge rewrite;
- * this script is the one command that also moves the version fields and prints
- * what it is about to change.
+ * decides which commit the unpublished sub-plugins come from. They must agree —
+ * pnpm never inherits the ref of the spec that pulled the bundle in — so doing
+ * them by hand is how a release drifts. `scripts/edge-refs.mjs` owns the edge
+ * rewrite; this script is the one command that also moves the version fields and
+ * prints what it is about to change.
+ *
+ * It does not touch the published pins (settings, ftshare, paper): those are
+ * exact registry versions, published first and then written into the bundle
+ * manifest by hand (see `docs/specs/distribution/design.md` §3).
  *
  * Usage: `node scripts/bump-version.mjs --help`.
  */
@@ -40,9 +44,9 @@ OPTIONS
   --pkg <name=version> Also set one package's version (repeatable), e.g.
                        --pkg @dsh-ft/dsh-fft-settings=0.4.3. Only packages you name
                        are touched; use this for the "组件更新" of a release.
-  --ref <ref>          Committish for every edge. Default v<version>. Use
-                       \`dev\` for the development line, or \`none\` to drop the
-                       ref entirely (the public remote has a single branch).
+  --ref <ref>          Committish for every #path: edge. Default v<version>.
+                       Use \`none\` to drop the ref entirely (the public remote has
+                       a single branch).
   --no-bundle          Leave packages/dsh-fft-bundle's version alone (edge ref
                        only).
   --dry-run            Print the changes without writing them.
@@ -54,12 +58,13 @@ WHAT IT CHANGES
   every manifest with an edge back into this repository   #<ref>&path:
 
   The edge list itself lives in scripts/edge-refs.mjs (MANIFESTS); this script
-  never guesses which manifests carry edges.
+  never guesses which manifests carry edges. Published pins (settings, ftshare,
+  paper) are exact registry versions and are NOT rewritten: publish them first,
+  then pin the new version in the bundle manifest.
 
 EXAMPLES
   node scripts/bump-version.mjs 0.6.1
   node scripts/bump-version.mjs 0.6.1 --pkg @dsh-ft/dsh-fft-settings=0.4.3 --pkg @ft/dsh-fft-research-cockpit=0.2.3
-  node scripts/bump-version.mjs 0.6.1 --ref dev          # release commit, then back to dev
   node scripts/bump-version.mjs 0.6.1 --ref none --dry-run
 
 NEXT STEPS
@@ -128,8 +133,8 @@ function main() {
   if (version === undefined) throw new Error('a version is required (try --help)')
   if (!VERSION.test(version)) throw new Error(`${version} is not a version npm would accept`)
   const ref = options.ref ?? `v${version}`
-  if (ref !== '' && ref !== 'dev' && !RELEASE_TAG.test(ref)) {
-    throw new Error(`--ref must be a tag like v1.2.3, \`dev\`, or \`none\`; got ${ref}`)
+  if (ref !== '' && !RELEASE_TAG.test(ref)) {
+    throw new Error(`--ref must be a tag like v1.2.3 or \`none\`; got ${ref}`)
   }
 
   const paths = manifestPaths()

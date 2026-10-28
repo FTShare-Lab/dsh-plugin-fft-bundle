@@ -1,13 +1,15 @@
 packages:
   - packages/*
+# pnpm 默认拒装刚发布的版本；paper 0.6.0 是本次发布的组成部分，放行。
+minimumReleaseAgeExclude:
+  - '@dsh-ft/dsh-fft-paper-trading@0.6.0'
 overrides:
   '@deepseek-ai/cordis': 4.0.4
-  # 本仓插件包的 dependencies 指向本仓 git 地址（`dsh plugin add` 一条 spec 装全套时
-  # pnpm 顺藤摸瓜）；本地开发用 link 覆盖，否则 dev 会去远端取已推送的提交，
-  # 看不到本地未推送的改动。
-  # public 侧全部指 GitHub。
-  # 仓库改名时须同步：此处 4 条 + packages/*/package.json 内的 4 处 `#path:` 地址
-  # （另有 kline 指向上游仓，不随本仓改名）。
+  # 本仓插件包的 dependencies：已发布包（settings/ftshare/paper）写 registry 精确版本，
+  # 未发布包才用本仓 git 边（`dsh plugin add` 一条 spec 装全套时 pnpm 顺藤摸瓜）；本地开发
+  # 用 link 覆盖，否则 dev 会去远端取已推送的提交，看不到本地未推送的改动。
+  # 仓库改名时须同步：此处 4 条 + packages/*/package.json 内的 2 处 `#path:` 地址
+  # （另有 kline 指向上游仓，settings/ftshare/paper 走 registry，不随本仓改名）。
   '@dsh-ft/dsh-fft-settings': link:packages/dsh-fft-settings
   '@dsh-ft/dsh-fft-ftshare': link:packages/dsh-fft-ftshare
   '@ft/dsh-fft-research-cockpit': link:packages/dsh-fft-research-cockpit

@@ -19,7 +19,7 @@ pnpm workspace 组织，组合包 `@ft/dsh-fft-bundle` 是终端用户的安装�
 
 文件里已内联全部子插件，这条路不需要 ssh，也不需要改 profile 的 pnpm 配置。升级时下载新版本文件（文件名带版本号）再贴新路径即可；同一条路径重贴不会升级。
 
-### 方式二：git spec（跟着 dev 走）
+### 方式二：git spec（装稳定版）
 
 1. 确认本机能 ssh 访问 GitHub 私有仓；
 2. 打开 git 子依赖，并关掉 peer 自动安装加速
@@ -36,7 +36,7 @@ for k in blockExoticSubdeps autoInstallPeers; do grep -q "^$k:" "$f" || echo "$k
 git+ssh://git@github.com/FTShare-Lab/dsh-plugin-fft-bundle.git#path:packages/dsh-fft-bundle
 ```
 
-重贴完全相同的 spec 不会升级：插件管理器靠 profile 依赖项的前后差异定位装进来的包，没有差异就报「无法从依赖变更中确定安装了哪一个包」。升级要先卸载再重装，或贴一条与现有条目不同的 spec（如带版本号的 `#v0.5.2&path:`）。不带 ref 的 spec 落在默认分支——只前移到发布提交的 `stable`，所以拿到的是稳定版；装前先卸掉旧的 `link:` 安装。要试开发中的最新版，把 spec 末尾的 `#path:` 换成 `#dev&path:`。
+重贴完全相同的 spec 不会升级：插件管理器靠 profile 依赖项的前后差异定位装进来的包，没有差异就报「无法从依赖变更中确定安装了哪一个包」。升级要先卸载再重装，或贴一条与现有条目不同的 spec（如带版本号的 `#v0.5.2&path:`）。不带 ref 的 spec 落在默认分支——只前移到发布提交的 `stable`，所以拿到的是稳定版；装前先卸掉旧的 `link:` 安装。开发中的改动不要靠 git spec 验证（`dev` 不是安装来源）：用本地 `link:` 安装，或打一份 tarball（`pnpm pack:tarball`）。
 
 ## 开发方式
 

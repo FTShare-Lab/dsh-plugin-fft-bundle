@@ -1,42 +1,51 @@
 /**
- * Every dependency edge this bundle points at a plugin repository decides which
- * commit that plugin comes from.
+ * The composition bundle pins its plugin set three ways, and each way has one
+ * invariant:
+ *
+ *   * unpublished packages travel as `#path:` edges into this repository and
+ *     carry one shared ref — the previous release's tag on the development line,
+ *     this release's own tag on the release commit, nothing on the single-branch
+ *     public remote;
+ *   * kline lives in another repository, so its edge always pins one of *its*
+ *     release tags;
+ *   * published packages (settings, ftshare, paper) are consumed by an **exact
+ *     registry version** — a git spec would install a tree without `lib/`, and a
+ *     range would drift away from the version the tarball inlines.
  *
  * The rules and the rewrite tool live in `scripts/edge-refs.mjs` at the
- * repository root; this test pins the two contracts:
- *
- *   * edges back into this repository carry one shared ref of one of the three
- *     shapes the release flow produces, so a bundle version pairs with one
- *     plugin set;
- *   * edges into another repository always pin that repository's release tag,
- *     because they do not follow this repository's `#dev`/tag flip.
+ * repository root; this test reuses the same readers.
  */
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { basename } from 'node:path'
-import { EXTERNAL_EDGES, MANIFESTS, pathOf, readEdges, readExternalEdges, refOf } from '../../../scripts/edge-refs.mjs'
+import {
+  EXTERNAL_EDGES, MANIFESTS, REGISTRY_PINS, pathOf, readEdges, readExternalEdges, readRegistryPins, refOf,
+} from '../../../scripts/edge-refs.mjs'
 
-/** Ref shapes the release flow writes: the development line, a release tag, or none. */
+/** Ref shapes the release flow writes: a release tag, or none on the public remote. */
 const REF_SHAPES = [
-  { shape: 'the development line', pattern: /^dev$/u },
   { shape: 'a release tag', pattern: /^v\d+\.\d+\.\d+(?:[-+].*)?$/u },
   { shape: 'no ref (single-branch remote)', pattern: /^$/u },
 ]
 
 const edges = readEdges()
 const externalEdges = readExternalEdges()
+const pins = readRegistryPins()
 
 describe('dependency edges into this repository', () => {
-  it('resolve every plugin from this repository', () => {
-    // The composition bundle carries five (including the FTShare base), the
-    // FTShare base one, the research cockpit one; the public branch ships one
-    // fewer because the internal plugin is stripped.
-    assert.ok(edges.length >= 6, `expected the edges into this repo, found ${edges.length}`)
-    // A package may be an edge of more than one manifest (the cockpit and the
-    // bundle both pull the settings plugin), but never twice in the same one.
+  it('declare the unpublished packages of the composition bundle', () => {
+    assert.ok(edges.length > 0, 'the bundle must pin its unpublished plugins by commit')
+    // A package may be an edge of more than one manifest, but never twice in the
+    // same one.
     for (const manifestPath of MANIFESTS) {
       const names = edges.filter(edge => edge.manifestPath === manifestPath).map(edge => edge.name)
       assert.equal(new Set(names).size, names.length, `${manifestPath} must declare each edge once`)
+    }
+    // Published packages are release artifacts; a git edge for one would install
+    // a tree without its built entry.
+    for (const edge of edges) {
+      const published = pins.find(pin => pin.name === edge.name)
+      assert.equal(published, undefined, `${edge.manifestPath}: ${edge.name} is published and must be pinned by exact version, not by commit`)
     }
   })
 
@@ -76,7 +85,7 @@ describe('dependency edges into another repository', () => {
       EXTERNAL_EDGES.length,
       'every configured cross-repository edge must be declared in its manifest',
     )
-    assert.ok(externalEdges.length >= 1, 'the paper-trading plugin is a cross-repository edge')
+    assert.ok(externalEdges.length >= 1, 'the kline plugin is a cross-repository edge')
   })
 
   it('pin that repository\'s release tag, never a branch', () => {
@@ -96,6 +105,26 @@ describe('dependency edges into another repository', () => {
         !own.has(`${edge.manifestPath}:${edge.name}`),
         `${edge.manifestPath}: ${edge.name} cannot be both a local and a cross-repository edge`,
       )
+    }
+  })
+})
+
+describe('published packages', () => {
+  it('are consumed by exact registry version', () => {
+    assert.equal(pins.length, REGISTRY_PINS.length, 'every published pin must be declared in its manifest')
+    for (const pin of pins) {
+      assert.match(
+        pin.spec,
+        /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/u,
+        `${pin.manifestPath}: ${pin.name} must be an exact version, found: ${pin.spec || '(not declared)'}`,
+      )
+    }
+  })
+
+  it('never travel as a git spec', () => {
+    for (const pin of pins) {
+      assert.ok(!pin.spec.startsWith('git'), `${pin.manifestPath}: ${pin.name} must come from the registry, not a git edge`)
+      assert.ok(!pin.spec.includes('&path:'), `${pin.manifestPath}: ${pin.name} must not select a workspace package`)
     }
   })
 })

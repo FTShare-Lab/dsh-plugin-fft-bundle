@@ -1,15 +1,18 @@
 /**
- * The standalone tarball rewrites what a git install resolves at install time
- * into what the tarball carries: every edge into this repository becomes an
- * inlined plugin at a pinned version, and the plugins' own registry
- * dependencies survive as the bundle's dependencies.
+ * The standalone tarball inlines the bundle's plugin set: the unpublished
+ * packages at the ref's commit, the published packages at their pinned registry
+ * version, and the cross-repository plugin at its tag. The rewritten manifest
+ * lists the whole set in `bundledDependencies`, so a consumer never resolves one
+ * of the bundle's own edges.
  *
- * These are the pure decisions behind `scripts/pack-tarball.mjs`; the
- * packing run itself needs git, pnpm, and a staged payload.
+ * These are the pure decisions behind `scripts/pack-tarball.mjs`; the packing run
+ * itself needs git, npm and a staged payload.
  */
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { httpsUrl, patternToRegExp, pickRange, rewriteManifest } from '../../../scripts/pack-tarball.mjs'
+import {
+  httpsUrl, patternToRegExp, pickRange, registryVersionOf, rewriteManifest, satisfiesRange, assertBundledRanges,
+} from '../../../scripts/pack-tarball.mjs'
 
 const EDGE = 'git+ssh://git@github.com/FTShare-Lab/dsh-plugin-fft-bundle.git#path:packages/'
 
@@ -98,6 +101,15 @@ describe('the standalone manifest', () => {
     assert.equal(manifest.name, '@ft/dsh-fft-bundle')
     assert.equal(manifest.version, '0.5.0')
   })
+
+  it('inlines a registry-pinned plugin at the exact version it names', () => {
+    const pinned = rewriteManifest(
+      { name: '@ft/dsh-fft-bundle', version: '0.9.0', dependencies: { '@dsh-ft/dsh-fft-settings': '0.5.0' } },
+      [{ name: '@dsh-ft/dsh-fft-settings', manifest: { name: '@dsh-ft/dsh-fft-settings', version: '0.5.0' } }],
+    )
+    assert.equal(pinned.dependencies['@dsh-ft/dsh-fft-settings'], '0.5.0')
+    assert.deepEqual(pinned.bundledDependencies, ['@dsh-ft/dsh-fft-settings'])
+  })
 })
 
 describe('clone URLs', () => {
@@ -105,5 +117,59 @@ describe('clone URLs', () => {
     assert.equal(httpsUrl('git+ssh://git@github.com/FTShare-Lab/dsh_kline.git#v0.3.5'), 'https://github.com/FTShare-Lab/dsh_kline.git')
     assert.equal(httpsUrl('git@github.com:FTShare-Lab/dsh_kline.git#v0.3.5'), 'https://github.com/FTShare-Lab/dsh_kline.git')
     assert.equal(httpsUrl('git+https://github.com/FTShare-Lab/dsh_kline.git#v0.3.5'), 'https://github.com/FTShare-Lab/dsh_kline.git')
+  })
+})
+
+describe('registry pins', () => {
+  it('recognise an exact version and nothing else', () => {
+    assert.equal(registryVersionOf('0.6.0'), '0.6.0')
+    assert.equal(registryVersionOf('0.6.0-rc.1'), '0.6.0-rc.1')
+    assert.equal(registryVersionOf('^0.6.0'), undefined, 'a range must not be treated as a pinned version')
+    assert.equal(registryVersionOf('git+ssh://git@example.invalid/repo.git#v0.6.0'), undefined)
+  })
+})
+
+describe('the inlined-pair guard', () => {
+  /** One bundled plugin, as the packer assembles it. */
+  const plugin = (name, version, dependencies = {}) => ({ name, manifest: { name, version, dependencies } })
+
+  it('understand the range forms the manifests use', () => {
+    assert.ok(satisfiesRange('0.5.0', '0.5.0'))
+    assert.ok(satisfiesRange('0.5.1', '^0.5.0'))
+    assert.ok(!satisfiesRange('0.6.0', '^0.5.0'), 'a caret range caps the major version')
+    assert.ok(satisfiesRange('0.3.4', '~0.3.1'))
+    assert.ok(!satisfiesRange('0.4.0', '~0.3.1'))
+    assert.ok(satisfiesRange('3.18.4', '>=3.18.2'))
+    assert.ok(!satisfiesRange('3.18.1', '>=3.18.2'))
+    assert.ok(satisfiesRange('0.0.3', '^0.0.3'))
+    assert.ok(!satisfiesRange('0.0.4', '^0.0.3'), 'a 0.0.x caret range is exact')
+  })
+
+  it('accept a payload whose inlined versions satisfy every declaration', () => {
+    assert.doesNotThrow(() => assertBundledRanges([
+      plugin('@dsh-ft/dsh-fft-settings', '0.5.0'),
+      plugin('@dsh-ft/dsh-fft-paper-trading', '0.6.0', { '@dsh-ft/dsh-fft-settings': '^0.5.0' }),
+    ]))
+  })
+
+  it('refuse a payload whose inlined version cannot satisfy a declaration', () => {
+    assert.throws(
+      () => assertBundledRanges([
+        plugin('@dsh-ft/dsh-fft-settings', '0.4.5'),
+        plugin('@dsh-ft/dsh-fft-paper-trading', '0.6.0', { '@dsh-ft/dsh-fft-settings': '^0.5.0' }),
+      ]),
+      /requires @dsh-ft\/dsh-fft-settings@\^0\.5\.0/,
+    )
+  })
+
+  it('ignore git and workspace specs, which select a commit rather than a range', () => {
+    assert.doesNotThrow(() => assertBundledRanges([
+      plugin('@ftshare-lab/dsh-kline', '0.4.0'),
+      plugin('@ft/dsh-fft-research-cockpit', '0.2.5', { '@dsh-ft/dsh-fft-settings': `${EDGE}dsh-fft-settings` }),
+    ]))
+  })
+
+  it('refuse an unsupported range instead of guessing', () => {
+    assert.throws(() => satisfiesRange('1.0.0', '>1.0.0 <2.0.0'), /unsupported dependency range/)
   })
 })

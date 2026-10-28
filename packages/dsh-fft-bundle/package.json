@@ -29,12 +29,12 @@
     "test": "node --test tests/*.test.mjs"
   },
   "dependencies": {
-    "@dsh-ft/dsh-fft-ftshare": "git+ssh://git@github.com/FTShare-Lab/dsh-plugin-fft-bundle.git#path:packages/dsh-fft-ftshare",
+    "@dsh-ft/dsh-fft-settings": "0.5.0",
+    "@dsh-ft/dsh-fft-ftshare": "0.3.0",
+    "@dsh-ft/dsh-fft-paper-trading": "0.6.0",
     "@ft/dsh-fft-factor-intake-standard": "git+ssh://git@github.com/FTShare-Lab/dsh-plugin-fft-bundle.git#path:packages/dsh-fft-factor-intake-standard",
     "@ft/dsh-fft-research-cockpit": "git+ssh://git@github.com/FTShare-Lab/dsh-plugin-fft-bundle.git#path:packages/dsh-fft-research-cockpit",
-    "@dsh-ft/dsh-fft-settings": "git+ssh://git@github.com/FTShare-Lab/dsh-plugin-fft-bundle.git#path:packages/dsh-fft-settings",
-    "@ftshare-lab/dsh-kline": "git+ssh://git@github.com/gigaflw/dsh_kline.git#v0.4.0-ft.1",
-    "@ft/dsh-fft-paper-trading": "git+ssh://git@github.com/gigaflw/dsh-fft-paper-trading.git#v0.3.2"
+    "@ftshare-lab/dsh-kline": "git+ssh://git@github.com/gigaflw/dsh_kline.git#v0.4.0-ft.2"
   },
   "engines": {
     "node": ">=22.19.0"

@@ -2,6 +2,8 @@
 node_modules/
 .pnpm-store/
 tmp/
+# 本地临时工作区（克隆、打包中间产物等），不入库
+/dsh_tmp/
 .dsh-progress/
 .DS_Store
 # 本地发布凭据与群 ID（如 RN_LARK_CHAT_ID），禁止入库。

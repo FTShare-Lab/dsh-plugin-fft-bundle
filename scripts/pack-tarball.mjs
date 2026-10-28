@@ -12,9 +12,13 @@
  * own `node_modules`, and lists them in `bundledDependencies`, so pnpm ships
  * them inside the tarball and installs nothing over the network for them.
  *
- * The three dependencies the plugins still need from the registry
- * (`nunjucks`, `@modelcontextprotocol/sdk`, ...) stay declared and are fetched
- * by the consumer; only the plugin set is inlined.
+ * The bundle's dependencies come from three places and are all inlined: the
+ * unpublished packages from this repository's tree at the ref, the published
+ * packages (settings, ftshare, paper) from their **registry tarball** — the only
+ * place their built `lib/` exists, their git trees carry sources only — and kline
+ * from its own repository tag. Third-party packages (`nunjucks`,
+ * `@modelcontextprotocol/sdk`, ...) stay declared and are fetched by the
+ * consumer; only the plugin set is inlined.
  *
  * Usage: `node scripts/pack-tarball.mjs --help` (or `pnpm pack:tarball --help`)
  * prints the full option list; the short form is `[<ref>] [--out <dir>]`.
@@ -24,7 +28,7 @@ import { execFileSync, spawnSync } from 'node:child_process'
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { homedir } from 'node:os'
-import { dirname, join, resolve, sep } from 'node:path'
+import { basename, dirname, join, resolve, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { pathOf, refOf } from './edge-refs.mjs'
 
@@ -42,6 +46,18 @@ const DEFAULT_OUT = 'releases/gitlab'
 
 /** Files every packed package must carry whatever its `files` field says. */
 const ALWAYS_INCLUDED = ['package.json']
+
+/** An exact registry version; the bundle pins its published packages this way. */
+export const REGISTRY_SPEC = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/u
+
+/**
+ * The exact version a registry pin names, or `undefined` for a git edge.
+ * @param {string} spec - one dependency spec.
+ * @returns {string | undefined} the pinned version.
+ */
+export function registryVersionOf(spec) {
+  return REGISTRY_SPEC.test(spec) ? spec : undefined
+}
 
 /**
  * Run git in the repository and return its stdout.
@@ -144,6 +160,10 @@ function shippedFiles(packageDir, manifest) {
   const all = readdirSync(packageDir, { recursive: true }).map(path => String(path).split(sep).join('/'))
   const files = new Set()
   for (const path of all) {
+    // A package's own bundled `node_modules` never travels: the bundle inlines
+    // the whole plugin set one level up, so a nested copy would shadow it (the
+    // published paper tarball carries its kline under `node_modules`).
+    if (path === 'node_modules' || path.startsWith('node_modules/')) continue
     if (!statSync(join(packageDir, path)).isFile()) continue
     if (required.includes(path) || patterns.some(pattern => pattern.test(path))) files.add(path)
   }
@@ -174,6 +194,67 @@ function copyPackage(packageDir, destDir, manifest) {
     cpSync(join(packageDir, path), target)
   }
   return files.length
+}
+
+/**
+ * Whether an inlined version satisfies a range another bundled plugin declares.
+ *
+ * Only the forms the manifests actually use are understood — an exact version,
+ * `^`, `~`, `>=` and `*` — so a future range syntax fails the pack loudly
+ * instead of shipping a mismatched pair silently.
+ * @param {string} version - the version being inlined.
+ * @param {string} range - the declaration to satisfy.
+ * @returns {boolean} whether the pair is compatible.
+ */
+export function satisfiesRange(version, range) {
+  const [major, minor, patch] = version.split('+')[0].split('-')[0].split('.').map(Number)
+  const wanted = range.trim()
+  if (wanted === '' || wanted === '*' || wanted === 'x' || wanted === 'X') return true
+  const match = /^(\^|~|>=)?(\d+)(?:\.(\d+|[xX*]))?(?:\.(\d+|[xX*]))?(?:-[0-9A-Za-z.-]+)?$/u.exec(wanted)
+  if (match === null) throw new Error(`unsupported dependency range ${JSON.stringify(range)}`)
+  const [, operator = '', wantMajor, wantMinor, wantPatch] = match
+  const bound = [
+    Number(wantMajor),
+    wantMinor === undefined || /[xX*]/u.test(wantMinor) ? 0 : Number(wantMinor),
+    wantPatch === undefined || /[xX*]/u.test(wantPatch) ? 0 : Number(wantPatch),
+  ]
+  const compare = (left, right) => left[0] - right[0] || left[1] - right[1] || left[2] - right[2]
+  const atLeast = compare([major, minor, patch], bound) >= 0
+  if (operator === '>=') return atLeast
+  if (!atLeast) return false
+  if (operator === '~') return major === bound[0] && minor === bound[1]
+  if (operator === '^') {
+    if (bound[0] > 0) return major === bound[0]
+    if (bound[1] > 0) return major === 0 && minor === bound[1]
+    return major === 0 && minor === 0 && patch === bound[2]
+  }
+  return major === bound[0] && minor === bound[1] && patch === bound[2]
+}
+
+/**
+ * Refuse a payload whose inlined versions do not satisfy the ranges the bundled
+ * plugins declare for each other. `rewriteManifest` drops those edges because the
+ * package is already inside the tarball, so this is the only place the pairing is
+ * still checked.
+ * @param {{name: string, manifest: object}[]} bundled - every inlined plugin.
+ */
+export function assertBundledRanges(bundled) {
+  const versions = new Map(bundled.map(plugin => [plugin.name, plugin.manifest.version]))
+  for (const plugin of bundled) {
+    for (const [name, range] of Object.entries(plugin.manifest.dependencies ?? {})) {
+      const version = versions.get(name)
+      if (version === undefined) continue
+      // git, file, workspace and URL specs are not version ranges; the edge
+      // itself already selected the commit (or package directory).
+      if (!/^[\^~>=\d]/u.test(range)) continue
+      if (!satisfiesRange(version, range)) {
+        throw new Error(
+          `${plugin.name} requires ${name}@${range}, but the bundle inlines ${name}@${version};`
+          + ' publish the required version and pin it in packages/dsh-fft-bundle/package.json',
+        )
+      }
+    }
+  }
 }
 
 /**
@@ -275,27 +356,38 @@ function localRepoSource(name, dir, ref, cache) {
 }
 
 /**
- * Find an installed copy of a plugin whose version matches the edge's tag.
+ * Find an installed copy of a plugin at one exact version. A registry pin names
+ * one version and a git tag names one build, so an installed copy is only reused
+ * when its version matches exactly — never "whatever happens to be installed".
+ * A `-ft.N` fork tag does not equal the kline manifest's `0.4.0`, so kline always
+ * falls through to its tag clone.
  * @param {string} name - package name.
- * @param {string} ref - the edge's committish, `v0.3.5` or empty.
+ * @param {string} version - the version the source must carry; empty means the edge has no tag.
  * @returns {string | undefined} the installed package directory.
  */
-function installedCopy(name, ref) {
-  const wanted = ref.replace(/^v/u, '')
+function installedCopy(name, version) {
+  if (version === '') return undefined
   const profiles = join(homedir(), '.dsh', 'profiles')
   if (!existsSync(profiles)) return undefined
   for (const profile of readdirSync(profiles)) {
     const dir = join(profiles, profile, 'node_modules', name)
     if (!existsSync(join(dir, 'package.json'))) continue
-    const version = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')).version
-    if (wanted === '' || version === wanted) return dir
+    const installed = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')).version
+    if (installed === version) return dir
   }
   return undefined
 }
 
+/** A directory-safe form of a package name. */
+function directoryName(name) {
+  return name.replace(/[^a-z0-9.-]/giu, '_')
+}
+
 /**
- * Obtain one external dependency's files: an explicit directory, a local
- * sibling repository, an installed copy, a cache, or a clone.
+ * Obtain one external dependency's files. A registry pin is taken from the
+ * registry (that is where the published packages' built `lib/` lives); a git
+ * edge is taken from an explicit directory, a local sibling repository, an
+ * installed copy at its tag's version, the cache, or a clone.
  * @param {string} name - package name.
  * @param {string} spec - the dependency spec.
  * @param {{klineDir?: string, pluginDirs?: Map<string, string>, cache: string}} options - the run's sources.
@@ -305,18 +397,34 @@ function externalSource(name, spec, options) {
   // `--kline-dir` names one package; apply it to that edge only, or every other
   // external edge would be filled with the kline payload.
   if (name === KLINE && options.klineDir !== undefined) return options.klineDir
-  const ref = refOf(spec)
+  const version = registryVersionOf(spec)
   const localDir = options.pluginDirs?.get(name)
   if (localDir !== undefined) {
+    if (version !== undefined) {
+      console.log(`pack-tarball: ${name}@${version} from the local package (${localDir})`)
+      return localDir
+    }
+    const ref = refOf(spec)
     console.log(`pack-tarball: ${name} from the local repository (${localDir} at ${ref || 'HEAD'})`)
     return localRepoSource(name, localDir, ref === '' ? 'HEAD' : ref, options.cache)
   }
-  const installed = installedCopy(name, ref)
+  if (version !== undefined) {
+    const installed = installedCopy(name, version)
+    if (installed !== undefined) {
+      console.log(`pack-tarball: ${name}@${version} from the installed profile (${installed})`)
+      return installed
+    }
+    const cache = join(options.cache, `${directoryName(name)}-${version}`)
+    if (existsSync(join(cache, 'package.json'))) return cache
+    return registrySource(name, version, cache)
+  }
+  const ref = refOf(spec)
+  const installed = installedCopy(name, ref.replace(/^v/u, ''))
   if (installed !== undefined) {
     console.log(`pack-tarball: ${name} from the installed profile (${installed})`)
     return installed
   }
-  const cache = join(options.cache, `${name.replace(/[^a-z0-9.-]/giu, '_')}-${ref === '' ? 'default' : ref}`)
+  const cache = join(options.cache, `${directoryName(name)}-${ref === '' ? 'default' : ref}`)
   if (!existsSync(join(cache, 'package.json'))) {
     rmSync(cache, { recursive: true, force: true })
     const url = cloneUrl(spec)
@@ -325,6 +433,49 @@ function externalSource(name, spec, options) {
     execFileSync('git', args, { stdio: 'inherit' })
   }
   return cache
+}
+
+/**
+ * Download one published package's tarball and unpack it into the cache. The
+ * npm cache is kept inside this repository so the run does not depend on (or
+ * disturb) the machine's own `~/.npm` permissions.
+ * @param {string} name - package name.
+ * @param {string} version - exact version to fetch.
+ * @param {string} dest - absolute cache directory for the unpacked package.
+ * @returns {string} the absolute package directory.
+ */
+function registrySource(name, version, dest) {
+  rmSync(dest, { recursive: true, force: true })
+  mkdirSync(dest, { recursive: true })
+  const download = join(dirname(dest), `.pack-${basename(dest)}`)
+  rmSync(download, { recursive: true, force: true })
+  mkdirSync(download, { recursive: true })
+  console.log(`pack-tarball: ${name}@${version} from the registry`)
+  const packed = spawnSync('npm', ['pack', `${name}@${version}`, '--pack-destination', download], {
+    env: {
+      ...process.env,
+      npm_config_cache: join(repoRoot, 'tmp', 'npm-cache'),
+      // The published packages live on the canonical registry; a mirror may lag
+      // behind a fresh release and serve neither the packument nor the tarball.
+      npm_config_registry: process.env.DSH_PACK_REGISTRY ?? 'https://registry.npmjs.org/',
+    },
+    encoding: 'utf8',
+  })
+  if (packed.status !== 0) {
+    throw new Error(`npm pack ${name}@${version} failed:\n${packed.stdout ?? ''}${packed.stderr ?? ''}`)
+  }
+  const tarballs = readdirSync(download).filter(file => file.endsWith('.tgz'))
+  if (tarballs.length !== 1) {
+    throw new Error(`npm pack ${name}@${version} produced ${tarballs.length} tarball(s)`)
+  }
+  const untar = spawnSync('tar', ['-xzf', join(download, tarballs[0]), '-C', dest, '--strip-components=1'], { maxBuffer: 1 << 30 })
+  if (untar.status !== 0) throw new Error(`tar extraction of ${tarballs[0]} failed: ${untar.stderr.toString()}`)
+  rmSync(download, { recursive: true, force: true })
+  const manifest = JSON.parse(readFileSync(join(dest, 'package.json'), 'utf8'))
+  if (manifest.name !== name || manifest.version !== version) {
+    throw new Error(`${name}@${version} resolved to ${manifest.name}@${manifest.version}`)
+  }
+  return dest
 }
 
 /**
@@ -378,6 +529,7 @@ export function packTarball(options = {}) {
       bundled.push({ name, manifest, source })
     }
   }
+  assertBundledRanges(bundled)
   const manifest = rewriteManifest(bundle, bundled)
   const payload = join(staging, 'package')
   rmSync(payload, { recursive: true, force: true })
@@ -417,24 +569,34 @@ OPTIONS
   --kline-dir <dir>    Directory of an already installed
                        @ftshare-lab/dsh-kline. Skips the source lookup below.
   --plugin-dir <name>=<dir>
-                       Take one external plugin from a local sibling repository:
-                       extract it with git archive at the edge's ref. Repeatable.
+                       Take one external plugin from a local directory: a package
+                       directory for a registry pin, or a sibling repository for
+                       a git edge (extracted with git archive at the edge's ref).
+                       Repeatable.
   --keep-staging       Keep tmp/standalone/.staging-<ref>/ for inspection.
   -h, --help           Print this help.
 
 WHAT IT DOES
   Extracts packages/ from <ref> with git archive, keeps each package's own
   files entries (and fails loudly when a required entry is missing), then
-  inlines every dependency edge back into this repository plus the external
-  kline under the bundle's own node_modules. The rewritten manifest lists them
-  in bundledDependencies, so pnpm installs the tarball without resolving a
-  single git edge.
+  inlines the bundle's whole plugin set under its own node_modules: the
+  unpublished packages from that extraction, the published packages from their
+  registry tarballs, and kline from its repository tag. A package's nested
+  node_modules is never copied. The rewritten manifest lists every inlined
+  plugin in bundledDependencies, so pnpm installs the tarball without resolving
+  a single git edge, and refuses a payload whose inlined versions do not satisfy
+  the ranges the plugins declare for each other.
 
 EXTERNAL SOURCES
-  An edge that is not in this repository is resolved in order: an explicit
-  --plugin-dir, an installed profile (~/.dsh/profiles/*/node_modules), the cache
-  under tmp/standalone/.cache, then a git clone — https for public hosts, ssh for
-  the internal GitLab, whose https endpoint is not reachable.
+  A registry pin (an exact version) is resolved from the registry tarball — the
+  only place the published packages' built lib/ exists: an installed profile at
+  exactly that version first, then the cache under tmp/standalone/.cache, then
+  npm pack (its npm cache kept under tmp/, registry overridable with
+  DSH_PACK_REGISTRY; the canonical registry is used by default because a mirror
+  may not have a fresh release yet). A git edge is resolved in order: an
+  explicit --plugin-dir, an installed profile at the tag's version, the cache,
+  then a git clone — https for public hosts, ssh for the internal GitLab, whose
+  https endpoint is not reachable.
 
 OUTPUT
   Prints the tarball path, size, payload file count, sha256, the inlined

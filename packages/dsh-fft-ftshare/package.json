@@ -79,7 +79,7 @@
     "test": "pnpm run build && node scripts/test-projection.mjs && node scripts/test-service.mjs && node scripts/test-catalog.mjs && node scripts/test-mask.mjs && node scripts/test-crossplane.mjs"
   },
   "dependencies": {
-    "@dsh-ft/dsh-fft-settings": "git+ssh://git@github.com/FTShare-Lab/dsh-plugin-fft-bundle.git#path:packages/dsh-fft-settings",
+    "@dsh-ft/dsh-fft-settings": "0.5.0",
     "@modelcontextprotocol/sdk": "^1.30.0"
   },
   "peerDependencies": {
