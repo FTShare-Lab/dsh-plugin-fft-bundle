@@ -1,10 +1,80 @@
 packages:
   - packages/*
+# 开发宿主版本只在这里钉一次。宿主包（@deepseek-ai/*）是本仓编译期的类型来源，
+# 运行期由 DSH 提供：插件包用 peerDependencies 声明契约，用 devDependencies +
+# catalog 取开发用的那一份；autoInstallPeers 装进来的传递 peer 闭包由 overrides
+# 钉版本。三者必须同版。
+#
+# 为什么钉 overrides：宿主包大量用开放下界（>=0.2.x）声明 peer，不钉的话任何
+# peer 变更（例如 ami 0.4.2 新增 0.2.1 的 compaction/jobs 依赖）都会让 pnpm 把
+# 闭包重解析到 npm 最新版，dev 树整体漂移、出现同名包两份与非移植类型。
+# 宿主升级 = 改 catalog + overrides、改 `dsh.engines.dsh` 下限、改 ami 的
+# PROVENANCE 基线宿主，然后全量重装；`tests/host-pins.test.mjs` 守一致性。
+autoInstallPeers: true
+catalog:
+  '@deepseek-ai/cordis': 4.0.4
+  '@deepseek-ai/dsh-client-ui-primitives': 0.2.1-rc.2
+  '@deepseek-ai/dsh-client-ui-settings': 0.2.1-rc.2
+  '@deepseek-ai/dsh-client-ui-slots': 0.2.1-rc.2
+  '@deepseek-ai/dsh-credentials': 0.2.1-rc.2
+  '@deepseek-ai/dsh-llm': 0.2.1-rc.2
+  '@deepseek-ai/dsh-tools': 0.2.1-rc.2
+  '@deepseek-ai/schemastery': 3.18.5
 # pnpm 默认拒装刚发布的版本；paper 0.6.0 是本次发布的组成部分，放行。
 minimumReleaseAgeExclude:
   - '@dsh-ft/dsh-fft-paper-trading@0.6.0'
 overrides:
+  # 宿主闭包：钉到 thirdparty/deepseek-harness 那一版（0.2.1-rc.2；dsh-invariants
+  # 没有该版本，冻结在 0.2.0-rc.2）。新增宿主 peer 若未钉版本，会解析到 npm 最新版，
+  # host-pins 测试会失败，按报错补一行即可。
   '@deepseek-ai/cordis': 4.0.4
+  '@deepseek-ai/cordis-plugin-group': 1.0.5
+  '@deepseek-ai/cordis-plugin-include': 1.0.10
+  '@deepseek-ai/cordis-plugin-loader': 1.0.6
+  '@deepseek-ai/cosmokit': 1.8.6
+  '@deepseek-ai/schemastery': 3.18.5
+  '@deepseek-ai/dsh-agent': 0.2.1-rc.2
+  '@deepseek-ai/dsh-api-remotes': 0.2.1-rc.2
+  '@deepseek-ai/dsh-app-boot': 0.2.1-rc.2
+  '@deepseek-ai/dsh-atomic-write': 0.2.1-rc.2
+  '@deepseek-ai/dsh-attachment': 0.2.1-rc.2
+  '@deepseek-ai/dsh-brand': 0.2.1-rc.2
+  '@deepseek-ai/dsh-chunked-list': 0.2.1-rc.2
+  '@deepseek-ai/dsh-client-locale': 0.2.1-rc.2
+  '@deepseek-ai/dsh-client-ui-conversation': 0.2.1-rc.2
+  '@deepseek-ai/dsh-client-ui-primitives': 0.2.1-rc.2
+  '@deepseek-ai/dsh-client-ui-settings': 0.2.1-rc.2
+  '@deepseek-ai/dsh-client-ui-slots': 0.2.1-rc.2
+  '@deepseek-ai/dsh-config-editor': 0.2.1-rc.2
+  '@deepseek-ai/dsh-credentials': 0.2.1-rc.2
+  '@deepseek-ai/dsh-deque': 0.2.1-rc.2
+  '@deepseek-ai/dsh-fs': 0.2.1-rc.2
+  '@deepseek-ai/dsh-home-paths': 0.2.1-rc.2
+  '@deepseek-ai/dsh-host-webserver': 0.2.1-rc.2
+  '@deepseek-ai/dsh-invariants': 0.2.0-rc.2
+  '@deepseek-ai/dsh-launch-environment': 0.2.1-rc.2
+  '@deepseek-ai/dsh-llm': 0.2.1-rc.2
+  '@deepseek-ai/dsh-package-manifest': 0.2.1-rc.2
+  '@deepseek-ai/dsh-ptc-runtime': 0.2.1-rc.2
+  '@deepseek-ai/dsh-sandbox': 0.2.1-rc.2
+  '@deepseek-ai/dsh-sandbox-policy': 0.2.1-rc.2
+  '@deepseek-ai/dsh-scope': 0.2.1-rc.2
+  '@deepseek-ai/dsh-session': 0.2.1-rc.2
+  '@deepseek-ai/dsh-session-projection': 0.2.1-rc.2
+  '@deepseek-ai/dsh-settings': 0.2.1-rc.2
+  '@deepseek-ai/dsh-skill': 0.2.1-rc.2
+  '@deepseek-ai/dsh-storage': 0.2.1-rc.2
+  '@deepseek-ai/dsh-storage-domain': 0.2.1-rc.2
+  '@deepseek-ai/dsh-subagent': 0.2.1-rc.2
+  '@deepseek-ai/dsh-system-prompt': 0.2.1-rc.2
+  '@deepseek-ai/dsh-timeout': 0.2.1-rc.2
+  '@deepseek-ai/dsh-tools': 0.2.1-rc.2
+  '@deepseek-ai/dsh-typert-protocol': 0.2.1-rc.2
+  '@deepseek-ai/dsh-user-approval': 0.2.1-rc.2
+  '@deepseek-ai/dsh-util-crypto': 0.2.1-rc.2
+  '@deepseek-ai/dsh-util-time': 0.2.1-rc.2
+  '@deepseek-ai/dsh-util-values': 0.2.1-rc.2
+  '@deepseek-ai/dsh-working-directory': 0.2.1-rc.2
   # 本仓插件包的 dependencies：已发布包（settings/ftshare/paper）写 registry 精确版本，
   # 未发布包才用本仓 git 边（`dsh plugin add` 一条 spec 装全套时 pnpm 顺藤摸瓜）；本地开发
   # 用 link 覆盖，否则 dev 会去远端取已推送的提交，看不到本地未推送的改动。

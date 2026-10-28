@@ -41,19 +41,24 @@
   "dependencies": {
     "@dsh-ft/dsh-fft-ftshare": "0.3.0",
     "@dsh-ft/dsh-fft-settings": "0.5.0",
-    "@deepseek-ai/schemastery": ">=3.18.2",
     "nunjucks": "3.2.4"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
     "@deepseek-ai/dsh-llm": ">=0.2.0-rc.2",
     "@deepseek-ai/dsh-tools": ">=0.2.0-rc.2",
-    "dsh-better-sidebar": ">=0.18.0"
+    "dsh-better-sidebar": ">=0.18.0",
+    "@deepseek-ai/schemastery": ">=3.18.2"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
     "@types/nunjucks": "3.2.6",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "@deepseek-ai/cordis": "catalog:",
+    "@deepseek-ai/dsh-client-ui-primitives": "catalog:",
+    "@deepseek-ai/dsh-llm": "catalog:",
+    "@deepseek-ai/dsh-tools": "catalog:",
+    "@deepseek-ai/schemastery": "catalog:"
   },
   "dsh": {
     "bundle": {
