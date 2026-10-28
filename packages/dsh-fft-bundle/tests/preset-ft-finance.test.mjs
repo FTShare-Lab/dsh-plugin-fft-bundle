@@ -1,16 +1,17 @@
 /**
  * The finance preset mirrors the official `standard` composition of the
- * **lowest supported host**, DSH 0.2.0-rc.2 — not whatever checkout happens to
- * be on the developer's disk.
+ * **lowest supported host**, DSH 0.2.1-alpha.1 — not whatever checkout happens
+ * to be on the developer's disk.
  *
- * A preset's `plugins` list is complete: it inherits nothing. DSH 0.2.1 added
- * `time-context`, `tool-schedule` and `tool-plugin-market`, and dropped
- * `tool-ralph`; a bundle that must still load on 0.2.0 cannot adopt those
- * rows. Two guards therefore run:
+ * A preset's `plugins` list is complete: it inherits nothing. Since 0.9.0 the
+ * lowest supported host is 0.2.1-alpha.1, so 0.2.0 support is retired. The
+ * preset deliberately keeps the 0.2.0-era tooling surface, though: the rows
+ * 0.2.1 added to `standard` stay omitted and are recorded in
+ * FLOOR_OMITTED_ROWS, while `tool-ralph` was retired altogether. Two guards
+ * therefore run:
  *
- * 1. the floor: the composition equals the `dsh-v0.2.0-rc.2` tag's preset, row
- *    for row, except the disabled `tool-ralph` template this bundle retired
- *    (it stopped resolving from the host's dependency set in 0.2.1);
+ * 1. the floor: the composition equals the `dsh-v0.2.1-alpha.1` tag's preset,
+ *    row for row, except the omitted rows above and the retired `tool-ralph`;
  * 2. the current host: every divergence from the reachable `standard`
  *    composition is one of the deltas recorded below, so a later host bump
  *    fails loudly instead of silently widening the compatibility gap.
@@ -67,12 +68,14 @@ const GLOBAL_ROWS = ['dsh-fft-settings', 'dsh-fft-ftshare', 'newapi-wechat-sso',
  */
 const PRESET_ONLY_ROWS = ['mcp-dsh-kline', 'ft-ftshare-tools', 'ft-ftshare-mask', 'ft-ftshare-project', 'dsh-fft-factor-intake-standard']
 /** The host tag whose composition is the compatibility floor. */
-const FLOOR_TAG = 'dsh-v0.2.0-rc.2'
-/** The floor composition this copy was taken from; growing requires a re-sync. */
-const FLOOR_PLUGIN_COUNT = 19
+const FLOOR_TAG = 'dsh-v0.2.1-alpha.1'
+/** The floor composition size at that tag; growing requires a re-sync. */
+const FLOOR_PLUGIN_COUNT = 21
+/** Floor rows this preset deliberately omits (it keeps the 0.2.0-era surface). */
+const FLOOR_OMITTED_ROWS = ['time-context', 'tool-schedule']
 /** Floor rows this bundle deliberately no longer carries. */
 const RETIRED_FLOOR_ROWS = ['tool-ralph']
-/** Rows DSH 0.2.1 added to `standard`; the 0.2.0 floor cannot load them. */
+/** Rows the reachable host's standard carries and this preset omits. */
 const CURRENT_ADDED_ROWS = ['time-context', 'tool-schedule', 'tool-plugin-market']
 /** Rows DSH 0.2.1 dropped from `standard` but 0.2.0 still needs; kept disabled. */
 const CURRENT_DROPPED_ROWS = ['tool-subagent-codex', 'tool-subagent-claude-code']
@@ -400,7 +403,7 @@ describe('the finance preset in this bundle', () => {
   })
 
   it('appends exactly the seven finance rows, each id once', () => {
-    const appended = bundlePlugins.slice(FLOOR_PLUGIN_COUNT).map(row => row.id)
+    const appended = bundlePlugins.slice(bundlePlugins.length - ADDED_PLUGINS.length).map(row => row.id)
     assert.deepEqual(
       appended,
       ADDED_PLUGINS,
@@ -457,7 +460,7 @@ describe('the finance preset in this bundle', () => {
     )
   })
 
-  describe('against the 0.2.0 floor composition', () => {
+  describe('against the host floor composition', () => {
     const floorPatch = floor ? load(floor.preset, { schema }) : null
     /**
      * The persona identity is this bundle's one intended rewrite: the prefix
@@ -467,6 +470,15 @@ describe('the finance preset in this bundle', () => {
     const personaException = (id, path, difference) => id === PERSONA_ID
       && (difference.startsWith(`${path}.config.prefix:`)
         || difference.startsWith(`${path}.config.suffix:`))
+    /**
+     * The host dropped `toolFilter` support: DSH 0.2.1-rc.3 rejects the field
+     * while validating a preset ("toolFilter is no longer supported"), which
+     * makes the whole preset disappear. The alpha.1 floor composition still
+     * carries it on the subagent rows, so the preset intentionally omits it.
+     */
+    const SUBAGENT_ROWS = ['tool-subagent', 'tool-subagent-fork']
+    const toolFilterException = (id, path, difference) => SUBAGENT_ROWS.includes(id)
+      && difference.startsWith(`${path}.config.toolFilter`)
 
     it('is pinned to the floor composition size', { skip: skipFloor }, () => {
       const official = requirePlugins(floorPatch, UPSTREAM_PRESET_ID, floor.label)
@@ -477,22 +489,23 @@ describe('the finance preset in this bundle', () => {
       )
       assert.equal(
         bundlePlugins.length,
-        official.length + ADDED_PLUGINS.length,
-        `"${PRESET_ID}" must hold the ${official.length} floor rows plus the ${ADDED_PLUGINS.length} finance rows`,
+        official.length - FLOOR_OMITTED_ROWS.length + ADDED_PLUGINS.length,
+        `"${PRESET_ID}" must hold the ${official.length} floor rows minus the ${FLOOR_OMITTED_ROWS.length} omitted, plus the ${ADDED_PLUGINS.length} finance rows`,
       )
     })
 
     it('mirrors the floor composition, field for field', { skip: skipFloor }, () => {
       const official = requirePlugins(floorPatch, UPSTREAM_PRESET_ID, floor.label)
       const drift = diffRowLists(official, bundlePlugins, 'config.plugins', {
-        dropped: new Set(RETIRED_FLOOR_ROWS),
+        dropped: new Set([...RETIRED_FLOOR_ROWS, ...FLOOR_OMITTED_ROWS]),
         added: new Set(ADDED_PLUGINS),
-        except: personaException,
+        except: (id, path, difference) => personaException(id, path, difference)
+          || toolFilterException(id, path, difference),
       })
       assert.deepEqual(
         drift,
         [],
-        `"${PRESET_ID}" drifted from ${floor.label} ("${UPSTREAM_PRESET_ID}"); only the persona prefix and suffix may differ, and only ${RETIRED_FLOOR_ROWS.join(', ')} may be retired`,
+        `"${PRESET_ID}" drifted from ${floor.label} ("${UPSTREAM_PRESET_ID}"); only the persona prefix and suffix may differ, and only ${[...RETIRED_FLOOR_ROWS, ...FLOOR_OMITTED_ROWS].join(', ')} may be absent`,
       )
     })
 
@@ -537,8 +550,8 @@ describe('the finance preset in this bundle', () => {
       const officialIds = official.map(row => row.id)
       const bundleIds = bundlePlugins.map(row => row.id)
 
-      // A 0.2.0 copy has nothing missing; a 0.2.1 copy is missing exactly the
-      // rows that cannot load on the floor.
+      // This preset keeps the 0.2.0-era surface, so the reachable host's newer
+      // rows it does not carry are exactly the recorded omissions.
       const expectedMissing = officialIds.includes('time-context') ? CURRENT_ADDED_ROWS : []
       assert.deepEqual(
         officialIds.filter(id => !bundleIds.includes(id)),
