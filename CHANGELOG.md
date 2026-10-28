@@ -4,6 +4,35 @@
 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循
 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [0.9.0] - 2026-10-28
+
+### Added
+
+- 设置与 FTShare 底座可从 npm 单独安装
+
+### Changed
+
+- 共享插件包名迁移到 `@dsh-ft` 命名空间
+- 设置页改名为「金融终端」，访问凭据卡标注当前的 FTShare 数据源
+- 插件页显示中文名称与一句话简介
+- 模拟盘在插件管理里显示「模拟交易」名称与图标
+- 模拟盘 Agent 工具改用 `paper_stock_*` / `paper_futures_*` 命名
+- 模拟盘新增账本快照与恢复，旧账本不再要求重置
+- K 线改挂宿主右侧栏，浮动入口与首次引导不再出现
+- 宿主下限提高到 DSH 0.2.1-alpha.1（不再支持 0.2.0）
+
+### Fixed
+
+- 行情额度用尽不再被误判成「套餐未开通」
+- 上游真停机不再显示成「额度用尽」
+
+### Components
+
+- `@dsh-ft/dsh-fft-settings`：`v0.4.5` → `v0.5.0`，改为可从 npm 单独安装
+- `@dsh-ft/dsh-fft-ftshare`：`v0.2.0` → `v0.3.0`，改为可从 npm 单独安装
+- `@dsh-ft/dsh-fft-paper-trading`：`v0.3.2` → `v0.6.0`，工具改用 `paper_*` 命名，新增账本快照与恢复
+- `DSH Kline`：`v0.4.0-ft.1` → `v0.4.0-ft.2`
+
 ## [0.8.0] - 2026-10-23
 
 ### Added
@@ -188,6 +217,7 @@
 - `@ft/dsh-fft-factor-intake-standard`：`v0.1.0`
 - `DSH Kline`：`v0.3.5`，随组合包安装 K 线工作台、侧边栏与 MCP 服务
 
+[0.9.0]: https://github.com/gigaflw/dsh-fft-bundle/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/gigaflw/dsh-fft-bundle/compare/v0.7.2...v0.8.0
 [0.7.2]: https://github.com/gigaflw/dsh-fft-bundle/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/gigaflw/dsh-fft-bundle/compare/v0.7.0...v0.7.1
