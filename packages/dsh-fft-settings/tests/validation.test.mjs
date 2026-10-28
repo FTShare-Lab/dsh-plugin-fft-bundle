@@ -21,7 +21,7 @@ function setup(validator = async () => structuredClone(passed)) {
   }
   return { ...createApiKeySettings(store, validator), store, change(value) { key = value }, readOnly() { writable = false }, failSave() { failSave = true } }
 }
-test('documented GET contracts, small limits, auth header, redirects disabled; no rows escape', async () => {
+test('documented GET contracts, small limits, key on both probes, redirects disabled; no rows escape', async () => {
   const calls = []
   const report = await probeApiKey('test-secret', new AbortController().signal, async (url, init) => { calls.push({ url, init }); return response() }, 1789516800000)
   assert.equal(report.status, 'passed')
@@ -32,7 +32,7 @@ test('documented GET contracts, small limits, auth header, redirects disabled; n
   assert.equal(calls[1].url.searchParams.get('limit'), '1')
   assert.equal(calls[1].url.searchParams.get('adjust_kind'), 'none')
   assert.ok(Number(calls[1].url.searchParams.get('until_ts_millis')) - Number(calls[1].url.searchParams.get('since_ts_millis')) <= 3 * 86400000)
-  assert.equal(calls[0].init.headers.FTSHARE_API_KEY, undefined)
+  assert.equal(calls[0].init.headers.FTSHARE_API_KEY, 'test-secret')
   assert.equal(calls[1].init.headers.FTSHARE_API_KEY, 'test-secret')
   for (const { url, init } of calls) {
     assert.equal(url.origin, 'https://market.ft.tech')
@@ -99,7 +99,7 @@ test('malformed envelopes, upstream errors and oversized responses are not healt
     [() => new Response('<html>test-secret</html>'), 'invalid_response'],
     [() => new Response('x'.repeat(130 * 1024)), 'invalid_response'],
     [() => response(null, 503, 'down', 503), 'upstream_error'],
-    [() => response(null, 403, 'forbidden', 403), 'upstream_error'],
+    [() => response(null, 403, 'forbidden', 403), 'permission_denied'],
   ]) {
     let calls = 0
     const report = await probeApiKey('test-secret', new AbortController().signal, async () => { calls++; return factory() })
@@ -115,6 +115,19 @@ test('a successful HTTP response with missing or failed business status does not
     assert.equal(report.remote.status, 'available')
     assert.notEqual(report.apiKey.status, 'available')
   }
+})
+test('with a key the remote probe is authenticated, so auth failures belong to the key; anonymous 401 stays a transport rejection', async () => {
+  const keyed = await probeApiKey('test-secret', new AbortController().signal, async () => response(null, 401, 'api_key_invalid', 401))
+  assert.equal(keyed.remote.status, 'auth_failed')
+  assert.equal(keyed.apiKey.status, 'not_run')
+  assert.equal(keyed.status, 'failed')
+
+  const anonymous = await probeApiKey(undefined, new AbortController().signal, async (_url, init) => {
+    assert.equal(init.headers.FTSHARE_API_KEY, undefined)
+    return response(null, 401, '', 401)
+  })
+  assert.equal(anonymous.remote.status, 'upstream_error')
+  assert.equal(anonymous.status, 'failed')
 })
 test('missing key still checks the remote anonymously and never checks key authentication', async () => {
   let calls = 0

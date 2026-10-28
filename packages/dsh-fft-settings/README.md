@@ -39,7 +39,7 @@ const apiKey = ctx.ftshareSettings.apiKey
 | `set(value)` | `Promise<void>`：只保存，不联网测试；去首尾空白，拒绝空值、超过 512 字符和控制字符 |
 | `clear()` | `Promise<void>`：只清除 DSH 保存值；可能露出 `.env` 回退值 |
 | `configureAndTest(value)` | `Promise<ConfigureResult>`：先保存，再检查远端服务和 Key；保存和验证分别返回，测试失败不回滚 |
-| `testConnection()` | `Promise<ValidationResult>`：先匿名检查远端，再验证调用时生效的 Key，不修改配置；无 Key 仍检查远端 |
+| `testConnection()` | `Promise<ValidationResult>`：先检查远端（配置了 Key 时携带），再验证调用时生效的 Key，不修改配置；无 Key 仍检查远端 |
 | `getValidationStatus()` | `Promise<ValidationResult>`：读取最近验证结果，不联网 |
 | `subscribe(listener)` | 返回取消订阅函数；失效通知，无参数、无密钥；回调重新读取状态 |
 | `createEnvironment(base?)` | 返回新环境变量对象，用当前 Key 替换 `FTSHARE_API_KEY`；无 Key 删除该字段，不修改 base |
@@ -73,8 +73,10 @@ const result = await apiKey.configureAndTest(userInput)
 
 | 结果字段 | 检测目的 | 固定请求 | 是否携带 Key |
 | --- | --- | --- | --- |
-| `validation.remote` | 远端服务是否正常 | `GET https://market.ft.tech/gateway/api/v1/market/data/stock-candlesticks` | 不携带 |
+| `validation.remote` | 远端服务是否正常 | `GET https://market.ft.tech/gateway/api/v1/market/data/stock-candlesticks` | 配置了 Key 时携带；未配置时匿名 |
 | `validation.apiKey` | 当前 Key 是否通过认证 | `GET https://market.ft.tech/gateway/api/v2/market/data/stock_minutes` | 使用 `FTSHARE_API_KEY` 请求头 |
+
+远端检查也携带 Key：网关的匿名额度按出口 IP 计（500 次／24 小时），用尽后未携带 Key 的请求一律 429。若远端检查仍走匿名，用户在已经配好可用 Key 的情况下会看到「请求受限、Key 未验证」，把 Key 问题和服务额度问题混在一起。携带 Key 后远端检查照旧只看 HTTP／业务码与 `data` 数组，认证与权限失败按下面规则归到 Key 上。
 
 日 K 请求使用 `600519.SH`、day、不复权、最近 30 天、`limit=2`；历史分钟请求使用同一股票、1 分钟、不复权、最近 24 小时、`limit=1`。服务端实际限制为包含首尾的三个北京时间自然日，而非滚动 72 小时；24 小时最多覆盖两个自然日。`adjust_kind` 使用实测接受的小写 `none`；文档中的 `None` 会被实际接口以 HTTP 400 拒绝。参数固定，不查交易日历、不回溯补数据、不验证 OHLC 字段。
 
@@ -83,6 +85,7 @@ const result = await apiKey.configureAndTest(userInput)
 - 远端正常、Key 通过：`status=passed`；两项均为 `available`。
 - 远端正常、Key 无效／未配置／受限：`status=partial`；`remote` 仍为 `available`，检查 `apiKey.status` 获取原因。不能把 `partial` 当作 Key 验证通过。
 - 远端检查失败：`status=failed`；有 Key 时跳过验证，`apiKey.status=not_run`，不把服务故障归咎于 Key。
+- 远端检查携带 Key 时，其 401／403 按认证、权限、额度原因分类；400／422 仍提示参数被拒，不代表 Key 无效。未配置 Key 的匿名远端检查遇到 401／403 记 `upstream_error`（服务拒绝匿名访问），不据此指控 Key。
 - 未配置 Key：仍执行匿名远端检查，Key 项显示 `auth_required` / “未配置 API Key”，不发送分钟请求。
 - 明确的 401 认证错误显示“API Key 未通过认证”；权限、额度、限流等保留独立原因，不能一律判为 Key 无效，也不能据此宣称认证成功。
 

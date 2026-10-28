@@ -61,10 +61,10 @@ async function readBoundedJson(response) {
 }
 /**
  * 一次固定探测。失败（发出过请求且没有通过）写一条 `warn`：
- * 字段固定 `{ target, status, durationMs }` —— `target` 由是否携带 Key 决定；
+ * 字段固定 `{ target, status, durationMs }`，`target` 由调用点显式给出；
  * 未发请求的 `not_run` 不是探测失败，成功也不记（规格 §6/§7）。
  */
-async function probe(path, params, key, parent, fetcher, now, logger) {
+async function probe(target, path, params, key, parent, fetcher, now, logger) {
     const url = new URL(path, ORIGIN);
     url.search = new URLSearchParams(params).toString();
     const timeout = AbortSignal.timeout(PROBE_TIMEOUT_MS);
@@ -72,7 +72,7 @@ async function probe(path, params, key, parent, fetcher, now, logger) {
     const started = Date.now();
     const finish = (outcome) => {
         if (outcome.status !== 'available' && outcome.status !== 'not_run') {
-            logger?.warn('FTShare 探测未通过', { target: key === undefined ? 'remote' : 'apiKey', status: outcome.status, durationMs: Date.now() - started });
+            logger?.warn('FTShare 探测未通过', { target, status: outcome.status, durationMs: Date.now() - started });
         }
         return outcome;
     };
@@ -106,7 +106,7 @@ async function probe(path, params, key, parent, fetcher, now, logger) {
             return finish(result('invalid_response', '接口未返回 K 线数组'));
         // This checks service/authentication success, not market-data availability.
         // Empty holiday or post-close windows are successful responses too.
-        return finish(result('available', key === undefined ? '远端服务正常' : 'API Key 验证通过'));
+        return finish(result('available', target === 'remote' ? '远端服务正常' : 'API Key 验证通过'));
     }
     catch {
         if (parent.aborted)
@@ -116,12 +116,18 @@ async function probe(path, params, key, parent, fetcher, now, logger) {
         return finish(result('network_error', '连接失败，请检查网络后重试'));
     }
 }
-/** Two fixed, bounded requests. No SDK, arbitrary URL, retries or stored rows. */
+/**
+ * Two fixed, bounded requests. No SDK, arbitrary URL, retries or stored rows.
+ *
+ * 配置了 Key 时两项检查都携带它：匿名额度按出口 IP 计，用尽后未携带 Key 的请求会被
+ * 网关以 429 拒绝，若远端检查仍走匿名就会把「Key 已配置且可用」误报成受限。未配置
+ * Key 时退回匿名远端检查（401/403 不能用来指控 Key）。
+ */
 export async function probeApiKey(key, signal, fetcher = fetch, now = Date.now(), logger) {
-    const remote = await probe(PROBE_CONTRACTS.daily, {
+    const remote = await probe('remote', PROBE_CONTRACTS.daily, {
         symbol: '600519.SH', interval_unit: 'day', adjust_kind: 'none',
         since_ts_millis: String(now - 30 * DAY), until_ts_millis: String(now), limit: '2',
-    }, undefined, signal, fetcher, now, logger);
+    }, key, signal, fetcher, now, logger);
     let apiKey;
     if (!key) {
         apiKey = result('auth_required', '未配置 API Key');
@@ -132,7 +138,7 @@ export async function probeApiKey(key, signal, fetcher = fetch, now = Date.now()
     else {
         // The server counts inclusive Beijing calendar dates, not elapsed days.
         // A 24-hour window covers at most two dates; empty data still verifies auth.
-        apiKey = await probe(PROBE_CONTRACTS.historicalMinute, {
+        apiKey = await probe('apiKey', PROBE_CONTRACTS.historicalMinute, {
             symbol: '600519.SH', interval_value: '1', adjust_kind: 'none',
             since_ts_millis: String(now - DAY), until_ts_millis: String(now), limit: '1',
         }, key, signal, fetcher, now, logger);
