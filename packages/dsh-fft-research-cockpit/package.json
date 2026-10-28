@@ -18,12 +18,14 @@
       "default": "./lib/client.js"
     },
     "./package.json": "./package.json",
-    "./cordis.patch.yml": "./cordis.patch.yml"
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./locale/*.json": "./locale/*.json"
   },
   "files": [
     "lib",
     "resources",
     "cordis.patch.yml",
+    "locale/*.json",
     "package.json",
     "README.md"
   ],

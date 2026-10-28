@@ -59,7 +59,8 @@
     },
     "./catalog.json": "./catalog.json",
     "./cordis.patch.yml": "./cordis.patch.yml",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json"
   },
   "files": [
     "lib",
@@ -69,6 +70,7 @@
     "README.md",
     "LICENSE",
     "cordis.patch.yml",
+    "locale/*.json",
     "package.json"
   ],
   "scripts": {

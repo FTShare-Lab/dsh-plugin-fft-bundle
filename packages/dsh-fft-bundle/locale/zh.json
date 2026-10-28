@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "非凸金融工作台",
-    "description": "dsh-fft 插件集合：共享设置、FTShare API Key 管理与工作台集成。"
+    "title": "金融工作台",
+    "description": "集成 FTShare 数据、K 线、投研报告与模拟交易。"
   }
 }
