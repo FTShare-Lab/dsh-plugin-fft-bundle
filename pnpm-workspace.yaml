@@ -16,8 +16,15 @@ catalog:
   '@deepseek-ai/dsh-client-ui-primitives': 0.2.1-rc.2
   '@deepseek-ai/dsh-client-ui-settings': 0.2.1-rc.2
   '@deepseek-ai/dsh-client-ui-slots': 0.2.1-rc.2
+  '@deepseek-ai/dsh-command-compact': 0.2.1-rc.2
+  '@deepseek-ai/dsh-commands': 0.2.1-rc.2
+  '@deepseek-ai/dsh-compaction-basic': 0.2.1-rc.2
+  '@deepseek-ai/dsh-compaction': 0.2.1-rc.2
+  '@deepseek-ai/dsh-compaction-tool-result-pruner': 0.2.1-rc.2
+  '@deepseek-ai/dsh-compaction-image-offload': 0.2.1-rc.2
   '@deepseek-ai/dsh-credentials': 0.2.1-rc.2
   '@deepseek-ai/dsh-llm': 0.2.1-rc.2
+  '@deepseek-ai/dsh-llm-retry': 0.2.1-rc.2
   '@deepseek-ai/dsh-tools': 0.2.1-rc.2
   '@deepseek-ai/schemastery': 3.18.5
 # pnpm 默认拒装刚发布的版本；paper 0.6.0 是本次发布的组成部分，放行。
@@ -45,6 +52,12 @@ overrides:
   '@deepseek-ai/dsh-client-ui-primitives': 0.2.1-rc.2
   '@deepseek-ai/dsh-client-ui-settings': 0.2.1-rc.2
   '@deepseek-ai/dsh-client-ui-slots': 0.2.1-rc.2
+  '@deepseek-ai/dsh-command-compact': 0.2.1-rc.2
+  '@deepseek-ai/dsh-commands': 0.2.1-rc.2
+  '@deepseek-ai/dsh-compaction-basic': 0.2.1-rc.2
+  '@deepseek-ai/dsh-compaction': 0.2.1-rc.2
+  '@deepseek-ai/dsh-compaction-tool-result-pruner': 0.2.1-rc.2
+  '@deepseek-ai/dsh-compaction-image-offload': 0.2.1-rc.2
   '@deepseek-ai/dsh-config-editor': 0.2.1-rc.2
   '@deepseek-ai/dsh-credentials': 0.2.1-rc.2
   '@deepseek-ai/dsh-deque': 0.2.1-rc.2
@@ -52,9 +65,13 @@ overrides:
   '@deepseek-ai/dsh-home-paths': 0.2.1-rc.2
   '@deepseek-ai/dsh-host-webserver': 0.2.1-rc.2
   '@deepseek-ai/dsh-invariants': 0.2.0-rc.2
+  '@deepseek-ai/dsh-jobs-local': 0.2.1-rc.2
+  '@deepseek-ai/dsh-jobs': 0.2.1-rc.2
   '@deepseek-ai/dsh-launch-environment': 0.2.1-rc.2
   '@deepseek-ai/dsh-llm': 0.2.1-rc.2
+  '@deepseek-ai/dsh-llm-retry': 0.2.1-rc.2
   '@deepseek-ai/dsh-package-manifest': 0.2.1-rc.2
+  '@deepseek-ai/dsh-output-retention': 0.2.1-rc.2
   '@deepseek-ai/dsh-ptc-runtime': 0.2.1-rc.2
   '@deepseek-ai/dsh-sandbox': 0.2.1-rc.2
   '@deepseek-ai/dsh-sandbox-policy': 0.2.1-rc.2
@@ -68,6 +85,8 @@ overrides:
   '@deepseek-ai/dsh-subagent': 0.2.1-rc.2
   '@deepseek-ai/dsh-system-prompt': 0.2.1-rc.2
   '@deepseek-ai/dsh-timeout': 0.2.1-rc.2
+  '@deepseek-ai/dsh-tool-jobs': 0.2.1-rc.2
+  '@deepseek-ai/dsh-token-meter': 0.2.1-rc.2
   '@deepseek-ai/dsh-tools': 0.2.1-rc.2
   '@deepseek-ai/dsh-typert-protocol': 0.2.1-rc.2
   '@deepseek-ai/dsh-user-approval': 0.2.1-rc.2
