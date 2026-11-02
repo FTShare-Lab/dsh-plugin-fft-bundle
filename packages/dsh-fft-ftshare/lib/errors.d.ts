@@ -1,93 +1,87 @@
 /**
- * 上游失败的归一：把 FTShare 网关千奇百怪的报错折成 {@link FtshareNotice}
- * 加一个四态结局。
+ * 上游失败的观测与四态归一的**薄**层。
  *
- * 这是 P8 的解药所在。网关对「套餐没开通这个接口」返回的是 HTTP 403 +
- * `route_not_allowed`，`dsh-kline` 把它归类成 `capability_limited` 之后，摘要里
- * 只留下一个 `0`；调用方于是无法区分「今天真的没有涨停事件」和「这个套餐根本
- * 调不了这个接口」。本模块只做一件事：把权限失败与真实失败分开，并各自带上
- * 用户能看懂的中文说明。
+ * 只做四件事：抄事实、判 HTTP 语义、留现场、算指纹。**不解释上游**：不维护错误码表，
+ * 不按中文文案猜「配额/权限/凭据」，不编造 remedy。上游改名、改文案、加码，这里一行
+ * 都不用改。
+ *
+ * 判定只剩两条 HTTP 语义（稳定、不会随上游文案变）：
+ *
+ * - `401` / `403` → `denied`（面板遮罩要用）；
+ * - 其余 → `failed`。
+ *
+ * `empty` 不在这里判定：它由成功载荷的**正向证据**决定（见 `./index.ts` 的
+ * `observePayload`）。「成功信封里带权限标记」是载荷事实，由
+ * {@link permissionNoticeFromPayload} 识别，同样不是文案猜测。
  * @module @dsh-ft/dsh-fft-ftshare/errors
  */
 import { type FtshareNotice } from './contract.js';
-/** 上游返回的错误信封，字段全部按「可能不存在」处理。 */
-interface UpstreamErrorEnvelope {
-    code?: string;
-    /** 上游 HTTP 状态码（信封里的 `upstream_code`）：429 这类码比归一码更能说明失败性质。 */
-    upstreamCode?: string;
+/** 失败从哪条通道来：成功信封内、HTTP 非 2xx、传输层、纯文本。 */
+export type FailureSurface = 'envelope' | 'http' | 'transport' | 'text';
+/** 一次失败的观测事实。只记事实，不下结论。 */
+export interface UpstreamFailure {
+    /** 观测通道。 */
+    surface: FailureSurface;
+    /** 剥掉 SDK 包装后的可读文本；单行。 */
     message: string;
+    /** 上游信封里的码，原样大小写；不猜、不改写。 */
+    code?: string;
+    /** HTTP 状态：`Error.code`、信封 `upstream_code`，或文本里有分界的写法。 */
+    status?: number;
+    /** 上游自己的 retryable hint；只有信封里有，只作提示。 */
+    retryable?: boolean;
+    /** 上游真给了才带上。 */
     requiredPlan?: string;
+    /** 原始报文（未截断），用于指纹与 fixture 草稿。 */
+    raw: string;
+    /** 稳定短指纹，见 {@link fingerprintOf}。 */
+    fingerprint: string;
 }
-/** 配额用尽时附在失败提示后的文案。 */
-export declare const FTSHARE_QUOTA_NOTICE = "\u514D\u8D39\u914D\u989D\u7528\u5C3D\uFF0C\u914D\u7F6E FTShare API Key \u6216\u7A0D\u540E\u91CD\u8BD5";
-/**
- * 一个码或一句话是否表达「额度用尽」。
- * @param code - 归一后的上游错误码。
- * @param upstreamCode - 信封里的上游 HTTP 状态码，可能没有。
- * @param message - 上游说明。
- * @returns 是否属于额度用尽。
- */
-export declare function isQuotaSignal(code: string | undefined, upstreamCode: string | undefined, message: string): boolean;
 /** 判断一个值是不是可当对象读的记录。 */
 export declare function isRecord(value: unknown): value is Record<string, unknown>;
 /** 读一个非空字符串；其余一律 undefined。 */
 export declare function asText(value: unknown): string | undefined;
+/** 不依赖 `node:crypto` 的稳定指纹：FNV-1a 64 位，十六进制 16 位。 */
+export declare function hashText(text: string): string;
 /**
- * 一个码或一句话是否表达「无权访问」。
- * @param code - 上游错误码，可能没有。
- * @param message - 上游错误文案，可能为空串。
- * @returns 是否属于权限失败。
- */
-export declare function isPermissionSignal(code: string | undefined, message: string): boolean;
-/**
- * 一个码是否值得原样重试。
- * @param code - 归一后的上游错误码。
- * @param message - 上游说明。
- * @param upstreamCode - 信封里的上游 HTTP 状态码：`UPSTREAM_UNAVAILABLE` 包裹的 502/504 仍可重试。
- */
-export declare function isRetryableSignal(code: string | undefined, message: string, upstreamCode?: string): boolean;
-/**
- * 从 MCP 客户端抛出的错误（其 message 常是被字符串化的一段上游 JSON）里抽出码与说明。
+ * 失败指纹：同工具、同状态、同码、同归一文案的失败聚合用。
  *
- * 上游两种形态都出现过：结构化 `{"error":{"code":…,"message":…}}`，以及
- * 一行纯文本。两者都要能读，读不出来就保留原文。
+ * 文案里的数字会归一成 `#`，否则「请等待 N 小时」会让每次失败都算新指纹。
+ * @param status - HTTP 状态。
+ * @param code - 上游码。
+ * @param message - 可读文案。
+ * @returns 16 位十六进制指纹。
+ */
+export declare function fingerprintOf(status: number | undefined, code: string | undefined, message: string): string;
+/**
+ * 把一次抛出物归一成 {@link UpstreamFailure}（只记事实）。
  * @param value - 抛出物或上游返回的文本。
- * @returns 归一后的码与说明。
+ * @returns 观测事实。
  */
-export declare function parseUpstreamError(value: unknown): UpstreamErrorEnvelope;
-/**
- * 造一条「无权访问」提示。措辞刻意把「不是没有数据」写进去：P8 的病根就是这句
- * 缺失，让「套餐没开通」看起来像「今天什么都没有」。
- *
- * 档位只在上游自己给了 `required_plan` 时才写进提示：接口名里的版本号与订阅档位
- * 没有可复核的对应关系，按它猜一个档位会把用户引向错误的套餐。
- * @param tool - 上游工具名。
- * @param code - 上游错误码，缺省按 `route_not_allowed` 记。
- * @param message - 上游说明。
- * @param requiredPlan - 上游信封里给出的所需档位；没给就不猜。
- * @returns 可直接展示的提示。
- */
-export declare function deniedNotice(tool: string, code: string | undefined, message: string, requiredPlan?: string): FtshareNotice;
+export declare function observeFailure(value: unknown): UpstreamFailure;
 /**
  * 把一次失败折成结局与提示。
+ *
+ * 顺序即语义：`401/403` 是上游拒绝 → `denied`；其余一律 `failed`。不再按文案细分
+ * 配额/凭据/档位——原文已经带出这些信息。
  * @param error - 抛出物。
- * @param tool - 上游工具名，出现在提示正文里。
- * @returns 结局（`denied` 或 `failed`）与可直接展示的提示。
+ * @param tool - 上游工具名（只用于调用方日志，不写进提示）。
+ * @returns 结局与可直接展示的提示。
  */
 export declare function classifyFailure(error: unknown, tool: string): {
     state: 'denied' | 'failed';
     notice: FtshareNotice;
+    failure: UpstreamFailure;
 };
 /**
  * 从「调用成功但信封说自己无权」的载荷里读出权限提示。
  *
- * 部分网关把订阅门禁放在成功信封的 `metadata.permissions` 里，而不是返回错误；
- * 只看空数组就会把这种情况读成「没有数据」。这里的标记判定与投研舱既有实现保持
- * 同一口径：必须出现显式的权限标记或权限文案，普通空数组不算。
- * @param tool - 上游工具名。
+ * 部分网关把订阅门禁放在成功信封的 `metadata.permissions` 或 `permission` 里，而不是
+ * 返回错误；只看空数组就会把这种情况读成「没有数据」。这里只认**显式标记**（
+ * `access_denied` 之类布尔标记）或 `401/403` 状态码，不按文案猜。
+ * @param tool - 上游工具名（只用于调用方日志，不写进提示）。
  * @param value - 上游返回的结构化载荷。
  * @returns 权限提示；没有标记时 undefined。
  */
 export declare function permissionNoticeFromPayload(tool: string, value: unknown): FtshareNotice | undefined;
-export {};
 //# sourceMappingURL=errors.d.ts.map

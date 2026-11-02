@@ -62,13 +62,25 @@ function bridge(script) {
       ok: false,
       state: 'denied',
       rows: [],
-      notice: { code: 'route_not_allowed', message: '当前套餐无权访问', requiredPlan: 'Basic', upgradeUrl: 'https://ftai.chat/me/profile?tab=subscription', retryable: false },
+      notice: {
+        code: 'UPSTREAM_PERMISSION_DENIED',
+        message: '上游原文：当前套餐无权访问该接口',
+        requiredPlan: 'Basic',
+        upgradeUrl: 'https://ftai.chat/me/profile?tab=subscription',
+        retryable: false,
+        upstream: { raw: '{"error":{"code":"UPSTREAM_PERMISSION_DENIED","upstream_code":403}}', status: 403, fingerprint: '0123456789abcdef' },
+      },
     },
     ft_v1_margin_trading_details: {
       ok: false,
       state: 'failed',
       rows: [],
-      notice: { code: 'UPSTREAM_UNAVAILABLE', message: '免费配额用尽，配置 FTShare API Key 或稍后重试', retryable: true },
+      notice: {
+        code: 'UPSTREAM_UNAVAILABLE',
+        message: '上游原文：最近 1 天最多访问 500 次；请等待 18 小时后再试',
+        retryable: true,
+        upstream: { raw: '{"error":{"code":"UPSTREAM_UNAVAILABLE","upstream_code":429}}', status: 429, fingerprint: 'fedcba9876543210' },
+      },
     },
   })
 
@@ -89,14 +101,44 @@ function bridge(script) {
   assert.equal(denied.notice.upgradeUrl, 'https://ftai.chat/me/profile?tab=subscription', '升级入口必须一起过桥')
   assert.equal(denied.notice.requiredPlan, 'Basic', '档位必须一起过桥')
   assert.equal(denied.notice.retryable, false)
+  assert.equal(denied.notice.upstream.status, 403, '上游状态必须一起过桥')
+  assert.equal(denied.notice.upstream.fingerprint, '0123456789abcdef', '指纹必须一起过桥')
   seen.add(denied.state)
 
   const failed = await client.call('ft_v1_margin_trading_details', { stock: '600519.SH', date: '20261015' })
   assert.equal(failed.state, 'failed')
-  assert.ok(failed.notice.message.includes('免费配额用尽'))
+  assert.ok(failed.notice.message.includes('最多访问'), '原文原样过桥')
+  assert.equal(failed.notice.upstream.status, 429)
   seen.add(failed.state)
 
   assert.deepEqual([...seen].sort(), ['available', 'denied', 'empty', 'failed'], '往返后 state 取值集合恰为四种')
+}
+
+// —— notice 可以没有码：上游不给码时不编造 ——
+{
+  const { client } = bridge({
+    ft_v1_finance_income: {
+      ok: false,
+      state: 'failed',
+      rows: [],
+      notice: { message: '上游原文：上游返回了未识别的失败', retryable: false, upstream: { raw: 'boom', fingerprint: 'aaaaaaaaaaaaaaaa' } },
+    },
+  })
+  const result = await client.call('ft_v1_finance_income', { stock_code: '600519' })
+  assert.equal(result.state, 'failed')
+  assert.equal(result.notice.code, undefined, '没有上游码就不给码')
+  assert.ok(result.notice.message.includes('上游原文'))
+  assert.equal(result.notice.upstream.fingerprint, 'aaaaaaaaaaaaaaaa', '指纹要过桥')
+}
+
+// —— notice 没有 message 时按形状不符处理，不吞掉失败原因 ——
+{
+  const { client } = bridge({
+    ft_v1_finance_income: { ok: false, state: 'failed', rows: [], notice: { code: 'UPSTREAM_UNAVAILABLE' } },
+  })
+  const result = await client.call('ft_v1_finance_income', { stock_code: '600519' })
+  assert.equal(result.state, 'failed')
+  assert.equal(result.notice.code, 'invalid_response')
 }
 
 // —— 接口名校验：路由只认目录内的名字 ——

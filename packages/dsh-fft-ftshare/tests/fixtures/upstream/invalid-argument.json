@@ -1,0 +1,23 @@
+{
+  "name": "invalid-argument",
+  "origin": "~/.dsh/logs/ft/current.log 2026-10-28（参数被上游拒绝）",
+  "thrown": {
+    "envelope": {
+      "error": {
+        "code": "INVALID_ARGUMENT",
+        "details": {
+          "constraint": "minimum:1"
+        },
+        "field": "limit",
+        "message": "参数值不满足约束，字段 `limit`（minimum:1），请检查 inputSchema",
+        "retryable": false
+      }
+    }
+  },
+  "expect": {
+    "state": "failed",
+    "code": "INVALID_ARGUMENT",
+    "status": null,
+    "retryable": false
+  }
+}

@@ -10,6 +10,9 @@
  * 2. **每次调用开一个新会话**（`initialize` → `callTool` → `close`）。会话里带
  *    着凭据，缓存会话就等于缓存秘密，而设置契约要求「每次操作重新 resolve」；
  *    连接成本换正确性是划算的，这条与投研舱的既有做法一致。
+ *
+ * 本层只做传输，不解释失败：错误原样抛出（保留 `code`/`status`），由
+ * `./errors` 观测；日志也只留一行原始报文，分类与节流在上层做。
  * @module @dsh-ft/dsh-fft-ftshare/transport
  */
 
@@ -26,6 +29,14 @@ export const FTSHARE_GATEWAY_ENDPOINT = 'https://market.ft.tech/gateway/mcp'
 
 /** 承载 API Key 的请求头名。 */
 export const FTSHARE_API_KEY_HEADER = 'FTSHARE_API_KEY'
+
+/**
+ * 单次 `callTool` 的默认上限。
+ *
+ * 实测会话失效/服务端超时会拖到约 950 s 才返回（见 `docs/thirdparty/
+ * ftshare-gateway-contract.md`），没有上限时一次取数能挂住 16 分钟。
+ */
+export const FTSHARE_CALL_DEADLINE_MS = 60_000
 
 /** 一次上游调用的原始结果。`value` 是上游自己的结构化载荷，未做任何解释。 */
 export interface FtshareTransportResult {
@@ -52,6 +63,8 @@ export interface FtshareTransportOptions {
   clientName?: string
   /** MCP 客户端版本。 */
   clientVersion?: string
+  /** 单次 `callTool` 的上限，默认 {@link FTSHARE_CALL_DEADLINE_MS}；0 表示不设。 */
+  deadlineMs?: number
 }
 
 /**
@@ -94,6 +107,19 @@ function payloadOf(result: unknown, tool: string, logger?: Logger): unknown {
 }
 
 /**
+ * 把调用方取消信号与 deadline 合成一个信号。
+ * @param caller - 调用方信号。
+ * @param deadlineMs - 上限毫秒；0 表示不设。
+ * @returns 合并后的信号；两者都没有时 undefined。
+ */
+function callSignal(caller: AbortSignal | undefined, deadlineMs: number): AbortSignal | undefined {
+  const timeout = deadlineMs > 0 ? AbortSignal.timeout(deadlineMs) : undefined
+  if (caller === undefined) return timeout
+  if (timeout === undefined) return caller
+  return AbortSignal.any([caller, timeout])
+}
+
+/**
  * 建一个到 FTShare 网关的传输层。
  * @param options - 见 {@link FtshareTransportOptions}。
  * @returns 传输层实现。
@@ -102,6 +128,7 @@ export function createFtshareTransport(options: FtshareTransportOptions): Ftshar
   const endpoint = options.endpoint?.trim() || FTSHARE_GATEWAY_ENDPOINT
   const clientName = options.clientName ?? 'dsh-fft-ftshare'
   const clientVersion = options.clientVersion ?? '0.1.0'
+  const deadlineMs = options.deadlineMs ?? FTSHARE_CALL_DEADLINE_MS
 
   /**
    * 开一个已握手的会话；调用方负责关闭。
@@ -123,14 +150,11 @@ export function createFtshareTransport(options: FtshareTransportOptions): Ftshar
 
   return {
     async call(tool, args, callOptions) {
-      const signal = callOptions?.signal
-      if (signal?.aborted === true) throw new Error(`FTShare ${tool} 调用前已被取消`)
-      const startedAt = Date.now()
+      if (callOptions?.signal?.aborted === true) throw new Error(`FTShare ${tool} 调用前已被取消`)
       const client = await connect()
       try {
-        const result = await client.callTool({ name: tool, arguments: args }, undefined, {
-          ...signal !== undefined ? { signal } : {},
-        })
+        const signal = callSignal(callOptions?.signal, deadlineMs)
+        const result = await client.callTool({ name: tool, arguments: args }, undefined, signal === undefined ? {} : { signal })
         if (result.isError === true) {
           // 抛出一段文本：归一器既能读其中的 JSON 码，也能读纯文案。
           throw new Error(errorTextFromContent(result.content, `${tool} 返回 MCP 错误`))
@@ -138,13 +162,6 @@ export function createFtshareTransport(options: FtshareTransportOptions): Ftshar
         const value = payloadOf(result, tool, options.logger)
         if (value === undefined) throw new Error(`${tool} 未返回 structuredContent，也没有可解析的文本载荷`)
         return { value }
-      } catch (error) {
-        options.logger?.warn('ftshare.call_failed', {
-          tool,
-          durationMs: Date.now() - startedAt,
-          message: error instanceof Error ? error.message : String(error),
-        })
-        throw error
       } finally {
         await client.close().catch(() => undefined)
       }

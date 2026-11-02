@@ -1,0 +1,21 @@
+{
+  "name": "quota-429",
+  "origin": "~/.dsh/logs/ft/current.log 2026-10-30（匿名额度用尽，429）",
+  "thrown": {
+    "code": 429,
+    "envelope": {
+      "error": {
+        "code": "UPSTREAM_UNAVAILABLE",
+        "message": "［用户通知］最近 1 天最多访问 500 次；请等待 18 小时 35 分钟 51 秒后再试，等待期间不要持续重复请求；注册并使用 API Key 后不受匿名额度限制，请前往官网注册并获取 API Key：https://ftai.chat/ftshare",
+        "retryable": true,
+        "upstream_code": 429
+      }
+    }
+  },
+  "expect": {
+    "state": "failed",
+    "code": "UPSTREAM_UNAVAILABLE",
+    "status": 429,
+    "retryable": true
+  }
+}

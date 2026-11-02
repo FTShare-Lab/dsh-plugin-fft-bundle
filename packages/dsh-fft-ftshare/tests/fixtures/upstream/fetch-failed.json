@@ -1,0 +1,13 @@
+{
+  "name": "fetch-failed",
+  "origin": "~/.dsh/logs/ft/current.log 2026-11-02（网络失败）",
+  "thrown": {
+    "message": "fetch failed"
+  },
+  "expect": {
+    "state": "failed",
+    "code": null,
+    "status": null,
+    "retryable": true
+  }
+}

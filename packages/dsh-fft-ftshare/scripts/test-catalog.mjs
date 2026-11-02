@@ -77,8 +77,8 @@ assert.ok(meta.count >= 250, `目录条目数应覆盖上游全量，实际 ${me
   const registered = []
   const calls = []
   const noticeOf = state => state === 'denied'
-    ? { code: 'route_not_allowed', message: 'FTShare 无权访问该接口', upgradeUrl: 'https://ftai.chat/me/profile?tab=subscription', retryable: false }
-    : { code: 'UPSTREAM_UNAVAILABLE', message: '上游不可用。免费配额用尽，配置 FTShare API Key 或稍后重试', retryable: true }
+    ? { code: 'UPSTREAM_PERMISSION_DENIED', message: '上游原文：当前套餐无权访问该接口', upgradeUrl: 'https://ftai.chat/me/profile?tab=subscription', retryable: false, upstream: { raw: '{"error":{"code":"UPSTREAM_PERMISSION_DENIED","upstream_code":403}}', status: 403, fingerprint: '0123456789abcdef' } }
+    : { code: 'UPSTREAM_UNAVAILABLE', message: '上游原文：最近 1 天最多访问 500 次；请等待后再试', retryable: true, upstream: { raw: '{"error":{"code":"UPSTREAM_UNAVAILABLE","upstream_code":429}}', status: 429, fingerprint: 'fedcba9876543210' } }
   const toolCtx = {
     logger: () => ({ warn: () => {} }),
     tools: { register: definition => { registered.push(definition); return () => {} } },
@@ -113,7 +113,8 @@ assert.ok(meta.count >= 250, `目录条目数应覆盖上游全量，实际 ${me
 
   const failed = await callTool.execute({ interface: 'ft_v2_announcements_stock_announcements', args: { type: 'stock', stock_code: '600519', page: 1, page_size: 30 } }, { signal: undefined })
   assert.equal(failed.state, 'failed')
-  assert.ok(failed.text.includes('免费配额用尽'), '配额用尽要有单独文案，不混进泛化失败')
+  assert.ok(failed.text.includes('上游原文'), '失败原文要直传，模型才看得到上游说了什么')
+  assert.ok(failed.text.includes('最多访问'), '配额原文要保住，不换成我们自己的文案')
 }
 
 console.log(`catalog: ${catalog.entries.length} entries, table interfaces present, generator reproducible, ftshare_call outcomes covered`)

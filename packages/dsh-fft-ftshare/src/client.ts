@@ -14,6 +14,9 @@
  * 这个模块是**只读子集**：不碰凭据、不碰网关地址、不维护接口表。它只认两样输入——
  * 随包的目录与被注入的 `fetch`；`@dsh-ft/dsh-fft-ftshare/route` 与网关常量都不在这里的
  * 依赖里，`scripts/test-crossplane.mjs` 会 grep 产物把这条钉住。
+ *
+ * 过桥时只做「形状收敛」，不解释内容：`notice.code` 可缺省（上游不给码就省略），
+ * `notice.upstream` 原样保留（面板要定位时用）。
  * @module @dsh-ft/dsh-fft-ftshare/client
  */
 
@@ -65,6 +68,38 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+/** 读一个非空字符串；其余 undefined。 */
+function asText(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim() !== '' ? value : undefined
+}
+
+/**
+ * 收敛宿主过桥的 `notice`：只校验「有说明」，不要求「有码」。
+ * @param value - 过桥的 notice。
+ * @returns 收敛后的 notice；形状不符时 undefined。
+ */
+function normalizeNotice(value: unknown): FtshareNotice | undefined {
+  if (!isRecord(value) || typeof value.message !== 'string') return undefined
+  const code = asText(value.code)
+  const requiredPlan = asText(value.requiredPlan)
+  const upgradeUrl = asText(value.upgradeUrl)
+  const upstream = isRecord(value.upstream) && typeof value.upstream.raw === 'string'
+    ? {
+        raw: value.upstream.raw,
+        ...typeof value.upstream.status === 'number' ? { status: value.upstream.status } : {},
+        fingerprint: typeof value.upstream.fingerprint === 'string' ? value.upstream.fingerprint : '',
+      }
+    : undefined
+  return {
+    ...code !== undefined ? { code } : {},
+    message: value.message,
+    ...requiredPlan !== undefined ? { requiredPlan } : {},
+    ...upgradeUrl !== undefined ? { upgradeUrl } : {},
+    retryable: value.retryable === true,
+    ...upstream !== undefined ? { upstream } : {},
+  }
+}
+
 /**
  * 造一个客户端 `ftshareData`。
  * @param options - 见 {@link FtshareClientOptions}。
@@ -95,16 +130,16 @@ export function createFtshareClient(options: FtshareClientOptions): FtshareClien
     if (typeof value.ok !== 'boolean' || !Array.isArray(value.rows)) return undefined
     if (!isRecord(value.source)) return undefined
     const notice = value.notice
-    const normalized: FtshareCallResult = {
+    const normalizedNotice = notice === undefined ? undefined : normalizeNotice(notice)
+    // notice 存在但形状不对（没有 message）时按形状不符处理，不吞掉失败原因。
+    if (notice !== undefined && normalizedNotice === undefined) return undefined
+    return {
       ok: value.ok,
       state: state as FtshareCallState,
       rows: value.rows.filter(isRecord),
       source: value.source as unknown as FtshareCallResult['source'],
-      ...isRecord(notice) && typeof notice.code === 'string' && typeof notice.message === 'string'
-        ? { notice: { ...notice, retryable: notice.retryable === true } as unknown as FtshareNotice }
-        : {},
+      ...normalizedNotice === undefined ? {} : { notice: normalizedNotice },
     }
-    return normalized
   }
 
   return {

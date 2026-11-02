@@ -8,14 +8,20 @@
  * 的隔离域，preset 之外的插件再也 `inject` 不到，公用底座就白叫了。所以：
  * **provider 全局，工具与投影钩子在 preset**（见 `./tools`、`./project`）。
  *
+ * 载荷判定只有一条硬规则：`empty` 必须**正向证据**——已知数据容器存在且为空数组。
+ * 成功信封里既没有行、也没有空容器证据时落 `failed`，绝不冒充「没有数据」（P8 的
+ * 病根）；但非空载荷仍保留兜底（单对象/任意数组），避免把能用的接口判死。
+ *
  * 凭据一律走 `ctx.ftshareSettings.apiKey.resolve()`，本包不读任何凭据文件。
  * @module @dsh-ft/dsh-fft-ftshare
  */
 import type { Context, Logger } from '@deepseek-ai/cordis';
 import { type FtshareDataService } from './contract.js';
+import { type FailureStore } from './status.js';
 import { type FtshareTransport } from './transport.js';
 export * from './contract.js';
 export { FTSHARE_GATEWAY_ENDPOINT } from './transport.js';
+export { statusStore } from './status.js';
 /** Cordis 插件名。 */
 export declare const name = "@dsh-ft/dsh-fft-ftshare";
 /** 凭据来自设置服务；缺这一项本行挂起等待，属刻意的 fail-loud。 */
@@ -37,16 +43,35 @@ export interface FtshareDataServiceOptions {
     logger?: Logger;
     /** 时钟，测试用来固定 `source.fetchedAt`。 */
     now?: () => Date;
+    /** 失败账本；缺省用进程级实例，测试传隔离实例。 */
+    statusStore?: FailureStore;
+}
+/** 一次成功载荷的观测结果。 */
+export interface PayloadObservation {
+    /** 明细行；`available` 的依据。 */
+    rows: Record<string, unknown>[];
+    /** 已知数据容器存在且为空数组：这是 `empty` 的唯一正向证据。 */
+    emptyEvidence: boolean;
+    /** 顶层键，用于未识别载荷的诊断。 */
+    keys: string[];
+    /** 成功信封里既没有行、也没有空证据。 */
+    unrecognized: boolean;
 }
 /**
- * 从任意上游载荷里找出明细行。
+ * 观测上游载荷：只回答「有没有行」「空有没有证据」「是不是不认识」。
  *
- * 规则按优先级：数组自己就是行；`data`/`rows`/… 里第一个非空数组是行；否则找第一
- * 个「元素是对象的数组」；再否则，若记录里还有非信封字段，就把整条记录当作一行
- * （单对象返回值也是数据）。只有「信封里什么都没有」才返回空数组，也就是
- * `empty`——这正是「真的没有数据」的定义。
+ * 规则：数组本身是行；已知容器里的非空数组/对象是行；任意数组键里的记录是行；
+ * 非信封、非容器、非数组的字段让整条记录成为一行；以上都没有时，只有「已知容器
+ * 为空数组」才算 `emptyEvidence`，否则是 `unrecognized`。
  * @param value - 上游结构化载荷。
- * @returns 明细行；空数组表示确实没有数据。
+ * @param depth - 当前递归深度（内部用）。
+ * @returns 观测结果。
+ */
+export declare function observePayload(value: unknown, depth?: number): PayloadObservation;
+/**
+ * 从任意上游载荷里找出明细行（`observePayload` 的兼容薄包装）。
+ * @param value - 上游结构化载荷。
+ * @returns 明细行；空数组表示没有行（**不**代表 `empty`，见 `observePayload`）。
  */
 export declare function normalizeRows(value: unknown): Record<string, unknown>[];
 /**

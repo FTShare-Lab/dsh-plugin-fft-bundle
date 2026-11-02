@@ -1,0 +1,17 @@
+{
+  "name": "success-data",
+  "origin": "常见成功形态：data 里是明细行",
+  "payload": {
+    "ok": true,
+    "data": [
+      {
+        "stock_code": "600519",
+        "revenue": 1
+      }
+    ]
+  },
+  "expect": {
+    "state": "available",
+    "rows": 1
+  }
+}

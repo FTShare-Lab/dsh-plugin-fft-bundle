@@ -255,6 +255,9 @@ export function projectContent(name, result) {
 }
 /**
  * 把一次 `ctx.ftshareData.call()` 的结果渲染成模型可见文本（工具平面与投影平面共用）。
+ *
+ * 失败说明只展示事实：上游原文、上游状态、指纹、上游给的档位与重试提示。不翻译、
+ * 不归因——「是不是额度」让原文自己说。
  * @param title - 中文标题。
  * @param tool - 上游接口名。
  * @param result - 归一结果。
@@ -266,11 +269,17 @@ export function renderCallResult(title, tool, result) {
     if (notice !== undefined) {
         lines.push(`⚠ ${notice.message}`);
         if (notice.requiredPlan !== undefined)
-            lines.push(`所需订阅：${notice.requiredPlan}`);
+            lines.push(`上游给出的所需档位：${notice.requiredPlan}`);
         if (notice.upgradeUrl !== undefined)
             lines.push(`升级入口：${notice.upgradeUrl}`);
+        if (notice.upstream?.status !== undefined)
+            lines.push(`上游状态：HTTP ${notice.upstream.status}`);
+        if (notice.upstream?.fingerprint !== undefined)
+            lines.push(`失败指纹：${notice.upstream.fingerprint}`);
         if (notice.retryable)
             lines.push('该失败可重试。');
+        if (result.state === 'denied')
+            lines.push('该结果是无权访问，不代表「没有数据」。');
     }
     if (result.state === 'available')
         lines.push(...renderItems(result.rows, MAX_GENERIC_ITEMS, false));

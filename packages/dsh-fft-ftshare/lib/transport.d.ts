@@ -10,6 +10,9 @@
  * 2. **每次调用开一个新会话**（`initialize` → `callTool` → `close`）。会话里带
  *    着凭据，缓存会话就等于缓存秘密，而设置契约要求「每次操作重新 resolve」；
  *    连接成本换正确性是划算的，这条与投研舱的既有做法一致。
+ *
+ * 本层只做传输，不解释失败：错误原样抛出（保留 `code`/`status`），由
+ * `./errors` 观测；日志也只留一行原始报文，分类与节流在上层做。
  * @module @dsh-ft/dsh-fft-ftshare/transport
  */
 import type { Logger } from '@deepseek-ai/cordis';
@@ -18,6 +21,13 @@ import type { FtshareToolInfo } from './contract.js';
 export declare const FTSHARE_GATEWAY_ENDPOINT = "https://market.ft.tech/gateway/mcp";
 /** 承载 API Key 的请求头名。 */
 export declare const FTSHARE_API_KEY_HEADER = "FTSHARE_API_KEY";
+/**
+ * 单次 `callTool` 的默认上限。
+ *
+ * 实测会话失效/服务端超时会拖到约 950 s 才返回（见 `docs/thirdparty/
+ * ftshare-gateway-contract.md`），没有上限时一次取数能挂住 16 分钟。
+ */
+export declare const FTSHARE_CALL_DEADLINE_MS = 60000;
 /** 一次上游调用的原始结果。`value` 是上游自己的结构化载荷，未做任何解释。 */
 export interface FtshareTransportResult {
     value: unknown;
@@ -43,6 +53,8 @@ export interface FtshareTransportOptions {
     clientName?: string;
     /** MCP 客户端版本。 */
     clientVersion?: string;
+    /** 单次 `callTool` 的上限，默认 {@link FTSHARE_CALL_DEADLINE_MS}；0 表示不设。 */
+    deadlineMs?: number;
 }
 /**
  * 建一个到 FTShare 网关的传输层。

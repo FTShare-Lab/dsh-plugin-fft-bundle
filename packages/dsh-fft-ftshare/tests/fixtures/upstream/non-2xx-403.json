@@ -1,0 +1,15 @@
+{
+  "name": "non-2xx-403",
+  "origin": "MCP SDK StreamableHTTPError：非 2xx 时 code 是 HTTP 状态",
+  "thrown": {
+    "code": 403,
+    "message": "Streamable HTTP error: Error POSTing to endpoint: Forbidden"
+  },
+  "expect": {
+    "state": "denied",
+    "code": "403",
+    "status": 403,
+    "retryable": false,
+    "upgradeUrl": true
+  }
+}

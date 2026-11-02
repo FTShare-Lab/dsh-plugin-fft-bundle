@@ -5,7 +5,9 @@ FTShare 数据底座：bundle 内所有 FTShare 取数都经过它。
 - **一处凭据**：只走 `ctx.ftshareSettings.apiKey.resolve()`，本包不读任何凭据文件。
 - **一处出站**：唯一的 StreamableHTTP MCP 会话，打到 `market.ft.tech/gateway/mcp`。
 - **一处结局语义**：`available / empty / denied / failed` 四态 + `notice`；只有 `empty`
-  才允许下游说「没有数据」。
+  才允许下游说「没有数据」，且 `empty` 必须有正向证据（已知容器存在且为空数组）。
+- **失败只说上游原话**：401/403 → `denied`，其余 → `failed`；`notice` 带上游码、HTTP 状态、
+  指纹与原文。不维护码表、不按文案猜配额/权限、不编 remedy。
 - **两处接口定义**：接口表（策展，决定下发哪些模型工具）与目录（上游全量快照，随包发布）。
 - **一条跨平面通路**：两个助手，由消费方自己挂。
 
@@ -22,7 +24,7 @@ dsh plugin add @dsh-ft/dsh-fft-ftshare
 | 入口 | 平面 | 职责 |
 |---|---|---|
 | 裸包名 `@dsh-ft/dsh-fft-ftshare` | **全局** | `provide('ftshareData')`，`inject: ['ftshareSettings']`。唯一出站、唯一四态。 |
-| `/tools` | preset | 接口表里带 `expose` 的条目 → `ftshare_*` 工具；外加长尾直调 `ftshare_call(interface, args)`。 |
+| `/tools` | preset | 接口表里带 `expose` 的条目 → `ftshare_*` 工具；外加长尾直调 `ftshare_call(interface, args)` 与失败现场查询 `ftshare_status()`（只读进程内账本，不联网）。 |
 | `/mask` | preset | 按 agent 掩掉 `dsh_kline` 的三个 FTShare wrapper 工具（`market_pulse` / `market_board_detail` / `security_intelligence`）。 |
 | `/project` | preset | `tools/post-execute` 钩子：把保留的 kline 摘要式结果投影成模型可见文本，不输出裸计数。 |
 | `/route` · 助手 | 消费方自挂 | `registerFtshareRoute(ctx, data)`：注册精确路由 `/api/ftshare-data`，四态原样过桥。 |

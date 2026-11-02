@@ -1,0 +1,14 @@
+{
+  "name": "session-not-found",
+  "origin": "~/.dsh/logs/ft/current.log 2026-11-02（会话失效，p50 约 957 s 才返回）",
+  "thrown": {
+    "code": 404,
+    "message": "Streamable HTTP error: Error POSTing to endpoint: Not Found: Session not found"
+  },
+  "expect": {
+    "state": "failed",
+    "code": "404",
+    "status": 404,
+    "retryable": false
+  }
+}

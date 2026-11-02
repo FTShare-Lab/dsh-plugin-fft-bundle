@@ -1,0 +1,12 @@
+{
+  "name": "unrecognized-payload",
+  "origin": "成功信封但没有可识别的数据容器：不能冒充没有数据",
+  "payload": {
+    "ok": true,
+    "message": "无数据"
+  },
+  "expect": {
+    "state": "failed",
+    "messageIncludes": "没有可识别的数据容器"
+  }
+}

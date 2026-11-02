@@ -14,6 +14,9 @@
  * 这个模块是**只读子集**：不碰凭据、不碰网关地址、不维护接口表。它只认两样输入——
  * 随包的目录与被注入的 `fetch`；`@dsh-ft/dsh-fft-ftshare/route` 与网关常量都不在这里的
  * 依赖里，`scripts/test-crossplane.mjs` 会 grep 产物把这条钉住。
+ *
+ * 过桥时只做「形状收敛」，不解释内容：`notice.code` 可缺省（上游不给码就省略），
+ * `notice.upstream` 原样保留（面板要定位时用）。
  * @module @dsh-ft/dsh-fft-ftshare/client
  */
 import { type CatalogEntry } from './catalog.js';

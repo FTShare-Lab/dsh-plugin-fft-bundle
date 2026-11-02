@@ -78,7 +78,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "catalog": "pnpm run build && node scripts/build-catalog.mjs",
     "catalog:check": "pnpm run build && node scripts/build-catalog.mjs --check",
-    "test": "pnpm run build && node scripts/test-projection.mjs && node scripts/test-service.mjs && node scripts/test-catalog.mjs && node scripts/test-mask.mjs && node scripts/test-crossplane.mjs"
+    "test": "pnpm run build && node scripts/test-upstream.mjs && node scripts/test-projection.mjs && node scripts/test-service.mjs && node scripts/test-catalog.mjs && node scripts/test-mask.mjs && node scripts/test-crossplane.mjs"
   },
   "dependencies": {
     "@dsh-ft/dsh-fft-settings": "0.5.0",

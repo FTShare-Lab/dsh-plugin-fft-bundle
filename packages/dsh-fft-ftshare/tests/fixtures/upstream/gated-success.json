@@ -1,0 +1,20 @@
+{
+  "name": "gated-success",
+  "origin": "历史实测：成功信封里带 metadata.permissions 权限标记",
+  "payload": {
+    "ok": true,
+    "data": [],
+    "metadata": {
+      "permissions": [
+        {
+          "code": "403",
+          "message": "订阅未开通该接口"
+        }
+      ]
+    }
+  },
+  "expect": {
+    "state": "denied",
+    "upgradeUrl": true
+  }
+}
