@@ -181,7 +181,9 @@ const uploadNpm = async ({ records, registry, tag, promote, otp, dryRun }) => {
       fail(`npm publish finished but ${record.name}@${record.version} is not readable from ${registry}`)
     }
     if (promote) {
-      const tagged = npm(['dist-tag', 'add', `${record.name}@${record.version}`, 'latest', '--registry', registry])
+      const tagArgs = ['dist-tag', 'add', `${record.name}@${record.version}`, 'latest', '--registry', registry]
+      if (otp !== undefined) tagArgs.push('--otp', otp)
+      const tagged = npm(tagArgs)
       if (tagged.status !== 0) fail(`npm dist-tag failed for ${record.name}@${record.version}: ${tagged.stderr.trim()}`)
       console.log(`[npm] latest -> ${record.name}@${record.version}`)
     }
