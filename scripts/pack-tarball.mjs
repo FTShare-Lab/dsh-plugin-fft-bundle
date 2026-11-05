@@ -359,8 +359,8 @@ function localRepoSource(name, dir, ref, cache) {
  * Find an installed copy of a plugin at one exact version. A registry pin names
  * one version and a git tag names one build, so an installed copy is only reused
  * when its version matches exactly — never "whatever happens to be installed".
- * A `-ft.N` fork tag does not equal the kline manifest's `0.4.0`, so kline always
- * falls through to its tag clone.
+ * Kline is a `-ft.N` fork tag whose own `version` carries no `-ft.N`, so its tag
+ * never matches an installed copy and kline always falls through to its clone.
  * @param {string} name - package name.
  * @param {string} version - the version the source must carry; empty means the edge has no tag.
  * @returns {string | undefined} the installed package directory.

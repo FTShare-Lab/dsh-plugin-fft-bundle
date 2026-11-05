@@ -40,12 +40,26 @@ const MIRRORED_ROWS = ['mcp-dsh-kline', 'dsh-kline-sidebar']
  * `env.DSH_KLINE_PACKAGE_ROOT` is forwarded because the MCP client scrubs every
  * `DSH_*` name out of the child environment: the shim reads the override, so
  * the row has to pass the host's value on.
+ *
+ * Upstream also names the row after its own launcher
+ * (`./scripts/dsh-mcp-plugin.mjs`), which resolves Python from wherever the
+ * kline package sits. This bundle keeps naming `@deepseek-ai/dsh-mcp-client` and
+ * runs its own shim instead, so `name` is an allowed difference alongside the
+ * config fields. Everywhere else the row still has to match verbatim.
  */
-const OVERRIDDEN = new Map([['mcp-dsh-kline', ['args', 'cwd', 'env.DSH_KLINE_PACKAGE_ROOT']]])
+const OVERRIDDEN = new Map([['mcp-dsh-kline', ['name', 'config.args', 'config.cwd', 'config.env.DSH_KLINE_PACKAGE_ROOT']]])
 
-/** Key paths of the fields one row may differ in, under the row id. */
+/**
+ * Key paths of the fields one row may differ in.
+ *
+ * Paths are rooted at the row id, so a top-level field is `<id>.<field>` while a
+ * config field is `<id>.config.<field>`. Entries name the field the way the row
+ * declares it, without the `<id>.` prefix.
+ * @param id - row id.
+ * @returns dotted field paths allowed to differ.
+ */
 function overridePaths(id) {
-  return (OVERRIDDEN.get(id) ?? []).map(field => `${id}.config.${field}`)
+  return (OVERRIDDEN.get(id) ?? []).map(field => `${id}.${field}`)
 }
 
 /**
@@ -182,12 +196,14 @@ describe('kline rows mirrored from the kline package', () => {
         continue
       }
       // An overridden row is compared outside its declared fields: they are the
-      // redirect itself, checked by the test above.
+      // redirect itself, checked by the test above. `name` is not part of a
+      // config, so only the `config.` entries narrow this comparison.
       const fields = OVERRIDDEN.get(id) ?? []
+      const configFields = fields.filter(field => field.startsWith('config.')).map(field => field.slice('config.'.length))
       assert.deepEqual(
-        withoutFields(mirrored.config, fields),
-        withoutFields(upstream.config, fields),
-        `the "${id}" row resolves differently outside ${fields.join(', ') || 'any field'}`,
+        withoutFields(mirrored.config, configFields),
+        withoutFields(upstream.config, configFields),
+        `the "${id}" row resolves differently outside ${configFields.join(', ') || 'any field'}`,
       )
     }
   })
