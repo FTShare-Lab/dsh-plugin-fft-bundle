@@ -9,12 +9,14 @@
 ### Added
 
 - 新增 `ftshare_status`，可查最近失败聚合与目录漂移
+- 股票模拟账户初始资金改为 100 万元，重置时可自行指定初始资金
 
 ### Changed
 
 - FTShare 失败提示改显上游原文，不再翻译或猜测原因
 - 设置与 FTShare 底座改由独立仓库发版，本仓按 npm 精确版本带入
 - K 线升级到 `v0.6.4-ft.1`，图表可挂进宿主面板
+- 盘后、午休与集合竞价时段的市价单照常受理，排队到下一交易时段开盘成交
 
 ### Fixed
 
@@ -25,7 +27,7 @@
 
 - `@dsh-ft/dsh-fft-settings`：`v0.5.0` → `v0.5.1`
 - `@dsh-ft/dsh-fft-ftshare`：`v0.3.0` → `v0.4.0`
-- `@dsh-ft/dsh-fft-paper-trading`：`v0.6.0` → `v0.6.1`
+- `@dsh-ft/dsh-fft-paper-trading`：`v0.6.0` → `v0.6.2`
 - `DSH Kline`：`v0.4.0-ft.2` → `v0.6.4-ft.1`
 
 ## [0.9.0] - 2026-10-28

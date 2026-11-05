@@ -31,7 +31,7 @@
   "dependencies": {
     "@dsh-ft/dsh-fft-settings": "0.5.1",
     "@dsh-ft/dsh-fft-ftshare": "0.4.0",
-    "@dsh-ft/dsh-fft-paper-trading": "0.6.1",
+    "@dsh-ft/dsh-fft-paper-trading": "0.6.2",
     "@ft/dsh-fft-factor-intake-standard": "git+ssh://git@github.com/FTShare-Lab/dsh-plugin-fft-bundle.git#path:packages/dsh-fft-factor-intake-standard",
     "@ft/dsh-fft-research-cockpit": "git+ssh://git@github.com/FTShare-Lab/dsh-plugin-fft-bundle.git#path:packages/dsh-fft-research-cockpit",
     "@ftshare-lab/dsh-kline": "git+ssh://git@github.com/gigaflw/dsh_kline.git#v0.6.4-ft.1"

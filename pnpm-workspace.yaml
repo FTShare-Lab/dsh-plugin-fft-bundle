@@ -27,9 +27,10 @@ catalog:
   '@deepseek-ai/dsh-llm-retry': 0.2.1-rc.2
   '@deepseek-ai/dsh-tools': 0.2.1-rc.2
   '@deepseek-ai/schemastery': 3.18.5
-# pnpm 默认拒装刚发布的版本；paper 0.6.0 是本次发布的组成部分，放行。
+# pnpm 默认拒装刚发布的版本；本仓钉的正是自己刚发的那一版，放行。
 minimumReleaseAgeExclude:
   - '@dsh-ft/dsh-fft-paper-trading@0.6.0'
+  - '@dsh-ft/dsh-fft-paper-trading@0.6.2'
   - '@dsh-ft/dsh-fft-settings@0.5.1'
 overrides:
   # 宿主闭包：钉到 thirdparty/deepseek-harness 那一版（0.2.1-rc.2；dsh-invariants
