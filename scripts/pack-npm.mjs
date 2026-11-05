@@ -74,22 +74,21 @@ const EXOTIC_SPEC = /^(?:git\+|git@|github:|gitlab:|bitbucket:|gist:|https?:|fil
 const NEVER_COPY = new Set(['node_modules', '.git', '__pycache__', '.DS_Store', '.env'])
 
 /**
- * Packages published to npm, in publish order (a package must be published
- * before anything that depends on it from the registry).
+ * Packages published to npm from this repository, in publish order (a package
+ * must be published before anything that depends on it from the registry).
+ *
+ * Empty on purpose: the two packages that used to be published from here —
+ * settings and ftshare — live in the standalone `dsh-fft-base` repository and
+ * are published from its own release tag. This repository still consumes them,
+ * by exact registry version, but no longer publishes anything: the composition
+ * bundle ships as an internal tarball / git edge, not as an npm package.
+ *
+ * Every consumer of this list tolerates the empty case; `pnpm pack:npm` says so
+ * explicitly instead of silently packing nothing.
  *
  * @type {{dir: string, dropDependencies?: string[]}[]}
  */
-export const PUBLISH_TARGETS = [
-  { dir: 'packages/dsh-fft-settings' },
-  {
-    dir: 'packages/dsh-fft-ftshare',
-    // `src/index.ts` names settings only inside an `import type {}` augmentation
-    // and the shipped declarations reference nothing from it, so the published
-    // package must not carry the edge: it would install a settings copy whose
-    // bundle layer nothing enables (a settings page that does not appear).
-    dropDependencies: ['@dsh-ft/dsh-fft-settings'],
-  },
-]
+export const PUBLISH_TARGETS = []
 
 /**
  * Read every package manifest of the workspace.

@@ -1,6 +1,0 @@
-{
-  "meta": {
-    "title": "FTShare 数据",
-    "description": "为 FT 插件提供 FTShare 行情接口，并内置可浏览的接口目录。"
-  }
-}

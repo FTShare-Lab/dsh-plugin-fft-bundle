@@ -59,18 +59,6 @@ describe('published manifest', () => {
     }
   })
 
-  it('drops only the edges a package needs for its own build', () => {
-    const ftshare = targetsOf().find(entry => entry.manifest.name === '@dsh-ft/dsh-fft-ftshare')
-    assert.ok(ftshare !== undefined, 'ftshare must be a publish target')
-    assert.ok(
-      (ftshare.manifest.dependencies ?? {})['@dsh-ft/dsh-fft-settings'] !== undefined,
-      'ftshare still needs the settings types in this repository',
-    )
-    const published = publishManifest(ftshare.manifest, { workspace, dropDependencies: ftshare.target.dropDependencies })
-    assert.equal((published.dependencies ?? {})['@dsh-ft/dsh-fft-settings'], undefined, 'the type-only settings edge must not ship')
-    assert.equal(published.dependencies['@modelcontextprotocol/sdk'], ftshare.manifest.dependencies['@modelcontextprotocol/sdk'], 'registry dependencies keep their range')
-  })
-
   it('keeps the export map, bundle layer and engines of the source manifest', () => {
     for (const { target, manifest } of targetsOf()) {
       const published = publishManifest(manifest, { workspace, dropDependencies: target.dropDependencies })
@@ -87,11 +75,24 @@ describe('rewrite safety', () => {
   const base = { name: '@x/y', version: '1.0.0' }
 
   it('bumps a workspace edge to the workspace version', () => {
+    const inRepo = '@ft/dsh-fft-research-cockpit'
     const published = publishManifest(
-      { ...base, dependencies: { '@dsh-ft/dsh-fft-settings': 'git+ssh://git@example.invalid/repo.git#v1.0.0&path:packages/a' } },
+      { ...base, dependencies: { [inRepo]: `git+ssh://git@example.invalid/repo.git#v1.0.0&path:packages/${inRepo.split('/')[1]}` } },
       { workspace },
     )
-    assert.equal(published.dependencies['@dsh-ft/dsh-fft-settings'], `^${workspace.get('@dsh-ft/dsh-fft-settings').manifest.version}`)
+    assert.equal(published.dependencies[inRepo], `^${workspace.get(inRepo).manifest.version}`)
+  })
+
+  it('never links a published package of another repository', () => {
+    // settings and ftshare are consumed as exact registry versions, exactly as a
+    // user installs them. Linking the dsh-fft-base sources in instead would give
+    // their `@deepseek-ai/cordis` a second module identity and silently break the
+    // `interface Context` augmentations this repository's packages rely on.
+    const workspaceYaml = readFileSync(join(repoRoot, 'pnpm-workspace.yaml'), 'utf8')
+    for (const name of ['@dsh-ft/dsh-fft-settings', '@dsh-ft/dsh-fft-ftshare']) {
+      const pattern = new RegExp(`'${name.replace('/', '\\/')}':\\s*link:`, 'u')
+      assert.doesNotMatch(workspaceYaml, pattern, `${name} must come from the registry, not from a workspace link`)
+    }
   })
 
   it('refuses an edge that only resolves through git, a URL or the filesystem', () => {

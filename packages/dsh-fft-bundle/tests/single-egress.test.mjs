@@ -8,9 +8,11 @@
  * exists to fix (detail lost from the model's view, and "no permission" rendered
  * as "no data"), and nothing else in the suite would notice.
  *
- * Deliberate exception: `dsh-fft-settings` validates the key the user just typed
- * by probing the gateway origin. That is a credential check, not a data call,
- * and it is listed by file so a second one cannot hide next to it.
+ * The base (`@dsh-ft/dsh-fft-ftshare`) and the key probe (`dsh-fft-settings`)
+ * now live in the standalone `dsh-fft-base` repository, so nothing in this
+ * repository is allowed to touch the gateway's wire protocol at all: every
+ * package here consumes the base's typed service instead. The rules therefore
+ * allow nobody, and only the cockpit is still expected to reach for the service.
  */
 import assert from 'node:assert/strict'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
@@ -23,36 +25,30 @@ const packagesRoot = resolve(bundleRoot, '..')
 /** Repository root; rule exceptions are written relative to it. */
 const repoRoot = resolve(packagesRoot, '..')
 
-/** Files allowed to mention the gateway origin: the base, plus the key probe. */
-const GATEWAY_ALLOWED = new Set([
-  'packages/dsh-fft-ftshare',
-  'packages/dsh-fft-settings/src/features/api-key/probe.ts',
-])
-
-/** The base itself is the one place allowed to speak the FTShare wire protocol. */
-const BASE_PACKAGE = 'packages/dsh-fft-ftshare'
+/** No source in this repository may speak the FTShare wire protocol. */
+const NOBODY = new Set()
 
 /** Text patterns that would mean "a second FTShare implementation". */
 const RULES = [
   {
     what: '上游网关地址',
     pattern: /market\.ft\.tech/u,
-    allowed: GATEWAY_ALLOWED,
+    allowed: NOBODY,
   },
   {
     what: 'MCP 客户端 SDK',
     pattern: /@modelcontextprotocol\/sdk/u,
-    allowed: new Set([BASE_PACKAGE]),
+    allowed: NOBODY,
   },
   {
     what: '自读凭据文件',
     pattern: /\.credentials\.yaml/u,
-    allowed: new Set([BASE_PACKAGE]),
+    allowed: NOBODY,
   },
   {
     what: '自建 FTShare 错误类型',
     pattern: /FtShare(?:Permission)?Error\b/u,
-    allowed: new Set([BASE_PACKAGE]),
+    allowed: NOBODY,
   },
 ]
 
@@ -91,24 +87,24 @@ function allowed(rule, relativePath) {
 describe('single egress into FTShare', () => {
   const files = sources()
 
-  it('scans every package source, not just the base', () => {
-    assert.ok(files.length > 50, `扫描到的源文件太少（${files.length}），路径或跳过规则不对`)
+  it('scans every package source', () => {
+    assert.ok(files.length > 30, `扫描到的源文件太少（${files.length}），路径或跳过规则不对`)
     assert.ok(files.some(path => path.includes('dsh-fft-research-cockpit')), '投研舱必须在扫描范围内')
   })
 
   for (const rule of RULES) {
-    it(`keeps ${rule.what} inside ${[...rule.allowed].map(path => path.split('/')[1]).join(', ')}`, () => {
+    it(`keeps ${rule.what} out of this repository`, () => {
       const offenders = []
       for (const path of files) {
         const relativePath = relative(repoRoot, path).split('\\').join('/')
         if (allowed(rule, relativePath)) continue
         if (rule.pattern.test(readFileSync(path, 'utf8'))) offenders.push(relativePath)
       }
-      assert.deepEqual(offenders, [], `${offenders.join(', ')} 里出现了${rule.what}：FTShare 取数应当只走 @dsh-ft/dsh-fft-ftshare`)
+      assert.deepEqual(offenders, [], `${offenders.join(', ')} 里出现了${rule.what}：FTShare 取数应当只走 @dsh-ft/dsh-fft-ftshare 的服务面`)
     })
   }
 
-  it('keeps the MCP SDK out of every other manifest', () => {
+  it('keeps the MCP SDK out of every manifest', () => {
     const offenders = []
     for (const name of readdirSync(packagesRoot)) {
       const manifest = join(packagesRoot, name, 'package.json')
@@ -117,9 +113,10 @@ describe('single egress into FTShare', () => {
       } catch {
         continue
       }
-      const dependencies = JSON.parse(readFileSync(manifest, 'utf8')).dependencies ?? {}
-      if ('@modelcontextprotocol/sdk' in dependencies && name !== 'dsh-fft-ftshare') offenders.push(name)
+      const parsed = JSON.parse(readFileSync(manifest, 'utf8'))
+      const declared = { ...parsed.dependencies, ...parsed.peerDependencies, ...parsed.devDependencies }
+      if ('@modelcontextprotocol/sdk' in declared) offenders.push(name)
     }
-    assert.deepEqual(offenders, [], `${offenders.join(', ')} 仍然依赖 @modelcontextprotocol/sdk`)
+    assert.deepEqual(offenders, [], `${offenders.join(', ')} 仍然声明 @modelcontextprotocol/sdk；它属于 dsh-fft-base 仓`)
   })
 })
