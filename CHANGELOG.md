@@ -4,6 +4,30 @@
 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循
 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [0.9.1] - 2026-11-05
+
+### Added
+
+- 新增 `ftshare_status`，可查最近失败聚合与目录漂移
+
+### Changed
+
+- FTShare 失败提示改显上游原文，不再翻译或猜测原因
+- 设置与 FTShare 底座改由独立仓库发版，本仓按 npm 精确版本带入
+- K 线升级到 `v0.6.4-ft.1`，图表可挂进宿主面板
+
+### Fixed
+
+- 空结果必须有证据，形状不符不再显示成「没有数据」
+- 设置页检测不再把可用的 Key 误报为请求受限
+
+### Components
+
+- `@dsh-ft/dsh-fft-settings`：`v0.5.0` → `v0.5.1`
+- `@dsh-ft/dsh-fft-ftshare`：`v0.3.0` → `v0.4.0`
+- `@dsh-ft/dsh-fft-paper-trading`：`v0.6.0` → `v0.6.1`
+- `DSH Kline`：`v0.4.0-ft.2` → `v0.6.4-ft.1`
+
 ## [0.9.0] - 2026-10-28
 
 ### Added
@@ -217,6 +241,7 @@
 - `@ft/dsh-fft-factor-intake-standard`：`v0.1.0`
 - `DSH Kline`：`v0.3.5`，随组合包安装 K 线工作台、侧边栏与 MCP 服务
 
+[0.9.1]: https://github.com/gigaflw/dsh-fft-bundle/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/gigaflw/dsh-fft-bundle/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/gigaflw/dsh-fft-bundle/compare/v0.7.2...v0.8.0
 [0.7.2]: https://github.com/gigaflw/dsh-fft-bundle/compare/v0.7.1...v0.7.2
