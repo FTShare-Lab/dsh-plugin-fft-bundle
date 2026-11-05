@@ -149,6 +149,25 @@ function entryFiles(manifest) {
 }
 
 /**
+ * Local scratch directories that never belong to a shipped payload.
+ *
+ * `.pnpm-store` is a workspace store a package checkout can carry (the paper
+ * repository keeps one), and it holds project symlinks to build directories
+ * that no longer exist — walking it fails the pack on a broken link, and its
+ * contents could never match a `files` entry anyway.
+ */
+const LOCAL_SCRATCH = ['node_modules', '.pnpm-store', 'tmp', 'dsh_tmp', '.worktrees']
+
+/**
+ * Whether a package-relative path sits inside a local scratch directory.
+ * @param path - `/`-joined path relative to the package directory.
+ * @returns true when the path has to be skipped.
+ */
+function inLocalScratch(path) {
+  return LOCAL_SCRATCH.some(entry => path === entry || path.startsWith(`${entry}/`))
+}
+
+/**
  * Every file of one staged package that its `files` field ships.
  * @param {string} packageDir - absolute package directory.
  * @param {object} manifest - the package manifest.
@@ -162,8 +181,9 @@ function shippedFiles(packageDir, manifest) {
   for (const path of all) {
     // A package's own bundled `node_modules` never travels: the bundle inlines
     // the whole plugin set one level up, so a nested copy would shadow it (the
-    // published paper tarball carries its kline under `node_modules`).
-    if (path === 'node_modules' || path.startsWith('node_modules/')) continue
+    // published paper tarball carries its kline under `node_modules`). Local
+    // scratch directories are skipped for the reason above.
+    if (inLocalScratch(path)) continue
     if (!statSync(join(packageDir, path)).isFile()) continue
     if (required.includes(path) || patterns.some(pattern => pattern.test(path))) files.add(path)
   }
