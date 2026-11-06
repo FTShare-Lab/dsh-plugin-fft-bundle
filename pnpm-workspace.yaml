@@ -31,6 +31,7 @@ catalog:
 minimumReleaseAgeExclude:
   - '@dsh-ft/dsh-fft-paper-trading@0.6.0'
   - '@dsh-ft/dsh-fft-paper-trading@0.6.2'
+  - '@dsh-ft/dsh-fft-paper-trading@0.6.3'
   - '@dsh-ft/dsh-fft-settings@0.5.1'
 overrides:
   # 宿主闭包：钉到 thirdparty/deepseek-harness 那一版（0.2.1-rc.2；dsh-invariants
