@@ -4,6 +4,20 @@
 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循
 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [0.9.2] - 2026-11-06
+
+### Fixed
+
+- 修复 DSH 0.2.2 下金融模式加载失败、新会话回退标准模式的问题
+
+### Changed
+
+- 兼容 DSH 0.2.1 与 0.2.2
+
+### Components
+
+- `@dsh-ft/dsh-fft-paper-trading`：`v0.6.1` → `v0.6.2`
+
 ## [0.9.1] - 2026-11-05
 
 ### Added
@@ -243,6 +257,7 @@
 - `@ft/dsh-fft-factor-intake-standard`：`v0.1.0`
 - `DSH Kline`：`v0.3.5`，随组合包安装 K 线工作台、侧边栏与 MCP 服务
 
+[0.9.2]: https://github.com/gigaflw/dsh-fft-bundle/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/gigaflw/dsh-fft-bundle/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/gigaflw/dsh-fft-bundle/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/gigaflw/dsh-fft-bundle/compare/v0.7.2...v0.8.0
