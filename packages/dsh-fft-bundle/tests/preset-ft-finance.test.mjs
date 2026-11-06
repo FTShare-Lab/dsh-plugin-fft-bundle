@@ -1,17 +1,18 @@
 /**
  * The finance preset mirrors the official `standard` composition of the
- * **lowest supported host**, DSH 0.2.1-alpha.1 — not whatever checkout happens
+ * **lowest supported host**, DSH 0.2.2-rc.1 — not whatever checkout happens
  * to be on the developer's disk.
  *
- * A preset's `plugins` list is complete: it inherits nothing. Since 0.9.0 the
- * lowest supported host is 0.2.1-alpha.1, so 0.2.0 support is retired. The
- * preset deliberately keeps the 0.2.0-era tooling surface, though: the rows
- * 0.2.1 added to `standard` stay omitted and are recorded in
- * FLOOR_OMITTED_ROWS, while `tool-ralph` was retired altogether. Two guards
- * therefore run:
+ * A preset's `plugins` list is complete: it inherits nothing. Since this
+ * bundle requires 0.2.2-rc.1 the whole delegated surface follows that host:
+ * one `tool-subagent-control` instance registers send_message, interrupt_agent
+ * and list_agents (0.2.2 folded the `/list-agents` subpath into it), and the
+ * spawn tool carries the host's model-selection keys. The preset still keeps
+ * the 0.2.0-era tooling surface: the rows 0.2.2 added to `standard` stay
+ * omitted and are recorded in FLOOR_OMITTED_ROWS. Two guards therefore run:
  *
- * 1. the floor: the composition equals the `dsh-v0.2.1-alpha.1` tag's preset,
- *    row for row, except the omitted rows above and the retired `tool-ralph`;
+ * 1. the floor: the composition equals the `dsh-v0.2.2-rc.1` tag's preset,
+ *    row for row, except the omitted rows above;
  * 2. the current host: every divergence from the reachable `standard`
  *    composition is one of the deltas recorded below, so a later host bump
  *    fails loudly instead of silently widening the compatibility gap.
@@ -68,16 +69,23 @@ const GLOBAL_ROWS = ['dsh-fft-settings', 'dsh-fft-ftshare', 'newapi-wechat-sso',
  */
 const PRESET_ONLY_ROWS = ['mcp-dsh-kline', 'ft-ftshare-tools', 'ft-ftshare-mask', 'ft-ftshare-project', 'dsh-fft-factor-intake-standard']
 /** The host tag whose composition is the compatibility floor. */
-const FLOOR_TAG = 'dsh-v0.2.1-alpha.1'
+const FLOOR_TAG = 'dsh-v0.2.2-rc.1'
 /** The floor composition size at that tag; growing requires a re-sync. */
-const FLOOR_PLUGIN_COUNT = 21
+const FLOOR_PLUGIN_COUNT = 22
 /** Floor rows this preset deliberately omits (it keeps the 0.2.0-era surface). */
 const FLOOR_OMITTED_ROWS = ['time-context', 'tool-schedule']
 /** Floor rows this bundle deliberately no longer carries. */
-const RETIRED_FLOOR_ROWS = ['tool-ralph']
+const RETIRED_FLOOR_ROWS = []
 /** Rows the reachable host's standard carries and this preset omits. */
-const CURRENT_ADDED_ROWS = ['time-context', 'tool-schedule', 'tool-plugin-market']
-/** Rows DSH 0.2.1 dropped from `standard` but 0.2.0 still needs; kept disabled. */
+const CURRENT_ADDED_ROWS = ['tool-plugin-market']
+/**
+ * Rows inside a group the reachable host dropped while this preset keeps them.
+ *
+ * The rows are gone from the floor composition too: `tool-subagent-codex` and
+ * `tool-subagent-claude-code` left `delegation` in 0.2.1, and the floor tag no
+ * longer declares the group at all. They stay disabled so the 0.2.0-era
+ * delegation surface keeps them addressable without activating them.
+ */
 const CURRENT_DROPPED_ROWS = ['tool-subagent-codex', 'tool-subagent-claude-code']
 
 /** Path of the preset file, relative to the upstream `web-app` package. */
@@ -480,8 +488,19 @@ describe('the finance preset in this bundle', () => {
     const toolFilterException = (id, path, difference) => SUBAGENT_ROWS.includes(id)
       && difference.startsWith(`${path}.config.toolFilter`)
 
+    /** The floor's rows, or an empty list while its source is unreachable (the guards below skip then). */
+    const floorRows = floor === null ? [] : requirePlugins(floorPatch, UPSTREAM_PRESET_ID, floor.label)
+    /** The floor declares the `delegation` group only while it still ships it. */
+    const floorCarriesDelegation = floorRows.some(row => row.id === 'delegation')
+    /** Floor rows this preset does not mirror: retired rows plus the recorded group leftovers. */
+    const floorDropped = () => new Set([
+      ...RETIRED_FLOOR_ROWS,
+      ...FLOOR_OMITTED_ROWS,
+      ...(floorCarriesDelegation ? [] : CURRENT_DROPPED_ROWS),
+    ])
+
     it('is pinned to the floor composition size', { skip: skipFloor }, () => {
-      const official = requirePlugins(floorPatch, UPSTREAM_PRESET_ID, floor.label)
+      const official = floorRows
       assert.equal(
         official.length,
         FLOOR_PLUGIN_COUNT,
@@ -489,18 +508,20 @@ describe('the finance preset in this bundle', () => {
       )
       assert.equal(
         bundlePlugins.length,
-        official.length - FLOOR_OMITTED_ROWS.length + ADDED_PLUGINS.length,
-        `"${PRESET_ID}" must hold the ${official.length} floor rows minus the ${FLOOR_OMITTED_ROWS.length} omitted, plus the ${ADDED_PLUGINS.length} finance rows`,
+        official.length - floorDropped().size + ADDED_PLUGINS.length,
+        `"${PRESET_ID}" must hold the ${official.length} floor rows minus the ${floorDropped().size} not mirrored, plus the ${ADDED_PLUGINS.length} finance rows`,
       )
     })
 
     it('mirrors the floor composition, field for field', { skip: skipFloor }, () => {
-      const official = requirePlugins(floorPatch, UPSTREAM_PRESET_ID, floor.label)
+      const official = floorRows
       const drift = diffRowLists(official, bundlePlugins, 'config.plugins', {
-        dropped: new Set([...RETIRED_FLOOR_ROWS, ...FLOOR_OMITTED_ROWS]),
+        dropped: floorDropped(),
         added: new Set(ADDED_PLUGINS),
+        // A group the floor does not declare is compared by its rows alone.
         except: (id, path, difference) => personaException(id, path, difference)
-          || toolFilterException(id, path, difference),
+          || toolFilterException(id, path, difference)
+          || (!floorCarriesDelegation && id === 'delegation' && difference.includes('.config:') && difference.includes('missing row')),
       })
       assert.deepEqual(
         drift,
@@ -510,7 +531,7 @@ describe('the finance preset in this bundle', () => {
     })
 
     it('replaces the persona identity, and nothing else about that row', { skip: skipFloor }, () => {
-      const official = requirePlugins(floorPatch, UPSTREAM_PRESET_ID, floor.label)
+      const official = floorRows
       const index = official.findIndex(row => row.id === PERSONA_ID)
       assert.ok(index !== -1, `${floor.label} must declare a "${PERSONA_ID}" plugin`)
       const upstreamPersona = official[index]
@@ -550,12 +571,15 @@ describe('the finance preset in this bundle', () => {
       const officialIds = official.map(row => row.id)
       const bundleIds = bundlePlugins.map(row => row.id)
 
-      // This preset keeps the 0.2.0-era surface, so the reachable host's newer
-      // rows it does not carry are exactly the recorded omissions.
-      const expectedMissing = officialIds.includes('time-context') ? CURRENT_ADDED_ROWS : []
+      // The reachable host's rows this preset does not carry: the omissions it
+      // keeps on purpose, then the deltas recorded against the reachable host.
+      // The omissions are always expected, so a host that stops shipping them
+      // shows up here instead of hiding behind the delta list.
+      const reachableMissing = officialIds.filter(id => !bundleIds.includes(id))
+      const recorded = new Set([...FLOOR_OMITTED_ROWS, ...CURRENT_ADDED_ROWS])
       assert.deepEqual(
-        officialIds.filter(id => !bundleIds.includes(id)),
-        expectedMissing,
+        reachableMissing.filter(id => !recorded.has(id)),
+        [],
         `the host standard preset added rows this bundle does not carry; decide per row whether ${FLOOR_TAG} can load it, then record it in CURRENT_ADDED_ROWS`,
       )
       assert.deepEqual(
@@ -583,16 +607,16 @@ describe('the finance preset in this bundle', () => {
       )
       const nestedExtra = bundleNested.filter(id => !upstreamNested.includes(id))
       assert.deepEqual(
-        nestedExtra,
-        upstreamNested.includes('tool-subagent-codex') ? [] : CURRENT_DROPPED_ROWS,
-        `the bundle "delegation" group keeps rows the host dropped; record them in CURRENT_DROPPED_ROWS`,
+        nestedExtra.filter(id => !CURRENT_DROPPED_ROWS.includes(id)),
+        [],
+        `the bundle "delegation" group keeps a row the host dropped without recording it in CURRENT_DROPPED_ROWS`,
       )
       for (const id of nestedExtra) {
         const row = bundleDelegation.config.find(entry => entry.id === id)
         assert.equal(
           row.disabled,
           true,
-          `"${id}" is absent from the reachable host, so it must stay disabled on the floor composition`,
+          `"${id}" is absent from the reachable host, so it must stay disabled`,
         )
       }
     })

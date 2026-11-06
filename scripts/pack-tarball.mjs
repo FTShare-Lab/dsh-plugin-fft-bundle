@@ -103,6 +103,12 @@ function resolveRef(requested) {
 function extractPackages(ref, dest) {
   rmSync(dest, { recursive: true, force: true })
   mkdirSync(dest, { recursive: true })
+  // The working tree is what HEAD means here: the extractions below run against
+  // the live files, so uncommitted edits are what this run packs.
+  if (ref === 'HEAD') {
+    cpSync(join(repoRoot, 'packages'), join(dest, 'packages'), { recursive: true, filter: source => !source.includes(`${sep}node_modules`) })
+    return dest
+  }
   const archive = spawnSync('git', ['archive', '--format=tar', ref, 'packages'], { cwd: repoRoot, maxBuffer: 1 << 30 })
   if (archive.status !== 0) throw new Error(`git archive ${ref} failed: ${archive.stderr.toString()}`)
   const untar = spawnSync('tar', ['-x', '-C', dest], { input: archive.stdout, maxBuffer: 1 << 30 })

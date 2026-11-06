@@ -88,6 +88,9 @@
             disabled: !!js process.platform !== 'win32'
           - id: tool-fs
             name: '@deepseek-ai/dsh-tool-fs'
+            # Host default since 0.2.2: the dedicated apply_patch tool is off.
+            config:
+              applyPatch: false
           - id: tool-fs-search
             name: '@deepseek-ai/dsh-tool-fs-search'
             config:
@@ -112,7 +115,7 @@
                 name: '@deepseek-ai/dsh-plan-mode'
                 config:
                   section: |
-                    You are in plan mode. Stay in plan mode until exit_plan_mode succeeds or the user switches the session mode. Imperative language to implement changes means plan the implementation, not execute it. A user's conversational agreement — including an answer confirming something you asked — approves nothing and does not end plan mode; fold the confirmed decision into the plan and submit it through exit_plan_mode.
+                    You are in plan mode. Stay in plan mode until the user approves your plan through exit_plan_mode or switches the session mode. Imperative language to implement changes means plan the implementation, not execute it. A user's conversational agreement — including an answer confirming something you asked — approves nothing and does not end plan mode; fold the confirmed decision into the plan and submit it through exit_plan_mode.
 
                     Explore first. Use non-mutating reads, searches, static analysis, and checks to ground the plan in the actual repository. Do not edit or write files, change configuration, run formatters or code generation that rewrites tracked files, commit, or otherwise carry out the plan. Prefer existing functions and patterns over new machinery.
 
@@ -148,42 +151,28 @@
             config:
               - id: tool-subagent-control
                 name: '@deepseek-ai/dsh-tool-subagent-control'
+              # 0.2.1 registers list_agents only as this subpath; 0.2.2 inlined it
+              # into the entry above and dropped the subpath. Mounting a missing
+              # row fails the whole preset mount, so mount it only when the entry
+              # does not already register the tool.
               - id: tool-subagent-list-agents
                 name: '@deepseek-ai/dsh-tool-subagent-control/list-agents'
-              # `backgroundMode` is a DSH 0.2.0 key. 0.2.1 removed it from the
-              # Config schema, but schemastery validates with strict=false and
-              # merges unknown keys, so the row still loads there while keeping
-              # continuable subagents on the 0.2.0 floor. Do not delete until
-              # the floor moves past 0.2.0.
+                disabled: !!js process.getBuiltinModule('node:fs').readFileSync(process.getBuiltinModule('node:path').join(process.resourcesPath, 'app.asar', 'dsh', 'node_modules', '@deepseek-ai', 'dsh-tool-subagent-control', 'lib', 'index.js'), 'utf8').includes('list_agents')
+              # Model selection follows the 0.2.2 host: the spawn tool exposes
+              # the optional route fields and owns `list_subagent_models`, the
+              # fork tool keeps both off to preserve inherited-prefix reuse.
               - id: tool-subagent
                 name: '@deepseek-ai/dsh-tool-subagent'
                 config:
                   provider: spawn
                   toolName: subagent
-                  modelSelectionSettings: true
-                  backgroundMode: continuable
+                  modelSelection: true
+                  modelDiscovery: true
               - id: tool-subagent-fork
                 name: '@deepseek-ai/dsh-tool-subagent'
                 config:
                   provider: fork
                   toolName: subagent_fork
-                  backgroundMode: continuable
-              - id: tool-subagent-codex
-                name: '@deepseek-ai/dsh-tool-subagent'
-                disabled: true
-                config:
-                  provider: codex
-                  toolName: subagent_codex
-                  backgroundMode: one-shot
-                  maxDepth: provider-managed
-              - id: tool-subagent-claude-code
-                name: '@deepseek-ai/dsh-tool-subagent'
-                disabled: true
-                config:
-                  provider: claude-code
-                  toolName: subagent_claude_code
-                  backgroundMode: one-shot
-                  maxDepth: provider-managed
               - id: workflow-ptc
                 name: '@deepseek-ai/dsh-workflow-ptc'
                 config:
@@ -205,6 +194,8 @@
             name: '@deepseek-ai/dsh-tool-present'
           - id: tool-plugin-manager
             name: '@deepseek-ai/dsh-plugin-manager/tools'
+            # Declared for parity with the host composition; inert here because
+            # this package cannot resolve its row from the preset's base URL.
             disabled: true
           - id: ft-guidance
             name: '@dsh-ft/dsh-fft-settings/agent'
