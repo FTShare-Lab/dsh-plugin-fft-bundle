@@ -90,8 +90,8 @@ importers:
         specifier: link:../dsh-fft-research-cockpit
         version: link:../dsh-fft-research-cockpit
       '@ftshare-lab/dsh-kline':
-        specifier: git+ssh://git@github.com/gigaflw/dsh_kline.git#v0.6.4-ft.1
-        version: git+ssh://git@github.com/gigaflw/dsh_kline.git#bdeff4aa2bee2916dceebddaa0b85071c26e70f9
+        specifier: git+ssh://git@github.com/gigaflw/dsh_kline.git#v0.6.7-ft.1
+        version: git+ssh://git@github.com/gigaflw/dsh_kline.git#6e3e73ee3ca20b57c56199936975f34fba090fbc
     devDependencies:
       js-yaml:
         specifier: ^4.3.2
@@ -736,8 +736,8 @@ packages:
   '@formkit/auto-animate@0.10.0':
     resolution: {integrity: sha512-KGomRttjUfORuPUaR/ZGQw+6xfMrTM+sxnILv7JAd9AmabU9rg9i6gF/iC0Ih+QpKCubJpCA/1DX9UHKE8cX+A==}
 
-  '@ftshare-lab/dsh-kline@git+ssh://git@github.com/gigaflw/dsh_kline.git#bdeff4aa2bee2916dceebddaa0b85071c26e70f9':
-    resolution: {commit: bdeff4aa2bee2916dceebddaa0b85071c26e70f9, repo: git@github.com:gigaflw/dsh_kline.git, type: git}
+  '@ftshare-lab/dsh-kline@git+ssh://git@github.com/gigaflw/dsh_kline.git#6e3e73ee3ca20b57c56199936975f34fba090fbc':
+    resolution: {commit: 6e3e73ee3ca20b57c56199936975f34fba090fbc, repo: git@github.com:gigaflw/dsh_kline.git, type: git}
     version: 0.6.4
     engines: {node: '>=22.19.0'}
 
@@ -2495,7 +2495,7 @@ snapshots:
 
   '@formkit/auto-animate@0.10.0': {}
 
-  '@ftshare-lab/dsh-kline@git+ssh://git@github.com/gigaflw/dsh_kline.git#bdeff4aa2bee2916dceebddaa0b85071c26e70f9': {}
+  '@ftshare-lab/dsh-kline@git+ssh://git@github.com/gigaflw/dsh_kline.git#6e3e73ee3ca20b57c56199936975f34fba090fbc': {}
 
   '@hono/node-server@2.1.3(hono@4.13.13)':
     dependencies:
