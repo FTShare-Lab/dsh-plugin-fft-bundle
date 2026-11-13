@@ -1,9 +1,3 @@
 {
-  "radius": [
-    {
-      "file": "dsh-fft-research-cockpit/src/client/index.js",
-      "value": 1,
-      "reason": "2px status dot uses a 1px radius; a drawing detail, not a control corner"
-    }
-  ]
+  "radius": []
 }

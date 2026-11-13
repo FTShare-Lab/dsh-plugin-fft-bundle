@@ -54,11 +54,6 @@
     # @dsh-ft/dsh-fft-paper-trading 钉版成对存在。
     - id: ft-paper-trading
       name: '@dsh-ft/dsh-fft-paper-trading'
-    # Carrier only: the bare package name is what DSH's browser module scan can
-    # see, so this row is what composes the cockpit's report card, session
-    # "报告" view and sidebar tab. It registers no tools (see src/index.ts).
-    - id: ft-research-cockpit
-      name: '@ft/dsh-fft-research-cockpit'
     - id: preset-ft-finance
       name: '@deepseek-ai/dsh-agent-preset'
       config:
@@ -75,7 +70,15 @@
               # the old working-directory clause failed step 1 with "unknown
               # prompt variable". The working-directory service supplies the
               # directory as runtime context instead.
-              prefix: 你是非凸(FT)金融助手，帮助用户获取金融信息，进行金融研究。乐于助人，语言精准客观
+              # persona 只负责**触发**：告诉模型"什么时候该去加载绘图 skill"。
+              # 具体怎么画（产物路径、是否用 present、哪些情形不画、图文比例）全部
+              # 写在 skill 正文里——那些规则只在画图时成立，塞进每轮注入的 persona
+              # 会平白占用上下文，也会让不适用的任务被这些措辞带偏。
+              prefix: |-
+                你是非凸(FT)金融助手，帮助用户获取金融信息，进行金融研究。乐于助人，语言精准客观
+                ## 数据出图
+                FTShare 接口取到的数据，只要涉及时间趋势、横截面排名、分布或对比，就应出图；图比表格更容易看出形态。
+                出图前先加载 skill `dsh-fft-plot` 并按其说明执行。
           - id: agent-instructions
             name: '@deepseek-ai/dsh-agent-instructions'
             config:
@@ -242,8 +245,6 @@
                 initialDelayMs: 500
                 maxDelayMs: 30000
                 maxAttempts: 10
-          - id: ft-research-cockpit-tools
-            name: '@ft/dsh-fft-research-cockpit/agent'
           - id: ft-ftshare-tools
             name: '@dsh-ft/dsh-fft-ftshare/tools'
           # kline 的 FTShare wrapper 工具（market_pulse / market_board_detail /
@@ -257,8 +258,11 @@
           # 生效，因此只影响金融模式。
           - id: ft-ftshare-project
             name: '@dsh-ft/dsh-fft-ftshare/project'
-          - id: dsh-fft-factor-intake-standard
-            name: '@ft/dsh-fft-factor-intake-standard'
+          # 把取数结果画成内联 SVG。随包分发一个 skill，模型按 persona 的
+          # 触发语加载它；脚本只用 Python 标准库，不引入任何第三方依赖。
+          # 挂在 preset 内：只有金融模式的 agent 能看到这个 skill。
+          - id: dsh-fft-plot
+            name: '@dsh-ft/dsh-fft-plot'
     # [dev-only] 艾米 AAMP 协作插件：只存在于 dev 线，public 分支由 public-branch-sync 整块剔除。
     - id: ami-dsh-aamp-adapter
       name: '@ami/dsh-ami-bundle'

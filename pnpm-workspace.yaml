@@ -97,17 +97,15 @@ overrides:
   '@deepseek-ai/dsh-util-time': 0.2.1-rc.2
   '@deepseek-ai/dsh-util-values': 0.2.1-rc.2
   '@deepseek-ai/dsh-working-directory': 0.2.1-rc.2
-  # 本仓插件包的 dependencies：**已发布包**（settings / ftshare / paper）写 registry 精确版本，
+  # 本仓插件包的 dependencies：**已发布包**（settings / ftshare / paper / plot）写 registry 精确版本，
   # 且**不在这里 link**——它们与生产安装走同一份 registry 产物，本地验证才等于用户看到的。
   # 只有**未发布包**才用本仓 git 边（`dsh plugin add` 一条 spec 装全套时 pnpm 顺藤摸瓜），
   # 并在下面用 link 覆盖，否则 dev 会去远端取已推送的提交，看不到本地未推送的改动。
-  # 仓库改名时须同步：此处 2 条 + packages/*/package.json 内的 2 处 `#path:` 地址
-  # （另有 kline 指向上游仓，settings/ftshare/paper 走 registry，不随本仓改名）。
+  # 仓库改名时须同步：此处 0 条 + packages/dsh-fft-bundle/package.json 内的 0 处 `#path:` 地址
+  # （另有 kline 指向上游仓，settings/ftshare/paper/plot 走 registry，不随本仓改名）。
   #
   # settings 与 ftshare 已搬去独立的 dsh-fft-base 仓并从那里发版。**不要再加回 link**：
   # 跨 aisle link 一份别的 workspace 源码，会让那两份 @deepseek-ai/cordis 各成一个模块实例，
   # cordis 的 `interface Context` 增强（如 ftshare 声明的 `ctx.ftshareData`）就打不到消费方
-  # 解析的那一份上，cockpit 的类型检查会直接报 TS2339。要改 base 的代码，在 base 仓改、
+  # 解析的那一份上，消费方（如 dsh-fft-bundle）的类型检查会直接报 TS2339。要改 base 的代码，在 base 仓改、
   # 发版、再把新版本钉到这里。
-  '@ft/dsh-fft-research-cockpit': link:packages/dsh-fft-research-cockpit
-  '@ft/dsh-fft-factor-intake-standard': link:packages/dsh-fft-factor-intake-standard

@@ -59,12 +59,12 @@ WHAT IT CHANGES
 
   The edge list itself lives in scripts/edge-refs.mjs (MANIFESTS); this script
   never guesses which manifests carry edges. Published pins (settings, ftshare,
-  paper) are exact registry versions and are NOT rewritten: publish them first,
+  paper, plot) are exact registry versions and are NOT rewritten: publish them first,
   then pin the new version in the bundle manifest.
 
 EXAMPLES
   node scripts/bump-version.mjs 0.6.1
-  node scripts/bump-version.mjs 0.6.1 --pkg @dsh-ft/dsh-fft-settings=0.4.3 --pkg @ft/dsh-fft-research-cockpit=0.2.3
+  node scripts/bump-version.mjs 0.6.1 --pkg @dsh-ft/dsh-fft-settings=0.4.3 --pkg @dsh-ft/dsh-fft-paper-trading=0.6.4
   node scripts/bump-version.mjs 0.6.1 --ref none --dry-run
 
 NEXT STEPS
