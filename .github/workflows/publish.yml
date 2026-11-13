@@ -1,0 +1,109 @@
+name: publish
+
+# A release is cut by pushing the release tag: this workflow builds and tests the
+# tagged tree, packs the public npm artifact, and publishes it.
+#
+# Authentication is npm trusted publishing over OIDC — no token secret. The
+# repository is public, so provenance is enabled as well: the published tarball
+# is then attested back to this repository and workflow run.
+#
+# Only the public artifact is built here. The intranet tarball needs the extra
+# layer and the two internal packages that this tree does not carry at all, so
+# it is cut locally from the development branch and uploaded there.
+#
+# The artifact comes from `scripts/pack-npm.mjs`, not from `npm pack`: that
+# script rewrites the manifest for publication, inlines the plugins no registry
+# serves (the kline fork), and refuses to produce a tarball that would fail to
+# install in a default profile. `npm publish <tarball>` uploads those exact
+# bytes; it runs no lifecycle script, so the checks in the script are the checks.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to rebuild and publish (e.g. v0.10.0)
+        required: true
+
+concurrency:
+  group: publish-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write   # create the GitHub Release and upload its asset
+  id-token: write   # npm trusted publishing (OIDC)
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref_name }}
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build and test
+        run: pnpm build && pnpm test
+
+      - name: Pack the public artifact
+        id: pack
+        run: |
+          node scripts/pack-npm.mjs
+          TARBALL=$(realpath releases/npm/*.tgz)
+          echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
+          sha256sum "$TARBALL"
+
+      - name: Publish to npm unless the version already exists
+        env:
+          NPM_CONFIG_PROVENANCE: 'true'
+          TARBALL: ${{ steps.pack.outputs.tarball }}
+        run: |
+          NAME=$(node -p "require('./releases/npm/manifest.json').packages[0].name")
+          VERSION=$(node -p "require('./releases/npm/manifest.json').packages[0].version")
+          if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
+            echo "already published $NAME@$VERSION; skipping npm publish"
+          else
+            npm publish "$TARBALL" --access public
+          fi
+
+      - name: Create or refresh the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+          TARBALL: ${{ steps.pack.outputs.tarball }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$TARBALL" --clobber
+          else
+            gh release create "$TAG" --verify-tag --title "$TAG" \
+              --notes "见 [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/$TAG/CHANGELOG.md)。" \
+              "$TARBALL"
+          fi
+
+      - name: Verify the registry has the version
+        run: |
+          NAME=$(node -p "require('./releases/npm/manifest.json').packages[0].name")
+          VERSION=$(node -p "require('./releases/npm/manifest.json').packages[0].version")
+          # npm accepts the publish before the read replicas expose it, so poll
+          # instead of failing the run on that propagation delay.
+          for attempt in $(seq 1 30); do
+            if npm view "$NAME@$VERSION" version dist.tarball; then
+              exit 0
+            fi
+            echo "registry has not exposed $VERSION yet (attempt $attempt); retrying in 10s"
+            sleep 10
+          done
+          echo "version $VERSION never became visible"
+          exit 1
