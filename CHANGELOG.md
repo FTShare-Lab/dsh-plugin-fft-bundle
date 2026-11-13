@@ -4,6 +4,16 @@
 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循
 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [1.0.2] - 2026-11-13
+
+依赖声明改成下界，组件可以独立发版；模拟盘换成不内联 K 线的新版，安装体积随之变小。
+
+### Changed
+
+- 五个已发布组件（settings / ftshare / plot / paper-trading / kline）由精确版本改为**下界** `>=`：
+  组件发新版本后不再需要 bundle 跟版才能被装上
+- 模拟盘跟到 `0.7.2`：它的产物不再内联 K 线，安装时由 registry 解析（单独安装从约 1 MB 降到约 0.4 MB）
+
 ## [1.0.1] - 2026-11-13
 
 K 线改由上游 `0.6.11` 提供，FT 定制构建退场；本次只更新装配与依赖，用户可感知的界面与功能不变。

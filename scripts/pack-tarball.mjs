@@ -72,6 +72,49 @@ export function registryVersionOf(spec) {
   return REGISTRY_SPEC.test(spec) ? spec : undefined
 }
 
+/** A registry lower bound (`>=x.y.z`), the shape the bundle declares now. */
+export const LOWER_BOUND = /^>=\d+\.\d+\.\d+$/u
+
+/**
+ * The version the release actually installs for one dependency, read from the
+ * committed lockfile. Lower bounds resolve through it, so the tarball carries
+ * exactly what the tree was tested with instead of whatever npm serves today.
+ * @param {string} name - package name.
+ * @returns {string|undefined} the locked version, peer suffixes stripped.
+ */
+export function lockedVersion(name) {
+  let lock
+  try { lock = readFileSync(join(repoRoot, 'pnpm-lock.yaml'), 'utf8') } catch { return undefined }
+  const lines = lock.split('\n')
+  const key = `'${name}':`
+  for (let i = 0; i < lines.length; i += 1) {
+    if (lines[i].trim() !== key) continue
+    for (let j = i + 1; j < Math.min(i + 4, lines.length); j += 1) {
+      const m = /^\s+version:\s*(\S+)/u.exec(lines[j])
+      if (m !== null) return m[1].replace(/\(.*$/u, '')
+    }
+  }
+  return undefined
+}
+
+/**
+ * Resolve one dependency spec to the concrete published version: an exact pin
+ * is itself, a lower bound goes through the lockfile.
+ * @param {string} name - package name.
+ * @param {string} spec - the dependency spec.
+ * @returns {string|undefined} the version, or undefined for a git edge.
+ */
+export function resolveRegistryVersion(name, spec) {
+  const exact = registryVersionOf(spec)
+  if (exact !== undefined) return exact
+  if (!LOWER_BOUND.test(spec)) return undefined
+  const locked = lockedVersion(name)
+  if (locked === undefined) {
+    throw new Error(`pack-tarball: ${name}@${spec} has no locked resolution; run pnpm install and commit pnpm-lock.yaml`)
+  }
+  return locked
+}
+
 /**
  * Run git in the repository and return its stdout.
  * @param {string[]} args - git arguments.
@@ -474,7 +517,7 @@ export function externalSource(name, spec, options) {
   // `--kline-dir` names one package; apply it to that edge only, or every other
   // external edge would be filled with the kline payload.
   if (name === KLINE && options.klineDir !== undefined) return options.klineDir
-  const version = registryVersionOf(spec)
+  const version = resolveRegistryVersion(name, spec)
   const localDir = options.pluginDirs?.get(name)
   if (localDir !== undefined) {
     if (version !== undefined) {

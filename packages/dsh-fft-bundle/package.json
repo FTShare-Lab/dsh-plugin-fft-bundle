@@ -1,6 +1,6 @@
 {
   "name": "@dsh-ft/finance-all-in-one",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Composition bundle for the FT financial workbench: installs and wires the dsh-fft plugin set with shared defaults.",
   "license": "MIT",
   "author": "Ben <ben@ft.tech>",

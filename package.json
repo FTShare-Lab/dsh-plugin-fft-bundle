@@ -14,5 +14,6 @@
     "pack:npm": "node scripts/pack-npm.mjs",
     "upload:asset": "node scripts/upload-release-asset.mjs",
     "upload:npm": "node scripts/upload.mjs --npm"
-  }
+  },
+  "packageManager": "pnpm@11.22.0"
 }
