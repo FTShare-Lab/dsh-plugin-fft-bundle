@@ -1,19 +1,26 @@
 # dsh-fft-bundle
 
-非凸金融工作台 DSH 插件集合：共享设置 / FTShare API Key、FTShare 数据面、K 线、模拟交易。
-pnpm workspace 组织，组合包 `@dsh-ft/finance-all-in-one` 是终端用户的安装入口。
+[![npm](https://img.shields.io/npm/v/@dsh-ft/finance-all-in-one)](https://www.npmjs.com/package/@dsh-ft/finance-all-in-one)
+[![license](https://img.shields.io/npm/l/@dsh-ft/finance-all-in-one)](packages/dsh-fft-bundle/LICENSE)
 
-对外变更记录见 [CHANGELOG.md](CHANGELOG.md)。
+一次安装，把 DeepSeek Harness 组装成一座金融工作台：FTShare 数据面、K 线图表、出图技能、A 股 / 商品期货模拟盘。
+
+![金融模式会话：让它把取数结果画成图，图直接出现在回答里；右侧是常驻的 K 线助手](packages/dsh-fft-bundle/assets/screenshots/chat.jpg)
+
+产品页见 [`packages/dsh-fft-bundle/README.md`](packages/dsh-fft-bundle/README.md)（npm 上展示的就是它）；对外变更记录见
+[CHANGELOG.md](CHANGELOG.md)。
+
+本仓是 pnpm workspace：`packages/*` 是各个插件，组合包 `@dsh-ft/finance-all-in-one` 是终端用户的安装入口。
 
 ## 两条产物线的区别
 
+| | 公共 npm（对外） | 自包含 tarball（本地） |
 | --- | --- | --- |
 | 安装方式 | `dsh plugin add @dsh-ft/finance-all-in-one` | 下载 `.tgz`，插件管理器贴绝对路径 |
 | 依赖来源 | npm registry 解析 | 产物内已内联全部子插件 |
 | 前置 | 能访问 npm | 无（免 ssh） |
 
 两条线是同一个包、同一份清单、同一份公共 patch，**差异只有 `dsh.bundle.patch` 多一个文件**。
-方案与取舍见 `docs/specs/distribution/npm-channel.md`。
 
 ## 使用方式
 
