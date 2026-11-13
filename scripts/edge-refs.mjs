@@ -14,7 +14,7 @@
  *     installed from `dev` any more — development is verified with the local
  *     workspace `link:` overrides or a packed tarball — so there is no `#dev`
  *     state to flip back to.
- *   * exact registry versions for the published packages (settings, ftshare,
+ *   * registry lower bounds for the published packages (settings, ftshare, plot,
  *     paper, plot). They are release artifacts, consumed by version, not by commit.
  *   * an edge into another repository (kline). It has its own release line and
  *     always pins one of *its* release tags.
@@ -52,23 +52,28 @@ const EDGE_TEXT = /(git\+ssh:\/\/[^"']*(?:FTShare-Lab\/dsh-plugin-fft-bundle|FTS
 /** A release tag as the release flow writes it. */
 const RELEASE_TAG = /^v\d+\.\d+\.\d+(?:[-+].*)?$/u
 
-/** An exact registry version; anything else (a git spec, a range, a file path) is refused. */
-const EXACT_VERSION = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/u
+/**
+ * A registry lower bound (`>=x.y.z`). An exact pin would freeze the bundle to
+ * one component build, and a caret/tilde would drop the promise that the pair
+ * was tested together; the lower bound is what the release notes state.
+ */
+export const LOWER_BOUND = /^>=\d+\.\d+\.\d+$/u
 
 /**
- * Dependencies published to the registry. The bundle consumes them by exact
- * version: they are release artifacts, and packing needs the built copy from
- * the registry (their git trees do not carry `lib/`).
+ * Dependencies published to the registry. The bundle consumes them by a lower
+ * bound: they are release artifacts, and packing needs the built copy from the
+ * registry (their git trees do not carry `lib/`).
  */
 export const REGISTRY_PINS = [
   { manifestPath: 'packages/dsh-fft-bundle/package.json', name: '@dsh-ft/dsh-fft-settings' },
   { manifestPath: 'packages/dsh-fft-bundle/package.json', name: '@dsh-ft/dsh-fft-ftshare' },
+  { manifestPath: 'packages/dsh-fft-bundle/package.json', name: '@dsh-ft/dsh-fft-plot' },
   { manifestPath: 'packages/dsh-fft-bundle/package.json', name: '@dsh-ft/dsh-fft-paper-trading' },
   { manifestPath: 'packages/dsh-fft-bundle/package.json', name: '@ftshare-lab/dsh-kline' },
 ]
 
 /**
- * Every published package's pin, read from its manifest. A missing declaration
+ * Every published package's declaration, read from its manifest. A missing declaration
  * is reported with an empty spec so `check` fails instead of silently passing.
  * @returns {Array<{ name: string, spec: string, manifestPath: string }>} the pins.
  */
@@ -162,10 +167,10 @@ export function check() {
   const edges = readEdges()
   const pins = readRegistryPins()
 
-  const unpinned = pins.filter(pin => !EXACT_VERSION.test(pin.spec))
+  const unpinned = pins.filter(pin => !LOWER_BOUND.test(pin.spec))
   if (unpinned.length > 0) {
     console.error(
-      'edge-refs: published packages are consumed by an exact registry version, never a git spec or a range:\n'
+      'edge-refs: published packages must be declared as a registry lower bound (>=x.y.z), not a git spec, an exact pin or a caret range:\n'
       + unpinned.map(pin => `  ${pin.manifestPath}: ${pin.name} -> ${pin.spec || '(not declared)'}`).join('\n')
       + '\n  Publish the package first, then pin X.Y.Z in the bundle manifest (pack-tarball inlines the built copy).',
     )
@@ -204,7 +209,7 @@ export function check() {
 
   console.log(
     `edge-refs: ${edges.length} edges carry #${ref || '(no ref)'}`
-    + `; ${pins.length} published packages pinned to exact versions`,
+    + `; ${pins.length} published packages on a lower bound`,
   )
 }
 
@@ -228,4 +233,4 @@ if (invokedDirectly) {
   }
 }
 
-export { EXACT_VERSION, RELEASE_TAG }
+export { RELEASE_TAG }

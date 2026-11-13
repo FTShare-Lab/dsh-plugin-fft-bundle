@@ -12,7 +12,7 @@
  * prints what it is about to change.
  *
  * It does not touch the published pins (settings, ftshare, paper): those are
- * exact registry versions, published first and then written into the bundle
+ * registry lower bounds, published first and then written into the bundle
  * manifest by hand (see `docs/specs/distribution/design.md` §3).
  *
  * Usage: `node scripts/bump-version.mjs --help`.
@@ -59,7 +59,7 @@ WHAT IT CHANGES
 
   The edge list itself lives in scripts/edge-refs.mjs (MANIFESTS); this script
   never guesses which manifests carry edges. Published pins (settings, ftshare,
-  paper, plot) are exact registry versions and are NOT rewritten: publish them first,
+  paper, plot) are registry lower bounds and are NOT rewritten: publish them first,
   then pin the new version in the bundle manifest.
 
 EXAMPLES

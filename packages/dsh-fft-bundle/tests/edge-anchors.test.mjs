@@ -6,9 +6,10 @@
  *     carry one shared ref — the previous release's tag on the development line,
  *     this release's own tag on the release commit, nothing on the single-branch
  *     public remote;
- *   * published packages (settings, ftshare, paper and kline) are consumed by an
- *     **exact registry version** — a git spec would install a tree without
- *     `lib/`, and a range would drift away from the version the tarball inlines.
+ *   * published packages (settings, ftshare, plot, paper and kline) are consumed
+ *     by a **registry lower bound** (`>=x.y.z`) — a git spec would install a tree
+ *     without `lib/`, and an exact pin would freeze every component upgrade into
+ *     a bundle release.
  *     Kline used to travel as a fork edge; upstream v0.6.11 publishes the FT host
  *     contract, so the fork is retired.
  *
@@ -88,13 +89,13 @@ describe('dependency edges into this repository', () => {
 })
 
 describe('published packages', () => {
-  it('are consumed by exact registry version', () => {
+  it('are consumed by a registry lower bound', () => {
     assert.equal(pins.length, REGISTRY_PINS.length, 'every published pin must be declared in its manifest')
     for (const pin of pins) {
       assert.match(
         pin.spec,
-        /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/u,
-        `${pin.manifestPath}: ${pin.name} must be an exact version, found: ${pin.spec || '(not declared)'}`,
+        /^>=\d+\.\d+\.\d+$/u,
+        `${pin.manifestPath}: ${pin.name} must be a lower bound (>=x.y.z), found: ${pin.spec || '(not declared)'}`,
       )
     }
   })
