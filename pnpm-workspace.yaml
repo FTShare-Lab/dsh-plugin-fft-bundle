@@ -33,6 +33,9 @@ minimumReleaseAgeExclude:
   - '@dsh-ft/dsh-fft-paper-trading@0.6.2'
   - '@dsh-ft/dsh-fft-paper-trading@0.6.3'
   - '@dsh-ft/dsh-fft-settings@0.5.1'
+  - '@dsh-ft/dsh-fft-settings@0.6.0'
+  - '@dsh-ft/dsh-fft-ftshare@0.4.1'
+  - '@dsh-ft/dsh-fft-plot@0.1.0'
 overrides:
   # 宿主闭包：钉到 thirdparty/deepseek-harness 那一版（0.2.1-rc.2；dsh-invariants
   # 没有该版本，冻结在 0.2.0-rc.2）。新增宿主 peer 若未钉版本，会解析到 npm 最新版，
@@ -52,6 +55,7 @@ overrides:
   '@deepseek-ai/dsh-chunked-list': 0.2.1-rc.2
   '@deepseek-ai/dsh-client-locale': 0.2.1-rc.2
   '@deepseek-ai/dsh-client-ui-conversation': 0.2.1-rc.2
+  '@deepseek-ai/dsh-client-ui-layout': 0.2.1-rc.2
   '@deepseek-ai/dsh-client-ui-primitives': 0.2.1-rc.2
   '@deepseek-ai/dsh-client-ui-settings': 0.2.1-rc.2
   '@deepseek-ai/dsh-client-ui-slots': 0.2.1-rc.2
