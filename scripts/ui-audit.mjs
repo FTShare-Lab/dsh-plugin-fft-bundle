@@ -29,11 +29,13 @@ const HOST_STYLES = process.env.DSH_HARNESS_ROOT
 const SKIP_DIRS = new Set(['node_modules', 'lib', 'tmp', 'docs', 'tests', 'scripts', 'resources'])
 /** Vendored payloads are upstream's to style; the brand guard covers what we consume. */
 const VENDOR = new Set(['dsh-ami-bundle'])
-/** Files that render documents rather than plugin chrome. */
-const SKIP_FILES = new Set([
-  // The report HTML generator belongs to the report document, not to the dialog.
-  'dsh-fft-research-cockpit/src/html-renderer.ts',
-])
+/**
+ * Files that render documents the plugin does not own the chrome of, listed by
+ * package-relative path. Empty today: every package that shipped such a
+ * generator was retired from this bundle, and the remaining packages style the
+ * plugin chrome this guard exists for.
+ */
+const SKIP_FILES = new Set()
 const EXTENSIONS = new Set(['.js', '.ts', '.tsx', '.css'])
 
 /** The token names the host base palette actually declares. */

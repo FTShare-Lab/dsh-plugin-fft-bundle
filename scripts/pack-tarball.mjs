@@ -29,6 +29,7 @@ import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statS
 import { createHash } from 'node:crypto'
 import { homedir } from 'node:os'
 import { basename, dirname, join, resolve, sep } from 'node:path'
+import { createRequire } from 'node:module'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { pathOf, refOf } from './edge-refs.mjs'
 
@@ -40,6 +41,18 @@ const BUNDLE_DIR = 'packages/dsh-fft-bundle'
 
 /** The third-party plugin `--kline-dir` substitutes. */
 const KLINE = '@ftshare-lab/dsh-kline'
+
+/**
+ * Patch files appended only by this artifact.
+ *
+ * The public npm package declares just `./cordis.patch.yml`; the internal
+ * tarball must also carry the SSO and  rows, and the host applies an ordered
+ * patch list natively. Rewriting the declared list here — rather than shipping a
+ * second bundle package — keeps the internal channel at one bundle and one
+ * profile layer, which is what the host can actually resolve: bundle layers are
+ * registered from the profile's *direct* dependencies only.
+ */
+export const INTRANET_PATCHES = ['./cordis.intranet.patch.yml']
 
 /** Where the tarball lands when `--out` is not given. */
 const DEFAULT_OUT = 'releases/gitlab'
@@ -220,6 +233,44 @@ function copyPackage(packageDir, destDir, manifest) {
     cpSync(join(packageDir, path), target)
   }
   return files.length
+}
+
+/**
+ * Package names one patch file inserts, including rows of groups.
+ *
+ * Only the fields this script needs are read: a row's `name`, and the `config`
+ * array of a `group` row. The internal patch file is written by this repository,
+ * so it uses neither `!!js` scalars on `name` nor a name the host resolves
+ * dynamically — a row naming anything else fails the pack instead of shipping a
+ * payload whose plugin was never inlined.
+ * @param {string} file - absolute patch file path.
+ * @returns {string[]} the package names, in file order.
+ */
+function packageNamesIn(file) {
+  // `js-yaml` is a devDependency of the bundle package, not of this repository
+  // root: resolve it from there so the script runs without a root-level install.
+  const yaml = createRequire(join(repoRoot, BUNDLE_DIR, 'package.json'))('js-yaml')
+  const names = []
+  const visit = (rows) => {
+    for (const row of rows) {
+      if (Array.isArray(row?.config) && row.group === true) visit(row.config)
+      if (typeof row?.name !== 'string') continue
+      const name = row.name.startsWith('@') ? row.name.split('/').slice(0, 2).join('/') : row.name.split('/')[0]
+      if (!name.startsWith('.')) names.push(name)
+    }
+  }
+  // `!!js` scalars are the host's own extension; keep them as opaque nodes so a
+  // file carrying them still parses. Only `name` and `group`/`config` are read.
+  const js = new yaml.Type('tag:yaml.org,2002:js', {
+    kind: 'scalar',
+    resolve: value => typeof value === 'string',
+    construct: String,
+  })
+  const patches = yaml.load(readFileSync(file, 'utf8'), { schema: yaml.DEFAULT_SCHEMA.extend([js]) })
+  for (const patch of Array.isArray(patches) ? patches : [patches]) {
+    if (Array.isArray(patch?.insert)) visit(patch.insert)
+  }
+  return names
 }
 
 /**
@@ -419,7 +470,7 @@ function directoryName(name) {
  * @param {{klineDir?: string, pluginDirs?: Map<string, string>, cache: string}} options - the run's sources.
  * @returns {string} the absolute directory holding the package.
  */
-function externalSource(name, spec, options) {
+export function externalSource(name, spec, options) {
   // `--kline-dir` names one package; apply it to that edge only, or every other
   // external edge would be filled with the kline payload.
   if (name === KLINE && options.klineDir !== undefined) return options.klineDir
@@ -555,13 +606,58 @@ export function packTarball(options = {}) {
       bundled.push({ name, manifest, source })
     }
   }
+  // The intranet rows travel as a second patch file of this same bundle, so the
+  // dependencies they name have to be inlined like every other plugin: the
+  // internal file must install without reaching a git host.
+  const intranet = []
+  for (const patch of INTRANET_PATCHES) {
+    const file = join(extractionRoot, BUNDLE_DIR, patch)
+    if (!existsSync(file)) throw new Error(`${patch} is missing from ${ref}; the internal artifact cannot build without it`)
+    for (const name of packageNamesIn(file)) {
+      // Host packages are supplied by the DSH installation and carry no edge here.
+      if (name.startsWith('@deepseek-ai/') || name.startsWith('cordis')) continue
+      if (intranet.some(entry => entry.startsWith(`${name}@`))) continue
+      const spec = bundle.dependencies?.[name]
+      const staged = spec === undefined ? undefined : (() => {
+        try {
+          return join(extractionRoot, pathOf(spec))
+        } catch {
+          return undefined
+        }
+      })()
+      if (staged !== undefined && existsSync(join(staged, 'package.json'))) {
+        const manifest = JSON.parse(readFileSync(join(staged, 'package.json'), 'utf8'))
+        if (!bundled.some(plugin => plugin.name === name)) bundled.push({ name, manifest, source: staged })
+        intranet.push(`${name}@${manifest.version}`)
+        continue
+      }
+      // A published dependency is already inlined by the loop above.
+      if (bundled.some(plugin => plugin.name === name)) {
+        intranet.push(`${name}@${bundled.find(plugin => plugin.name === name).manifest.version}`)
+        continue
+      }
+      throw new Error(`${patch} inserts ${name}, which this bundle neither depends on nor ships`)
+    }
+  }
   assertBundledRanges(bundled)
   const manifest = rewriteManifest(bundle, bundled)
+  // The declared patch list is what selects the layer, and this artifact is the
+  // only one that appends the intranet file. It also marks the artifact so a
+  // reader can tell the two channels apart without reading the payload.
+  manifest.dsh = { ...manifest.dsh, bundle: { ...manifest.dsh.bundle, patch: [bundle.dsh.bundle.patch, ...INTRANET_PATCHES] } }
+  manifest.intranet = { patches: INTRANET_PATCHES }
+  // `pnpm pack` filters through `files`, so naming the patch in the manifest is
+  // not enough: the artifact must also list it there.
+  manifest.files = [...(manifest.files ?? []), ...INTRANET_PATCHES.map(patch => patch.replace(/^\.\//u, ''))]
   const payload = join(staging, 'package')
   rmSync(payload, { recursive: true, force: true })
   mkdirSync(payload, { recursive: true })
   const bundleDir = join(extractionRoot, BUNDLE_DIR)
-  for (const path of shippedFiles(bundleDir, bundle)) {
+  // The intranet patch files are the one thing this artifact ships beyond the
+  // package's own `files` list: they are deliberately excluded from a public
+  // publish, so only this writer can put them in.
+  const shipped = new Set([...shippedFiles(bundleDir, bundle), ...INTRANET_PATCHES.map(patch => patch.replace(/^\.\//u, ''))])
+  for (const path of shipped) {
     mkdirSync(dirname(join(payload, path)), { recursive: true })
     cpSync(join(bundleDir, path), join(payload, path))
   }
@@ -573,8 +669,53 @@ export function packTarball(options = {}) {
     files += copyPackage(plugin.source, dest, plugin.manifest)
   }
   const tarball = pack(staging, out, manifest)
+  assertDeclaredPatches(tarball, manifest)
   if (options.keepStaging !== true) rmSync(staging, { recursive: true, force: true })
-  return { tarball, manifest, bundled: bundled.map(plugin => `${plugin.name}@${plugin.manifest.version}`), bytes: statSync(tarball).size, files, ref }
+  return { tarball, manifest, bundled: bundled.map(plugin => `${plugin.name}@${plugin.manifest.version}`), intranet, bytes: statSync(tarball).size, files, ref }
+}
+
+/**
+ * Packages the intranet layer mounts, read from the layer itself.
+ *
+ * The layer file is dev-only: the public branch carries neither it nor any of
+ * these names, and a literal list in a shared script would fail that branch's
+ * no-internal-names gate. Names are therefore read, never written down here.
+ * @param {string} [root] - repository root, for tests and callers outside this module.
+ * @returns {string[]} plugin package names the layer inserts (host packages excluded).
+ */
+export function intranetPackageNames(root = repoRoot) {
+  const names = []
+  for (const patch of INTRANET_PATCHES) {
+    const file = join(root, BUNDLE_DIR, patch)
+    if (!existsSync(file)) continue
+    for (const name of packageNamesIn(file)) {
+      if (name.startsWith('@deepseek-ai/') || name.startsWith('cordis')) continue
+      if (!names.includes(name)) names.push(name)
+    }
+  }
+  return names
+}
+
+/**
+ * Refuse an artifact whose declared patch files are not inside it.
+ *
+ * `dsh.bundle.patch` is what the profile composer reads; a manifest naming a file
+ * the tarball does not carry fails at install with ENOENT and no other symptom,
+ * which is exactly how the intranet layer was silently dropped once.
+ * @param {string} tarball - the packed artifact.
+ * @param {object} manifest - the manifest written into it.
+ */
+function assertDeclaredPatches(tarball, manifest) {
+  const declared = manifest.dsh?.bundle?.patch
+  const patches = Array.isArray(declared) ? declared : declared === undefined ? [] : [declared]
+  if (patches.length === 0) return
+  const listed = spawnSync('tar', ['-tzf', tarball], { encoding: 'utf8' })
+  if (listed.status !== 0) throw new Error(`cannot list ${tarball}`)
+  const entries = new Set(listed.stdout.split('\n').map(line => line.replace(/^package\//u, '')))
+  for (const patch of patches) {
+    const path = patch.replace(/^\.\//u, '')
+    if (!entries.has(path)) throw new Error(`${manifest.name}: declares patch ${patch} but the artifact does not carry it`)
+  }
 }
 
 /** What every flag does; `--help` prints exactly this. */
@@ -692,6 +833,7 @@ pack-tarball: ${result.ref} -> ${result.tarball}
   ${size} MB, ${result.files} payload files, sha256 ${digest}
   bundle @ft/dsh-fft-bundle@${result.manifest.version}, inlined:
 ${result.bundled.map(plugin => `    ${plugin}`).join('\n')}
+  second layer (intranet only, public artifacts must not have it): ${result.intranet.join(', ') || '(none)'}
   still from the registry: ${registry.join(', ') || '(none)'}
 
 Install it (the desktop profile is owned by the app, so quit the app first for the CLI path):
@@ -701,7 +843,7 @@ Install it (the desktop profile is owned by the app, so quit the app first for t
 
 Publish it:
   GitLab (internal)  node scripts/upload-release-asset.mjs ${result.tarball} --version ${result.manifest.version} --release v${result.manifest.version}
-  GitHub (public)    gh release create <tag> --repo gigaflw/dsh-fft-bundle <this file>
+  GitHub (public)    gh release create <tag> --repo FTShare-Lab/dsh-plugin-fft-bundle <this file>
 `)
 }
 

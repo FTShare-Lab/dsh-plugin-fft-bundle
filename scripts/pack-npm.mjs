@@ -32,6 +32,8 @@ import { createHash } from 'node:crypto'
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { externalSource, intranetPackageNames } from './pack-tarball.mjs'
+import { pruneStaged } from './pack-prune.mjs'
 
 /** Repository root, resolved from this script's location. */
 export const repoRoot = resolve(fileURLToPath(new URL('..', import.meta.url)))
@@ -40,6 +42,35 @@ const PACKAGES_DIR = join(repoRoot, 'packages')
 const DEFAULT_OUT = join(repoRoot, 'releases', 'npm')
 const STAGING_ROOT = join(repoRoot, 'tmp', 'npm')
 const GIT = 'git'
+
+/** The third-party plugin a published package inlines rather than declares. */
+const KLINE = '@ftshare-lab/dsh-kline'
+
+/**
+ * Edges a published package must never carry: their packages exist only inside
+ * this repository, so a registry consumer could not resolve them. Their rows
+ * live in the intranet layer, which `files` keeps out of the artifact. Read from
+ * that layer rather than listed here — the public branch must contain neither
+ * the names nor the file.
+ */
+const INTRANET_EDGES = intranetPackageNames()
+
+/** Exotic edges that are carried inside the artifact instead of declared. */
+const INLINE_EXOTIC = new Set([KLINE])
+
+/**
+ * Workspace packages carried inside the artifact rather than resolved from a
+ * registry. These serve the composition bundle alone and are not published on
+ * their own, so a registry consumer has no name to resolve; publishing them
+ * would make them independently installable products, which they are not.
+ *
+ * Empty on purpose: every workspace package this entry consumed is gone from
+ * its manifest (the remaining plugins come from a registry or carry their own
+ * payload), so nothing is staged under `node_modules` beyond the exotic ones.
+ * A new in-repo plugin goes here only if it is meant to ship inside this
+ * artifact without a registry name of its own.
+ */
+const INLINE_WORKSPACE = new Set()
 
 /** Fields a published manifest keeps; everything else is repository-only. */
 const PUBLISHED_FIELDS = [
@@ -77,18 +108,26 @@ const NEVER_COPY = new Set(['node_modules', '.git', '__pycache__', '.DS_Store', 
  * Packages published to npm from this repository, in publish order (a package
  * must be published before anything that depends on it from the registry).
  *
- * Empty on purpose: the two packages that used to be published from here —
- * settings and ftshare — live in the standalone `dsh-fft-base` repository and
- * are published from its own release tag. This repository still consumes them,
- * by exact registry version, but no longer publishes anything: the composition
- * bundle ships as an internal tarball / git edge, not as an npm package.
+ * Settings and ftshare are not here: they live in the standalone `dsh-fft-base`
+ * repository and are published from its own release tag. This repository
+ * consumes them by exact registry version.
  *
- * Every consumer of this list tolerates the empty case; `pnpm pack:npm` says so
- * explicitly instead of silently packing nothing.
+ * `dropDependencies` names the edges the public channel must not carry. The SSO
+ * and the internal collaboration plugin are intranet-only: their rows live in
+ * `cordis.intranet.patch.yml`, which `files` keeps out of this tarball, and
+ * their git edges would make a registry install fail outright. The internal
+ * tarball keeps both, because `pack-tarball.mjs` inlines them from this tree.
  *
  * @type {{dir: string, dropDependencies?: string[]}[]}
  */
-export const PUBLISH_TARGETS = []
+export const PUBLISH_TARGETS = [
+  {
+    dir: 'packages/dsh-fft-bundle',
+    dropDependencies: INTRANET_EDGES,
+    inlineDependencies: [...INLINE_EXOTIC],
+    inlineWorkspace: [...INLINE_WORKSPACE],
+  },
+]
 
 /**
  * Read every package manifest of the workspace.
@@ -133,11 +172,27 @@ export function publishManifest(manifest, { workspace, dropDependencies = [] }) 
     if (dropDependencies.includes(name)) continue
     const dependency = workspace.get(name)
     if (dependency !== undefined) {
+      // A workspace package that is not published on its own travels inside the
+      // artifact instead of asking a consumer to resolve a name no registry has.
+      if (INLINE_WORKSPACE.has(name)) {
+        dependencies[name] = dependency.manifest.version
+        continue
+      }
       dependencies[name] = `^${dependency.manifest.version}`
       continue
     }
+    // A third-party git edge is kept as-is for now and turned into a bundled
+    // dependency by `inlineExotic`, which copies the payload into the artifact.
+    // Nothing else may stay exotic: such a spec fails in a default profile.
     if (EXOTIC_SPEC.test(spec) || spec.includes('&path:')) {
-      throw new Error(`${manifest.name}: dependency ${name}@${spec} is not registry-resolvable; add it to dropDependencies or publish it first`)
+      if (!name.startsWith('@') || workspace.has(name)) {
+        throw new Error(`${manifest.name}: dependency ${name}@${spec} is not registry-resolvable; add it to dropDependencies or publish it first`)
+      }
+      if (!INLINE_EXOTIC.has(name)) {
+        throw new Error(`${manifest.name}: dependency ${name}@${spec} is not registry-resolvable and not in the inline list; publish it or drop it`)
+      }
+      dependencies[name] = spec
+      continue
     }
     dependencies[name] = spec
   }
@@ -188,6 +243,33 @@ function expandFilesEntry(packageDir, entry) {
  * @param {string} stagingDir - Destination package directory.
  * @returns {string[]} Copied paths relative to the package root.
  */
+/**
+ * Every file one package's `files` field ships, excluding `package.json`.
+ * @param {string} dir - absolute package directory.
+ * @param {object} manifest - the package manifest.
+ * @returns {string[]} `/`-joined relative paths.
+ */
+function shippedPaths(dir, manifest) {
+  return (manifest.files ?? []).flatMap(entry => entry === 'package.json' ? [] : expandFilesEntry(dir, entry))
+}
+
+/**
+ * Copy one package's shipped files into a destination directory.
+ * @param {string} from - absolute source package directory.
+ * @param {string} to - absolute destination directory.
+ * @param {object} manifest - the source manifest whose `files` field selects.
+ */
+function copyPackageFiles(from, to, manifest) {
+  for (const path of shippedPaths(from, manifest)) {
+    const source = join(from, path)
+    if (!existsSync(source)) throw new Error(`${manifest.name}: files entry "${path}" does not exist`)
+    const destination = join(to, path)
+    mkdirSync(dirname(destination), { recursive: true })
+    cpSync(source, destination, { recursive: true, filter: file => !NEVER_COPY.has(basename(file)) && !basename(file).endsWith('.pyc') })
+  }
+  writeFileSync(join(to, 'package.json'), `${JSON.stringify(manifest, null, 2)}\n`)
+}
+
 function stageFiles(target, stagingDir) {
   const copied = []
   for (const [index, entry] of (target.manifest.files ?? []).entries()) {
@@ -253,6 +335,80 @@ function verifyTarball(tarball, published, target) {
 }
 
 /**
+ * The top-level paths a tarball carries, for the run summary.
+ * @param {string} tarball - absolute path to a `.tgz`.
+ * @returns {string[]} sorted `package/`-relative entries.
+ */
+function listTarball(tarball) {
+  const listed = spawnSync('tar', ['-tzf', tarball], { encoding: 'utf8' })
+  if (listed.status !== 0) throw new Error(`cannot list ${tarball}`)
+  return listed.stdout.split('\n')
+    .map(line => line.replace(/^package\//u, '').replace(/\/$/u, ''))
+    .filter(Boolean)
+    .sort()
+}
+
+/**
+ * Copy the exotic-spec dependencies into the package and declare them bundled.
+ *
+ * pnpm filters a git-spec `bundledDependencies` entry and never resolves it, so
+ * the copy has to happen here rather than through the dependency resolution. The
+ * declared range becomes a lower bound on the inlined version: this package
+ * names kline's rows but never calls its API, so any build at or above the one it
+ * was tested with works, and an exact pin would force a republish per kline
+ * upgrade.
+ * @param {object} published - Manifest already rewritten for publishing.
+ * @param {string} stagingDir - Directory the package is assembled in.
+ * @param {string[]} files - Staged file list to extend.
+ * @returns {{manifest: object}} the manifest to write into the staging directory.
+ */
+function inlineExotic(published, stagingDir, files, workspace = readWorkspace()) {
+  const specs = Object.entries(published.dependencies ?? {})
+    .filter(([name, spec]) => EXOTIC_SPEC.test(spec) || INLINE_WORKSPACE.has(name))
+  if (specs.length === 0) return { manifest: published }
+  const dependencies = { ...published.dependencies }
+  const bundled = [...(published.bundledDependencies ?? [])]
+  for (const [name, spec] of specs) {
+    const local = workspace.get(name)
+    if (local !== undefined && INLINE_WORKSPACE.has(name)) {
+      // Ship what the package's own `main` points at. A TypeScript package must
+      // be built first; a plain-source package (its `main` already lives under
+      // `src/`) needs nothing. Shipping an unbuilt TS tree would install a
+      // package whose entry point does not exist.
+      const entry = local.manifest.main
+      if (entry !== undefined && !existsSync(join(local.dir, entry))) {
+        throw new Error(`${name}: ${entry} is missing; run pnpm build before packing the npm artifact`)
+      }
+      const dest = join(stagingDir, 'node_modules', ...name.split('/'))
+      copyPackageFiles(local.dir, dest, local.manifest)
+      const pruned = pruneStaged(name, dest)
+      for (const rule of pruned.unmatched) {
+        console.warn(`pack-npm: prune rule ${JSON.stringify(rule)} of ${name} matched nothing; the payload may have changed shape`)
+      }
+      files.push(...shippedPaths(local.dir, local.manifest).map(path => join('node_modules', name, path)))
+      dependencies[name] = local.manifest.version
+      if (!bundled.includes(name)) bundled.push(name)
+      continue
+    }
+    const source = externalSource(name, spec, { cache: join(repoRoot, 'tmp', 'standalone', '.cache') })
+    const inlineManifest = JSON.parse(readFileSync(join(source, 'package.json'), 'utf8'))
+    const dest = join(stagingDir, 'node_modules', ...name.split('/'))
+    copyPackageFiles(source, dest, inlineManifest)
+    // The archive carries store screenshots and build inputs no installed code
+    // reads; keeping them would roughly double the artifact for nothing.
+    const pruned = pruneStaged(name, dest)
+    for (const rule of pruned.unmatched) {
+      console.warn(`pack-npm: prune rule ${JSON.stringify(rule)} of ${name} matched nothing; the payload may have changed shape`)
+    }
+    // Report what actually shipped: the prune below removes part of it.
+    files.push(...shippedPaths(source, inlineManifest).map(path => join('node_modules', name, path)))
+    dependencies[name] = `>=${inlineManifest.version}`
+    bundled.push(name)
+  }
+  return { manifest: { ...published, dependencies, bundledDependencies: bundled } }
+}
+
+/**
  * Stage one package and (unless dry-run) pack it.
  *
  * @param {{dir: string, dropDependencies?: string[]}} target - Package to pack.
@@ -268,14 +424,22 @@ export function packPackage(target, workspace, { outDir, dryRun, head }) {
   mkdirSync(stagingDir, { recursive: true })
 
   const files = stageFiles({ dir: join(repoRoot, target.dir), manifest }, stagingDir)
-  writeFileSync(join(stagingDir, 'package.json'), `${JSON.stringify(published, null, 2)}\n`)
+  // A third-party plugin that no registry serves travels inside the package, the
+  // way `@dsh-ft/dsh-fft-paper-trading` carries its own kline: copy it under
+  // `node_modules` and name it in `bundledDependencies`. `npm pack` then ships
+  // the directory, and a consumer resolves the patch row against it.
+  const inlined = inlineExotic(published, stagingDir, files, workspace)
+  writeFileSync(join(stagingDir, 'package.json'), `${JSON.stringify(inlined.manifest, null, 2)}\n`)
   files.push('package.json')
+  Object.assign(published, inlined.manifest)
 
   const summary = {
     name: published.name,
     version: published.version,
     dir: target.dir,
     dependencies: published.dependencies ?? {},
+    // A dry run reports the staged set, pruned files included, because nothing
+    // is packed yet; a real run replaces it with the tarball's own listing.
     files: files.sort(),
     head,
   }
@@ -288,6 +452,7 @@ export function packPackage(target, workspace, { outDir, dryRun, head }) {
   verifyTarball(tarball, published, { name: published.name, version: published.version })
   return {
     ...summary,
+    files: listTarball(tarball),
     tarball: relative(repoRoot, tarball),
     sha256: sha256(tarball),
     bytes: statSync(tarball).size,

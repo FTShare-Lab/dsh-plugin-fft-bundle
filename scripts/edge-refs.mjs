@@ -6,7 +6,7 @@
  * Three kinds of dependency edge exist in the composition bundle:
  *
  *   * edges into this repository for packages that are **not published**
- *     (factor-intake, cockpit, sso, ami). pnpm resolves each edge on its own and
+ *     (sso, ami). pnpm resolves each edge on its own and
  *     never inherits the ref of the spec that pulled the bundle in, so every
  *     such edge carries the same ref: the previous release's tag on the
  *     development line, and this release's own tag (a tag a commit may
@@ -15,7 +15,7 @@
  *     workspace `link:` overrides or a packed tarball — so there is no `#dev`
  *     state to flip back to.
  *   * exact registry versions for the published packages (settings, ftshare,
- *     paper). They are release artifacts, consumed by version, not by commit.
+ *     paper, plot). They are release artifacts, consumed by version, not by commit.
  *   * an edge into another repository (kline). It has its own release line and
  *     always pins one of *its* release tags.
  *
@@ -33,8 +33,10 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 /** Repository root, resolved from this script's location. */
 export const repoRoot = resolve(fileURLToPath(new URL('..', import.meta.url)))
 
-/** Specs naming either remote of this repository are edges into this repo. */
-export const OWN_REPO = /(?:github\.com\/FTShare-Lab\/dsh-plugin-fft-bundle|github\.com\/gigaflw\/dsh-fft-bundle)\.git#/u
+/** Specs naming a remote of this repository are edges into this repo: the
+ * development remote, and the public remote it moved to (the old personal
+ * repository is still recognized so an un-migrated edge reads as ours). */
+export const OWN_REPO = /(?:github\.com\/FTShare-Lab\/dsh-plugin-fft-bundle|github\.com\/FTShare-Lab\/dsh-plugin-fft-bundle|github\.com\/gigaflw\/dsh-fft-bundle)\.git#/u
 
 /**
  * Manifests that carry an edge back into this repository. Only the composition
@@ -45,7 +47,7 @@ export const MANIFESTS = [
 ]
 
 /** The raw text shape of one edge, capturing everything before its committish. */
-const EDGE_TEXT = /(git\+ssh:\/\/[^"']*(?:FTShare-Lab\/dsh-plugin-fft-bundle|github\.com\/gigaflw\/dsh-fft-bundle)\.git)#(?:[^"'&]*&)?path:/gu
+const EDGE_TEXT = /(git\+ssh:\/\/[^"']*(?:FTShare-Lab\/dsh-plugin-fft-bundle|FTShare-Lab\/dsh-plugin-fft-bundle|github\.com\/gigaflw\/dsh-fft-bundle)\.git)#(?:[^"'&]*&)?path:/gu
 
 /** A release tag as the release flow writes it. */
 const RELEASE_TAG = /^v\d+\.\d+\.\d+(?:[-+].*)?$/u
