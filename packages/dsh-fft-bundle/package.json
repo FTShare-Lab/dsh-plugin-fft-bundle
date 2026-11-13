@@ -59,7 +59,7 @@
     "@dsh-ft/dsh-fft-ftshare": "0.4.1",
     "@dsh-ft/dsh-fft-plot": "0.1.0",
     "@dsh-ft/dsh-fft-paper-trading": "0.6.3",
-    "@ftshare-lab/dsh-kline": "git+ssh://git@github.com/gigaflw/dsh_kline.git#v0.6.7-ft.1"
+    "@ftshare-lab/dsh-kline": "git+ssh://git@github.com:gigaflw/dsh_kline.git#v0.6.10-ft.1"
   },
   "engines": {
     "node": ">=22.19.0"
