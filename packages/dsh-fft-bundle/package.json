@@ -1,5 +1,5 @@
 {
-  "name": "@dsh-ft/dsh-fft-finance-toolkit",
+  "name": "@dsh-ft/finance-all-in-one",
   "version": "0.9.3",
   "description": "Composition bundle for the FT financial workbench: installs and wires the dsh-fft plugin set with shared defaults.",
   "license": "MIT",
@@ -55,11 +55,11 @@
     "test": "node --test tests/*.test.mjs"
   },
   "dependencies": {
-    "@dsh-ft/dsh-fft-settings": "0.5.1",
-    "@dsh-ft/dsh-fft-ftshare": "0.4.1",
+    "@dsh-ft/dsh-fft-settings": "0.7.0",
+    "@dsh-ft/dsh-fft-ftshare": "0.4.2",
     "@dsh-ft/dsh-fft-plot": "0.1.0",
-    "@dsh-ft/dsh-fft-paper-trading": "0.6.3",
-    "@ftshare-lab/dsh-kline": "git+ssh://git@github.com:gigaflw/dsh_kline.git#v0.6.10-ft.1"
+    "@dsh-ft/dsh-fft-paper-trading": "0.7.0",
+    "@ftshare-lab/dsh-kline": "git+ssh://git@github.com/gigaflw/dsh_kline.git#v0.6.10-ft.1"
   },
   "engines": {
     "node": ">=22.19.0"

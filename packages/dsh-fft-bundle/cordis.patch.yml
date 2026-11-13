@@ -1,7 +1,7 @@
 # dsh-fft-bundle patch layer: inserts the FT workbench plugin rows with their
 # shared defaults. Applied when this package is installed via
 #
-#   dsh plugin --profile <name> add @dsh-ft/dsh-fft-finance-toolkit
+#   dsh plugin --profile <name> add @dsh-ft/finance-all-in-one
 #
 # Two planes:
 #   * the host rows (settings service, SSO, kline sidebar) stay global — a
@@ -204,7 +204,7 @@
               command: !!js process.execPath
               args:
                 - scripts/kline-mcp.mjs
-              cwd: !!js ((process.platform === 'win32' && /^\/[A-Za-z]:\//.test(decodeURIComponent(new URL('./node_modules/@dsh-ft/dsh-fft-finance-toolkit/', ctx.baseUrl).pathname)) && decodeURIComponent(new URL('./node_modules/@dsh-ft/dsh-fft-finance-toolkit/', ctx.baseUrl).pathname).slice(1)) || decodeURIComponent(new URL('./node_modules/@dsh-ft/dsh-fft-finance-toolkit/', ctx.baseUrl).pathname))
+              cwd: !!js ((process.platform === 'win32' && /^\/[A-Za-z]:\//.test(decodeURIComponent(new URL('./node_modules/@dsh-ft/finance-all-in-one/', ctx.baseUrl).pathname)) && decodeURIComponent(new URL('./node_modules/@dsh-ft/finance-all-in-one/', ctx.baseUrl).pathname).slice(1)) || decodeURIComponent(new URL('./node_modules/@dsh-ft/finance-all-in-one/', ctx.baseUrl).pathname))
               env:
                 DSH_KLINE_HOST_PID: !!js String(process.pid)
                 DSH_KLINE_DEFER_BOOTSTRAP: '1'

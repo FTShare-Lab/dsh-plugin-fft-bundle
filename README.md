@@ -1,14 +1,14 @@
 # dsh-fft-bundle
 
 非凸金融工作台 DSH 插件集合：共享设置 / FTShare API Key、FTShare 数据面、K 线、模拟交易。
-pnpm workspace 组织，组合包 `@dsh-ft/dsh-fft-finance-toolkit` 是终端用户的安装入口。
+pnpm workspace 组织，组合包 `@dsh-ft/finance-all-in-one` 是终端用户的安装入口。
 
 对外变更记录见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 两条产物线的区别
 
 | --- | --- | --- |
-| 安装方式 | 下载 `.tgz`，插件管理器贴绝对路径 | 插件管理器输入 `@dsh-ft/dsh-fft-finance-toolkit` |
+| 安装方式 | 下载 `.tgz`，插件管理器贴绝对路径 | 插件管理器输入 `@dsh-ft/finance-all-in-one` |
 | profile 层数 | 1 | 1 |
 | 前置 | 无（文件已内联全部插件） | 无（预构建，免 ssh） |
 
