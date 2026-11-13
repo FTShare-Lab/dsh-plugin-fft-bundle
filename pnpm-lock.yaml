@@ -77,17 +77,17 @@ importers:
         specifier: 0.4.2
         version: 0.4.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-llm@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-tools@0.2.1-rc.2(484a077a99424b8596be40b14db4948d))(zod@4.6.5)
       '@dsh-ft/dsh-fft-paper-trading':
-        specifier: 0.7.0
-        version: 0.7.0(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-api-remotes@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-scope@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4)))(@deepseek-ai/dsh-client-ui-layout@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-client-ui-settings@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-client-ui-slots@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-credentials@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-llm@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-tools@0.2.1-rc.2(484a077a99424b8596be40b14db4948d))(@deepseek-ai/schemastery@3.18.5)(react@18.3.1)(zod@4.6.5)
+        specifier: 0.7.1
+        version: 0.7.1(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-api-remotes@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-scope@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4)))(@deepseek-ai/dsh-client-ui-layout@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-client-ui-settings@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-client-ui-slots@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-credentials@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-llm@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-tools@0.2.1-rc.2(484a077a99424b8596be40b14db4948d))(@deepseek-ai/schemastery@3.18.5)(react@18.3.1)(zod@4.6.5)
       '@dsh-ft/dsh-fft-plot':
         specifier: 0.1.0
         version: 0.1.0(@deepseek-ai/dsh-skill@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-llm@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-scope@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4)))
       '@dsh-ft/dsh-fft-settings':
-        specifier: 0.7.0
-        version: 0.7.0(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-api-remotes@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-scope@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4)))(@deepseek-ai/dsh-client-ui-layout@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-client-ui-settings@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-client-ui-slots@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-credentials@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/schemastery@3.18.5)(react@18.3.1)
+        specifier: 0.7.1
+        version: 0.7.1(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-api-remotes@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-scope@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4)))(@deepseek-ai/dsh-client-ui-layout@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-client-ui-settings@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-client-ui-slots@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-credentials@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/schemastery@3.18.5)(react@18.3.1)
       '@ftshare-lab/dsh-kline':
-        specifier: git+ssh://git@github.com/gigaflw/dsh_kline.git#v0.6.10-ft.1
-        version: git+ssh://git@github.com/gigaflw/dsh_kline.git#c3394c69bdc39bfe0e97a6ead7778e12264b4ae5
+        specifier: 0.6.11
+        version: 0.6.11
     devDependencies:
       js-yaml:
         specifier: ^4.3.2
@@ -452,8 +452,8 @@ packages:
       '@deepseek-ai/dsh-llm': 0.2.1-rc.2
       '@deepseek-ai/dsh-tools': 0.2.1-rc.2
 
-  '@dsh-ft/dsh-fft-paper-trading@0.7.0':
-    resolution: {integrity: sha512-anFo0P1BO6fFd0puqSRAro/k9x6AmWkAWLwL53X61JmqYo9INl8uFpTRZkzDYxPeWVsBFiQtEfkHRUyMmJxhlA==}
+  '@dsh-ft/dsh-fft-paper-trading@0.7.1':
+    resolution: {integrity: sha512-Xh2uv53kHusq4KJddxqFdBz65oIgLIreX1WrQV/uVK7hdrGejTFOuDUKHJ5gVtdq8Yg5raUZTfe2ttrdZz3BfQ==}
     engines: {node: '>=22.19.0'}
     peerDependencies:
       '@deepseek-ai/cordis': 4.0.4
@@ -481,8 +481,21 @@ packages:
       '@deepseek-ai/schemastery': 3.18.5
       react: ^18.2.0
 
-  '@ftshare-lab/dsh-kline@git+ssh://git@github.com/gigaflw/dsh_kline.git#c3394c69bdc39bfe0e97a6ead7778e12264b4ae5':
-    resolution: {commit: c3394c69bdc39bfe0e97a6ead7778e12264b4ae5, repo: git@github.com:gigaflw/dsh_kline.git, type: git}
+  '@dsh-ft/dsh-fft-settings@0.7.1':
+    resolution: {integrity: sha512-fZ2ScQfMO7coFtMNk/usMTA0V5URVNjZdbkFOY0K9ME5LVcYfLdKK8xN2LgsO6ewD3MRgrKBd+2OQyHLFRBMwA==}
+    engines: {node: '>=22.19.0'}
+    peerDependencies:
+      '@deepseek-ai/cordis': 4.0.4
+      '@deepseek-ai/dsh-api-remotes': 0.2.1-rc.2
+      '@deepseek-ai/dsh-client-ui-layout': 0.2.1-rc.2
+      '@deepseek-ai/dsh-client-ui-settings': 0.2.1-rc.2
+      '@deepseek-ai/dsh-client-ui-slots': 0.2.1-rc.2
+      '@deepseek-ai/dsh-credentials': 0.2.1-rc.2
+      '@deepseek-ai/schemastery': 3.18.5
+      react: ^18.2.0
+
+  '@ftshare-lab/dsh-kline@0.6.11':
+    resolution: {integrity: sha512-n6u5pzgll0U3ibzJenJPG0xAqn5cydJD8qdT/I4Or3ZbOltLIJo5tBPu+wHQuVKna2Rg8nFtpAuPOsbJRV/hKA==}
     engines: {node: '>=22.19.0'}
 
   '@hono/node-server@2.1.3':
@@ -1306,7 +1319,7 @@ snapshots:
       - supports-color
       - zod
 
-  '@dsh-ft/dsh-fft-paper-trading@0.7.0(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-api-remotes@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-scope@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4)))(@deepseek-ai/dsh-client-ui-layout@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-client-ui-settings@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-client-ui-slots@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-credentials@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-llm@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-tools@0.2.1-rc.2(484a077a99424b8596be40b14db4948d))(@deepseek-ai/schemastery@3.18.5)(react@18.3.1)(zod@4.6.5)':
+  '@dsh-ft/dsh-fft-paper-trading@0.7.1(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-api-remotes@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-scope@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4)))(@deepseek-ai/dsh-client-ui-layout@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-client-ui-settings@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-client-ui-slots@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-credentials@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-llm@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-tools@0.2.1-rc.2(484a077a99424b8596be40b14db4948d))(@deepseek-ai/schemastery@3.18.5)(react@18.3.1)(zod@4.6.5)':
     dependencies:
       '@deepseek-ai/cordis': 4.0.4(@deepseek-ai/cordis-plugin-include@1.0.10)(@deepseek-ai/cordis-plugin-loader@1.0.6)
       '@deepseek-ai/dsh-tools': 0.2.1-rc.2(484a077a99424b8596be40b14db4948d)
@@ -1341,7 +1354,19 @@ snapshots:
       fflate: 0.8.3
       react: 18.3.1
 
-  '@ftshare-lab/dsh-kline@git+ssh://git@github.com/gigaflw/dsh_kline.git#c3394c69bdc39bfe0e97a6ead7778e12264b4ae5': {}
+  '@dsh-ft/dsh-fft-settings@0.7.1(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-api-remotes@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-scope@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4)))(@deepseek-ai/dsh-client-ui-layout@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-client-ui-settings@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-client-ui-slots@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-credentials@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/schemastery@3.18.5)(react@18.3.1)':
+    dependencies:
+      '@deepseek-ai/cordis': 4.0.4(@deepseek-ai/cordis-plugin-include@1.0.10)(@deepseek-ai/cordis-plugin-loader@1.0.6)
+      '@deepseek-ai/dsh-api-remotes': 0.2.1-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-scope@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))
+      '@deepseek-ai/dsh-client-ui-layout': 0.2.1-rc.2(@deepseek-ai/cordis@4.0.4)
+      '@deepseek-ai/dsh-client-ui-settings': 0.2.1-rc.2(@deepseek-ai/cordis@4.0.4)
+      '@deepseek-ai/dsh-client-ui-slots': 0.2.1-rc.2(@deepseek-ai/cordis@4.0.4)
+      '@deepseek-ai/dsh-credentials': 0.2.1-rc.2(@deepseek-ai/cordis@4.0.4)
+      '@deepseek-ai/schemastery': 3.18.5
+      fflate: 0.8.3
+      react: 18.3.1
+
+  '@ftshare-lab/dsh-kline@0.6.11': {}
 
   '@hono/node-server@2.1.3(hono@4.13.13)':
     dependencies:
