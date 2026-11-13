@@ -46,11 +46,10 @@ const PERSONA_ID = 'persona'
 const ADDED_PLUGINS = [
   'ft-guidance',
   'mcp-dsh-kline',
-  'ft-research-cockpit-tools',
   'ft-ftshare-tools',
   'ft-ftshare-mask',
   'ft-ftshare-project',
-  'dsh-fft-factor-intake-standard',
+  'dsh-fft-plot',
 ]
 /**
  * Rows that must stay on the global plane, whatever the preset does.
@@ -59,15 +58,17 @@ const ADDED_PLUGINS = [
  * throws ("Preset services require isolate realms"), and isolating it would hide
  * the service from every plugin outside the preset.
  */
-const GLOBAL_ROWS = ['dsh-fft-settings', 'dsh-fft-ftshare', 'newapi-wechat-sso', 'dsh-kline-sidebar', 'ft-research-cockpit']
+const GLOBAL_ROWS = ['dsh-fft-settings', 'dsh-fft-ftshare', 'dsh-kline-sidebar', 'ft-paper-trading']
 /**
  * Rows that must mount only from inside the finance preset.
  *
- * The last three are the FTShare tool surface, the kline FTShare-wrapper mask and
+ * The middle three are the FTShare tool surface, the kline FTShare-wrapper mask and
  * the P7/P8 projection hook: all of them must be absent from the standard mode,
  * which is exactly what mounting them from the preset (and nowhere else) buys.
+ * The trailing skill row (`dsh-fft-plot`) rides the same rule: a plotting skill in
+ * standard mode would be a skill with no FTShare data source behind it.
  */
-const PRESET_ONLY_ROWS = ['mcp-dsh-kline', 'ft-ftshare-tools', 'ft-ftshare-mask', 'ft-ftshare-project', 'dsh-fft-factor-intake-standard']
+const PRESET_ONLY_ROWS = ['mcp-dsh-kline', 'ft-ftshare-tools', 'ft-ftshare-mask', 'ft-ftshare-project', 'dsh-fft-plot']
 /** The host tag whose composition is the compatibility floor. */
 const FLOOR_TAG = 'dsh-v0.2.2-rc.1'
 /** The floor composition size at that tag; growing requires a re-sync. */
@@ -410,12 +411,12 @@ describe('the finance preset in this bundle', () => {
     }
   })
 
-  it('appends exactly the seven finance rows, each id once', () => {
+  it('appends exactly the eight finance rows, each id once', () => {
     const appended = bundlePlugins.slice(bundlePlugins.length - ADDED_PLUGINS.length).map(row => row.id)
     assert.deepEqual(
       appended,
       ADDED_PLUGINS,
-      `the "${PRESET_ID}" composition must end with the seven finance rows, in this order`,
+      `the "${PRESET_ID}" composition must end with the eight finance rows, in this order`,
     )
     const ids = bundlePlugins.map(row => row.id)
     const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index)

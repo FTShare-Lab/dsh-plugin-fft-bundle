@@ -1,21 +1,21 @@
 /**
  * One egress: the FTShare gateway is reached from one place in this repository.
  *
- * Everything else that used to have its own FTShare client — the cockpit's
- * embedded MCP client, its own error types, its own credential read, its own
- * candidate downgrade chain — is gone. This guard is what keeps it gone: a
- * second implementation would silently reintroduce the two defects the base
- * exists to fix (detail lost from the model's view, and "no permission" rendered
- * as "no data"), and nothing else in the suite would notice.
+ * Everything that used to have its own FTShare client — an embedded MCP client,
+ * its own error types, its own credential read, its own candidate downgrade
+ * chain — is gone. This guard is what keeps it gone: a second implementation
+ * would silently reintroduce the two defects the base exists to fix (detail lost
+ * from the model's view, and "no permission" rendered as "no data"), and nothing
+ * else in the suite would notice.
  *
  * The base (`@dsh-ft/dsh-fft-ftshare`) and the key probe (`dsh-fft-settings`)
- * now live in the standalone `dsh-fft-base` repository, so nothing in this
+ * live in the standalone `dsh-fft-base` repository, so nothing in this
  * repository is allowed to touch the gateway's wire protocol at all: every
  * package here consumes the base's typed service instead. The rules therefore
- * allow nobody, and only the cockpit is still expected to reach for the service.
+ * allow nobody.
  */
 import assert from 'node:assert/strict'
-import { readdirSync, readFileSync, statSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, it } from 'node:test'
@@ -88,8 +88,20 @@ describe('single egress into FTShare', () => {
   const files = sources()
 
   it('scans every package source', () => {
-    assert.ok(files.length > 30, `扫描到的源文件太少（${files.length}），路径或跳过规则不对`)
-    assert.ok(files.some(path => path.includes('dsh-fft-research-cockpit')), '投研舱必须在扫描范围内')
+    // The count follows the tree: the public branch carries only the entry
+    // package, while the development tree also has the two intranet plugins. A
+    // fixed floor would either fail there or go blind here, so the guard asserts
+    // that every package with sources was actually reached.
+    assert.ok(files.length > 0, `扫描到的源文件太少（${files.length}），路径或跳过规则不对`)
+    assert.ok(files.some(path => path.includes('dsh-fft-bundle')), '入口包必须在扫描范围内')
+    for (const name of readdirSync(packagesRoot)) {
+      const src = join(packagesRoot, name, 'src')
+      if (!existsSync(src)) continue
+      assert.ok(
+        files.some(path => path.startsWith(`${src}/`)),
+        `包 ${name} 有 src/ 但一个文件都没被扫到，跳过规则可能影响了它`,
+      )
+    }
   })
 
   for (const rule of RULES) {

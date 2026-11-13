@@ -40,6 +40,10 @@ describe('published manifest', () => {
     for (const { target, manifest } of targetsOf()) {
       const published = publishManifest(manifest, { workspace, dropDependencies: target.dropDependencies })
       for (const [name, spec] of Object.entries(published.dependencies ?? {})) {
+        // A spec that stays exotic here is one `pack:npm` inlines: it is copied
+        // into the artifact and declared bundled, so a consumer never resolves
+        // it. Anything else must be registry-resolvable.
+        if (target.inlineDependencies?.includes(name)) continue
         assert.doesNotMatch(spec, /^(?:git\+|git@|github:|gitlab:|https?:|file:|link:|workspace:)/iu, `${published.name}: ${name}@${spec} cannot install from a default profile`)
         assert.doesNotMatch(spec, /&path:/u, `${published.name}: ${name}@${spec} still carries a sub-directory edge`)
       }
@@ -54,7 +58,11 @@ describe('published manifest', () => {
         if (dependency === undefined) continue
         const published = publishManifest(manifest, { workspace, dropDependencies: [] })
         if ((published.dependencies ?? {})[name] === undefined) continue
-        assert.equal(published.dependencies[name], `^${dependency.manifest.version}`, `${manifest.name}: ${name} must become a caret range`)
+        // An inlined workspace package is pinned to the exact version it ships,
+        // not a caret range: the artifact contains that version.
+        const inlined = target => target.inlineWorkspace?.includes(name) === true
+        const expected = targetsOf().some(entry => inlined(entry.target)) ? dependency.manifest.version : `^${dependency.manifest.version}`
+        assert.equal(published.dependencies[name], expected, `${manifest.name}: ${name} must become ${expected}`)
       }
     }
   })
@@ -75,12 +83,15 @@ describe('rewrite safety', () => {
   const base = { name: '@x/y', version: '1.0.0' }
 
   it('bumps a workspace edge to the workspace version', () => {
-    const inRepo = '@ft/dsh-fft-research-cockpit'
+    // The subject is the rewrite rule, not any particular in-repo package: the
+    // bundle's manifest no longer carries an edge to one (they all come from a
+    // registry or carry their own payload), so the case supplies the name.
+    const inRepo = '@ft/example-inline-plugin'
     const published = publishManifest(
-      { ...base, dependencies: { [inRepo]: `git+ssh://git@example.invalid/repo.git#v1.0.0&path:packages/${inRepo.split('/')[1]}` } },
-      { workspace },
+      { ...base, dependencies: { [inRepo]: `git+ssh://git@example.invalid/repo.git#v1.0.0&path:packages/example-inline-plugin` } },
+      { workspace: new Map([...workspace, [inRepo, { dir: 'packages/example-inline-plugin', manifest: { name: inRepo, version: '0.4.2' } }]]) },
     )
-    assert.equal(published.dependencies[inRepo], `^${workspace.get(inRepo).manifest.version}`)
+    assert.equal(published.dependencies[inRepo], '^0.4.2')
   })
 
   it('never links a published package of another repository', () => {

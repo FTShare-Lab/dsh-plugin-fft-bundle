@@ -19,10 +19,40 @@ import { fileURLToPath } from 'node:url'
 import { dirname, resolve } from 'node:path'
 import { load } from 'js-yaml'
 import { schema } from './lib/patch-yaml.mjs'
+import { PUBLISH_TARGETS, publishManifest, readWorkspace } from '../../../scripts/pack-npm.mjs'
 
 const root = fileURLToPath(new URL('..', import.meta.url))
 const manifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'))
 const patchPath = resolve(root, manifest.dsh.bundle.patch)
+
+/**
+ * The intranet rows live in a second patch file of this package, which only the
+ * internal tarball declares. The public npm artifact does not ship it (`files`
+ * excludes it), so nothing in that layer can reach a public install.
+ */
+const INTRANET_PATCH = resolve(root, 'cordis.intranet.patch.yml')
+
+/**
+ * Rows of the intranet layer, read from the file itself.
+ *
+ * Nothing here names those packages literally: the public branch carries neither
+ * this file nor those plugin names, and any literal would make the public tree
+ * fail its no-internal-names gate. An absent file means an empty layer, which
+ * every assertion below treats as "nothing to check".
+ */
+const intranetPatchRows = existsSync(INTRANET_PATCH)
+  ? load(readFileSync(INTRANET_PATCH, 'utf8'), { schema }).flatMap(patch => patch.insert ?? [])
+  : []
+/**
+ * Plugin packages the intranet layer mounts and this bundle depends on. Host
+ * packages (`@deepseek-ai/*`) the layer also names are supplied by the
+ * installation, so they carry no edge and are not what this file is about.
+ */
+const INTRANET_PACKAGES = intranetPatchRows
+  .map(row => row.name)
+  .filter(name => typeof name === 'string' && manifest.dependencies?.[name] !== undefined)
+/** Row ids the intranet layer inserts. */
+const INTRANET_ROW_IDS = intranetPatchRows.map(row => row.id).filter(id => typeof id === 'string')
 
 /**
  * Packages the DSH installation supplies to every profile, so a row may name
@@ -115,21 +145,63 @@ describe('dsh-fft-bundle', () => {
   })
 
   /**
-   * The plugin reads its deployment config once at startup and refuses to open
-   * an authorization window without it. Nothing else reaches every install —
-   * profile patches and `$DSH_HOME/cordis.patch.yml` are per-machine, and the
-   * installer's settings.yaml template is copied only when absent — so the two
-   * public URLs must stay on this row.
+   * The SSO plugin reads its deployment config once at startup and refuses to
+   * open an authorization window without it. The row now lives in the intranet
+   * layer, so this asserts on that file instead of the public patch.
    */
-  it('supplies the NewAPI deployment config the plugin requires', () => {
-    const row = globalRows.find(entry => entry.id === 'newapi-wechat-sso')
-    assert.ok(row, 'the NewAPI row must be inserted by this patch')
+  it('supplies the SSO deployment config in the intranet layer', t => {
+    // Absent on the public branch, where the intranet layer is not tracked at
+    // all: nothing there reads this config, so there is nothing to assert.
+    if (!existsSync(INTRANET_PATCH)) return t.skip('intranet layer not present in this tree')
+    // Located by what the row must carry, not by name: that keeps this file free
+    // of the plugin's name, which the public branch must not contain.
+    const row = intranetPatchRows.find(entry => typeof entry.config?.redirectUri === 'string')
+    assert.ok(row, 'the SSO row must be inserted by the intranet layer')
     const config = row.config
-    assert.ok(config, 'the NewAPI row must carry the deployment config')
-    assert.equal(config.baseUrl, 'https://llm-proxy.ftai.chat')
-    assert.equal(config.redirectUri, 'https://llm-proxy.ftai.chat/oauth/ft-sso')
+    assert.ok(config, 'the SSO row must carry the deployment config')
+    // Shape, not the literal hosts: this file also ships on the public branch,
+    // where those hosts must not appear at all. The values themselves live in
+    // the intranet layer, which is what the row above just read.
     for (const key of ['baseUrl', 'redirectUri']) {
       assert.match(config[key], /^https:\/\//u, `${key} must be the registered public URL`)
+    }
+    assert.ok(
+      config.redirectUri.startsWith(config.baseUrl),
+      'the redirect URI must sit under the deployment the row names',
+    )
+  })
+
+  /**
+   * The public artifact is this package's `files` whitelist plus its declared
+   * patch. An intranet row or package name in either one would ship a plugin the
+   * public channel must never carry — and would break `dsh plugin add` for a
+   * registry install, because the name resolves to nothing there.
+   */
+  it('keeps every intranet-only row out of the public patch', () => {
+    const publicPatch = readFileSync(patchPath, 'utf8')
+    for (const name of INTRANET_PACKAGES) {
+      assert.ok(!publicPatch.includes(name), `${name} must not be inserted by ${patchPath}`)
+    }
+    for (const id of INTRANET_ROW_IDS) {
+      const found = globalRows.some(row => row.id === id)
+      assert.ok(!found, `intranet row ${id} must live in ${INTRANET_PATCH}, not ${patchPath}`)
+    }
+  })
+
+  /**
+   * A dependency edge alone installs nothing: DSH mounts what a patch row names.
+   * The internal tarball needs the edges (it inlines those two packages), but the
+   * public artifact must not carry them, or `npm install` fails on a name no
+   * registry serves.
+   */
+  it('drops the intranet edges from the published manifest', t => {
+    if (!INTRANET_PACKAGES.some(name => manifest.dependencies[name] !== undefined)) {
+      return t.skip('this tree has no intranet edges (public branch)')
+    }
+    const target = PUBLISH_TARGETS.find(entry => entry.dir.endsWith('dsh-fft-bundle'))
+    const published = publishManifest(manifest, { workspace: readWorkspace(), dropDependencies: target.dropDependencies })
+    for (const name of INTRANET_PACKAGES) {
+      assert.equal(published.dependencies[name], undefined, `${name} must not reach the published manifest`)
     }
   })
 
@@ -160,8 +232,12 @@ describe('dsh-fft-bundle', () => {
       `${INSTALL_RECIPE}; unreadable: ${unreadable.join(', ')}`,
     )
 
+    // The client half is carried by whichever layer inserts the row. The
+    // intranet file is a second patch file of this same bundle, applied by the
+    // only artifact that ships it, so it counts here.
+    const intranetRows = intranetPatchRows
     const bareGlobalNames = new Set(
-      globalRows.map(row => barePackageSpecifier(row.name)).filter(Boolean),
+      [...globalRows, ...intranetRows].map(row => barePackageSpecifier(row.name)).filter(Boolean),
     )
     const missing = []
     for (const [name, pkg] of manifests) {
@@ -206,7 +282,7 @@ describe('dsh-fft-bundle', () => {
       `a preset mounts its rows in a subtree DSH's browser module scan never visits, so these rows `
       + `would load only their host half and silently drop their browser half: ${offenders.join(', ')}. `
       + `Mount the browser half from a bare-name GLOBAL row and give this row a subpath entry `
-      + `(for example '@ft/dsh-fft-research-cockpit/agent') that registers host-side behaviour only. `
+      + `that registers host-side behaviour only. `
       + `The official 'standard' preset names no package with a dsh.client declaration, which is why `
       + `this rule costs the copied rows nothing.`,
     )

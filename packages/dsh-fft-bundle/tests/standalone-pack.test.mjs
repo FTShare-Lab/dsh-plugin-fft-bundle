@@ -58,17 +58,8 @@ describe('the standalone manifest', () => {
       manifest: {
         name: '@dsh-ft/dsh-fft-settings',
         version: '0.2.0',
-        dependencies: { '@ft/dsh-fft-research-cockpit': `${EDGE}dsh-fft-research-cockpit`, '@deepseek-ai/schemastery': '>=3.18.4', nunjucks: '3.2.4' },
+        dependencies: { '@ftshare-lab/dsh-kline': `${EDGE}dsh_kline`, '@deepseek-ai/schemastery': '>=3.18.4', nunjucks: '3.2.4' },
         peerDependencies: { react: '^18.2.0' },
-      },
-    },
-    {
-      name: '@ft/dsh-fft-research-cockpit',
-      manifest: {
-        name: '@ft/dsh-fft-research-cockpit',
-        version: '0.2.0',
-        dependencies: { '@dsh-ft/dsh-fft-settings': `${EDGE}dsh-fft-settings`, '@deepseek-ai/schemastery': '>=3.18.2', nunjucks: '3.2.4' },
-        peerDependencies: { '@deepseek-ai/dsh-tools': '>=0.2.0-rc.2' },
       },
     },
     { name: '@ftshare-lab/dsh-kline', manifest: { name: '@ftshare-lab/dsh-kline', version: '0.3.5' } },
@@ -77,11 +68,8 @@ describe('the standalone manifest', () => {
 
   it('inlines every plugin at the version the ref carries', () => {
     assert.equal(manifest.dependencies['@dsh-ft/dsh-fft-settings'], '0.2.0')
-    assert.equal(manifest.dependencies['@ft/dsh-fft-research-cockpit'], '0.2.0')
     assert.equal(manifest.dependencies['@ftshare-lab/dsh-kline'], '0.3.5')
-    assert.deepEqual(manifest.bundledDependencies, [
-      '@dsh-ft/dsh-fft-settings', '@ft/dsh-fft-research-cockpit', '@ftshare-lab/dsh-kline',
-    ])
+    assert.deepEqual(manifest.bundledDependencies, ['@dsh-ft/dsh-fft-settings', '@ftshare-lab/dsh-kline'])
   })
 
   it('leaves no git edge for pnpm to resolve', () => {
@@ -94,7 +82,7 @@ describe('the standalone manifest', () => {
   })
 
   it('carries the plugins’ peers so the profile compatibility gate sees them', () => {
-    assert.deepEqual(manifest.peerDependencies, { react: '^18.2.0', '@deepseek-ai/dsh-tools': '>=0.2.0-rc.2' })
+    assert.deepEqual(manifest.peerDependencies, { react: '^18.2.0' })
   })
 
   it('keeps the bundle’s own fields', () => {
@@ -165,7 +153,7 @@ describe('the inlined-pair guard', () => {
   it('ignore git and workspace specs, which select a commit rather than a range', () => {
     assert.doesNotThrow(() => assertBundledRanges([
       plugin('@ftshare-lab/dsh-kline', '0.4.0'),
-      plugin('@ft/dsh-fft-research-cockpit', '0.2.5', { '@dsh-ft/dsh-fft-settings': `${EDGE}dsh-fft-settings` }),
+      plugin('@dsh-ft/dsh-fft-paper-trading', '0.6.3', { '@dsh-ft/dsh-fft-settings': `${EDGE}dsh-fft-settings` }),
     ]))
   })
 

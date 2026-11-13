@@ -168,8 +168,8 @@ describe('kline rows mirrored from the kline package', () => {
     // parent in every layout. Checked by shape so the assertion holds whatever
     // the profile is called.
     assert.ok(
-      mirrored.config.cwd.replaceAll('\\', '/').endsWith('node_modules/@ft/dsh-fft-bundle/'),
-      `the kline MCP row must run from this package, not ${mirrored.config.cwd}`,
+      mirrored.config.cwd.replaceAll('\\', '/').endsWith(`node_modules/${manifest.name}/`),
+      `the kline MCP row must run from this package (${manifest.name}), not ${mirrored.config.cwd}`,
     )
     assert.deepEqual(mirrored.config.args, ['scripts/kline-mcp.mjs'])
     assert.ok(existsSync(resolve(root, 'scripts', 'kline-mcp.mjs')), 'the shim the row launches must exist')

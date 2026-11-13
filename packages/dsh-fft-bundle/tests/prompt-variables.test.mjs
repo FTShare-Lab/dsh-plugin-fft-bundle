@@ -12,11 +12,10 @@
  * every finance session broke on DSH 0.2.1. This guard reads the patches
  * instead of trusting review.
  *
- * Vendored payloads are scanned too. an internal bundle is not the
- * effective entry while it is installed through the composition, but it is
- * also published standalone; a re-vendor that reintroduces `{{cwd}}` must
- * fail here rather than only in the standalone install (see its
- * PROVENANCE.md, local change ⑤).
+ * Vendored payloads are scanned too. Such a payload is not the effective entry
+ * while it is installed through the composition, but it is also distributed
+ * standalone; a re-vendor that reintroduces `{{cwd}}` must fail here rather
+ * than only in the standalone install.
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { describe, it } from 'node:test'

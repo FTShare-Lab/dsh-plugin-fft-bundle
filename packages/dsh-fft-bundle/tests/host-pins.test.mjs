@@ -15,7 +15,7 @@
  * 下限与 ami 的 PROVENANCE 基线宿主），然后重装；本测试会指出漏钉的包。
  */
 import assert from 'node:assert/strict'
-import { readdirSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { describe, it } from 'node:test'
 import { dirname, resolve } from 'node:path'
@@ -30,11 +30,31 @@ const lock = readFileSync(resolve(root, 'pnpm-lock.yaml'), 'utf8')
 const catalog = workspace.catalog ?? {}
 const overrides = workspace.overrides ?? {}
 
+/**
+ * Directory nests a workspace package may live in. `packages/intranet/` holds
+ * the intranet-only plugins, which are still workspace packages for
+ * `catalog:` resolution, so the scan has to descend one level there.
+ */
+const PACKAGE_NESTS = ['packages', 'packages/intranet']
+
 /** 本仓 workspace 包的 manifest。 */
 function manifests() {
-  return readdirSync(resolve(root, 'packages'))
-    .map(name => resolve(root, 'packages', name, 'package.json'))
-    .map(file => ({ file, manifest: JSON.parse(readFileSync(file, 'utf8')) }))
+  const found = []
+  for (const nest of PACKAGE_NESTS) {
+    let entries
+    try {
+      entries = readdirSync(resolve(root, nest), { withFileTypes: true })
+    } catch {
+      continue
+    }
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue
+      const file = resolve(root, nest, entry.name, 'package.json')
+      if (!existsSync(file)) continue
+      found.push({ file, manifest: JSON.parse(readFileSync(file, 'utf8')) })
+    }
+  }
+  return found
 }
 
 /** lock 里出现的 `@deepseek-ai/*` 包名 → 版本集合。 */
