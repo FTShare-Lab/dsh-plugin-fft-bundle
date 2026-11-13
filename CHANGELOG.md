@@ -4,6 +4,15 @@
 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循
 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [1.0.1] - 2026-11-13
+
+K 线改由上游 `0.6.11` 提供，FT 定制构建退场；本次只更新装配与依赖，用户可感知的界面与功能不变。
+
+### Changed
+
+- `DSH Kline` 由 FT 定制的 `v0.6.10-ft.1` 改为上游 `0.6.11`：浮动 K、首启弹窗与模拟盘 K 线槽位改由上游的可选宿主契约实现，不再需要 fork 构建
+- 模拟盘面板的 K 线通过上游宿主契约填充；kline 改为从 registry 安装的 `0.6.11`，不再内联进产物
+
 ## [1.0.0] - 2026-11-13
 
 金融工作台第一次以公共包的形式发布：一个 npm 包把整座工作台装起来，不再依赖私有插件，也不需要 ssh。
@@ -292,6 +301,7 @@
 - `@ft/dsh-fft-factor-intake-standard`：`v0.1.0`
 - `DSH Kline`：`v0.3.5`，随组合包安装 K 线工作台、侧边栏与 MCP 服务
 
+[1.0.1]: https://github.com/FTShare-Lab/dsh-plugin-fft-bundle/compare/v1.0.0...v1.0.1
 [0.9.3]: https://github.com/gigaflw/dsh-fft-bundle/compare/v0.9.2...v0.9.3
 [0.9.2]: https://github.com/gigaflw/dsh-fft-bundle/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/gigaflw/dsh-fft-bundle/compare/v0.9.0...v0.9.1
