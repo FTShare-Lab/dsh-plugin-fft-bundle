@@ -4,6 +4,28 @@
 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循
 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [1.0.0] - 2026-11-13
+
+金融工作台第一次以公共包的形式发布：一个 npm 包把整座工作台装起来，不再依赖私有插件，也不需要 ssh。
+
+### Added
+
+- 公开分发：`@dsh-ft/finance-all-in-one` 可作为普通 npm 包一键安装，K 线随包携带
+- 金融模式新增出图技能：取数结果可以渲染成内联 SVG，图随回答一起显示
+- 新增 `@dsh-ft/dsh-fft-plot` 组件
+
+### Changed
+
+- 装配方式改为「同一个包、两份清单」：公共产物只声明公共行，内部专用行由另一份清单承载，公共产物里一行都不含
+- 公共产物把 kline 内联进包并裁掉截图与构建输入，产物 556 KB
+- FTShare 数据面升级到 `0.4.2`（随包目录刷新），设置页升级到 `0.7.0`
+- 模拟盘升级到 `0.7.0`
+- 公开仓库迁到 `FTShare-Lab/dsh-plugin-fft-bundle`
+
+### Removed
+
+- 移除投研舱与因子入库技能
+
 ## [0.9.3] - 2026-11-06
 
 ### Changed
