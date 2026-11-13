@@ -56,18 +56,6 @@ const RELEASE_TAG = /^v\d+\.\d+\.\d+(?:[-+].*)?$/u
 const EXACT_VERSION = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/u
 
 /**
- * Dependency edges into another repository. The other repository has its own
- * release line, so the edge always pins one of *its* release tags.
- */
-export const EXTERNAL_EDGES = [
-  {
-    manifestPath: 'packages/dsh-fft-bundle/package.json',
-    name: '@ftshare-lab/dsh-kline',
-    repo: /gigaflw\/dsh_kline(?:\.git)?#/u,
-  },
-]
-
-/**
  * Dependencies published to the registry. The bundle consumes them by exact
  * version: they are release artifacts, and packing needs the built copy from
  * the registry (their git trees do not carry `lib/`).
@@ -76,19 +64,8 @@ export const REGISTRY_PINS = [
   { manifestPath: 'packages/dsh-fft-bundle/package.json', name: '@dsh-ft/dsh-fft-settings' },
   { manifestPath: 'packages/dsh-fft-bundle/package.json', name: '@dsh-ft/dsh-fft-ftshare' },
   { manifestPath: 'packages/dsh-fft-bundle/package.json', name: '@dsh-ft/dsh-fft-paper-trading' },
+  { manifestPath: 'packages/dsh-fft-bundle/package.json', name: '@ftshare-lab/dsh-kline' },
 ]
-
-/**
- * Every cross-repository edge declared above, read from its manifest.
- * @returns {Array<{ name: string, spec: string, manifestPath: string }>} the edges.
- */
-export function readExternalEdges() {
-  return EXTERNAL_EDGES.flatMap(({ manifestPath, name, repo }) => {
-    const manifest = JSON.parse(readFileSync(resolve(repoRoot, manifestPath), 'utf8'))
-    const spec = manifest.dependencies?.[name]
-    return spec !== undefined && repo.test(spec) ? [{ name, spec, manifestPath }] : []
-  })
-}
 
 /**
  * Every published package's pin, read from its manifest. A missing declaration
@@ -178,12 +155,11 @@ export function setRef(ref) {
 }
 
 /**
- * Verify the three anchors: one shared ref on the unpublished edges, release
- * tags on the cross-repository edges, exact versions on the published packages.
+ * Verify the two anchors: one shared ref on the unpublished edges, exact
+ * versions on the published packages (kline included — upstream publishes it).
  */
 export function check() {
   const edges = readEdges()
-  const external = readExternalEdges()
   const pins = readRegistryPins()
 
   const unpinned = pins.filter(pin => !EXACT_VERSION.test(pin.spec))
@@ -202,18 +178,6 @@ export function check() {
     console.error(
       'edge-refs: a published package must not also travel as a git edge:\n'
       + doubled.map(edge => `  ${edge.manifestPath}: ${edge.name} -> ${edge.spec}`).join('\n'),
-    )
-    process.exitCode = 1
-    return
-  }
-
-  const badExternal = external.filter(edge => !RELEASE_TAG.test(refOf(edge.spec)))
-  if (badExternal.length > 0) {
-    console.error(
-      'edge-refs: refusing cross-repository edges that do not pin a release tag:\n'
-      + badExternal.map(edge => `  ${edge.manifestPath}: ${edge.name} -> ${edge.spec}`).join('\n')
-      + '\n  Cross-repository edges do not follow this bundle\'s release tags; tag that repository and pin'
-      + ' its vX.Y.Z here.',
     )
     process.exitCode = 1
     return
@@ -240,8 +204,7 @@ export function check() {
 
   console.log(
     `edge-refs: ${edges.length} edges carry #${ref || '(no ref)'}`
-    + `; ${pins.length} published packages pinned to exact versions`
-    + `; ${external.length} cross-repository edges pinned to release tags`,
+    + `; ${pins.length} published packages pinned to exact versions`,
   )
 }
 

@@ -55,11 +55,11 @@
     "test": "node --test tests/*.test.mjs"
   },
   "dependencies": {
-    "@dsh-ft/dsh-fft-settings": "0.7.0",
+    "@dsh-ft/dsh-fft-settings": "0.7.1",
     "@dsh-ft/dsh-fft-ftshare": "0.4.2",
     "@dsh-ft/dsh-fft-plot": "0.1.0",
-    "@dsh-ft/dsh-fft-paper-trading": "0.7.0",
-    "@ftshare-lab/dsh-kline": "git+ssh://git@github.com/gigaflw/dsh_kline.git#v0.6.10-ft.1"
+    "@dsh-ft/dsh-fft-paper-trading": "0.7.1",
+    "@ftshare-lab/dsh-kline": "0.6.11"
   },
   "engines": {
     "node": ">=22.19.0"

@@ -6,11 +6,11 @@
  *     carry one shared ref — the previous release's tag on the development line,
  *     this release's own tag on the release commit, nothing on the single-branch
  *     public remote;
- *   * kline lives in another repository, so its edge always pins one of *its*
- *     release tags;
- *   * published packages (settings, ftshare, paper) are consumed by an **exact
- *     registry version** — a git spec would install a tree without `lib/`, and a
- *     range would drift away from the version the tarball inlines.
+ *   * published packages (settings, ftshare, paper and kline) are consumed by an
+ *     **exact registry version** — a git spec would install a tree without
+ *     `lib/`, and a range would drift away from the version the tarball inlines.
+ *     Kline used to travel as a fork edge; upstream v0.6.11 publishes the FT host
+ *     contract, so the fork is retired.
  *
  * The rules and the rewrite tool live in `scripts/edge-refs.mjs` at the
  * repository root; this test reuses the same readers.
@@ -19,7 +19,7 @@ import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { basename } from 'node:path'
 import {
-  EXTERNAL_EDGES, MANIFESTS, REGISTRY_PINS, pathOf, readEdges, readExternalEdges, readRegistryPins, refOf,
+  MANIFESTS, REGISTRY_PINS, pathOf, readEdges, readRegistryPins, refOf,
 } from '../../../scripts/edge-refs.mjs'
 
 /** Ref shapes the release flow writes: a release tag, or none on the public remote. */
@@ -29,7 +29,6 @@ const REF_SHAPES = [
 ]
 
 const edges = readEdges()
-const externalEdges = readExternalEdges()
 const pins = readRegistryPins()
 
 describe('dependency edges into this repository', () => {
@@ -83,37 +82,6 @@ describe('dependency edges into this repository', () => {
       assert.ok(
         REF_SHAPES.some(({ pattern }) => pattern.test(ref)),
         `ref "${ref}" is none of: ${REF_SHAPES.map(({ shape }) => shape).join(', ')}`,
-      )
-    }
-  })
-})
-
-describe('dependency edges into another repository', () => {
-  it('declare every configured edge', () => {
-    assert.equal(
-      externalEdges.length,
-      EXTERNAL_EDGES.length,
-      'every configured cross-repository edge must be declared in its manifest',
-    )
-    assert.ok(externalEdges.length >= 1, 'the kline plugin is a cross-repository edge')
-  })
-
-  it('pin that repository\'s release tag, never a branch', () => {
-    for (const edge of externalEdges) {
-      assert.match(
-        refOf(edge.spec),
-        /^v\d+\.\d+\.\d+(?:[-+].*)?$/u,
-        `${edge.manifestPath}: ${edge.name} must pin a release tag — tag that repository first`,
-      )
-    }
-  })
-
-  it('never also count as an edge into this repository', () => {
-    const own = new Set(edges.map(edge => `${edge.manifestPath}:${edge.name}`))
-    for (const edge of externalEdges) {
-      assert.ok(
-        !own.has(`${edge.manifestPath}:${edge.name}`),
-        `${edge.manifestPath}: ${edge.name} cannot be both a local and a cross-repository edge`,
       )
     }
   })

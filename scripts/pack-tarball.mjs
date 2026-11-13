@@ -436,8 +436,8 @@ function localRepoSource(name, dir, ref, cache) {
  * Find an installed copy of a plugin at one exact version. A registry pin names
  * one version and a git tag names one build, so an installed copy is only reused
  * when its version matches exactly — never "whatever happens to be installed".
- * Kline is a `-ft.N` fork tag whose own `version` carries no `-ft.N`, so its tag
- * never matches an installed copy and kline always falls through to its clone.
+ * A git edge's tag is a release ref, not necessarily the package version, so a
+ * tag-needing source falls through to its repository clone instead.
  * @param {string} name - package name.
  * @param {string} version - the version the source must carry; empty means the edge has no tag.
  * @returns {string | undefined} the installed package directory.
@@ -747,8 +747,8 @@ WHAT IT DOES
   Extracts packages/ from <ref> with git archive, keeps each package's own
   files entries (and fails loudly when a required entry is missing), then
   inlines the bundle's whole plugin set under its own node_modules: the
-  unpublished packages from that extraction, the published packages from their
-  registry tarballs, and kline from its repository tag. A package's nested
+  unpublished packages from that extraction, and the published packages
+  (kline included) from their registry tarballs. A package's nested
   node_modules is never copied. The rewritten manifest lists every inlined
   plugin in bundledDependencies, so pnpm installs the tarball without resolving
   a single git edge, and refuses a payload whose inlined versions do not satisfy

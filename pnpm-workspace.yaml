@@ -39,6 +39,9 @@ minimumReleaseAgeExclude:
   - '@dsh-ft/dsh-fft-settings@0.7.0'
   - '@dsh-ft/dsh-fft-ftshare@0.4.2'
   - '@dsh-ft/dsh-fft-paper-trading@0.7.0'
+  - '@dsh-ft/dsh-fft-settings@0.7.1'
+  - '@dsh-ft/dsh-fft-paper-trading@0.7.1'
+  - '@ftshare-lab/dsh-kline@0.6.11'
 overrides:
   # 宿主闭包：钉到 thirdparty/deepseek-harness 那一版（0.2.1-rc.2；dsh-invariants
   # 没有该版本，冻结在 0.2.0-rc.2）。新增宿主 peer 若未钉版本，会解析到 npm 最新版，
