@@ -33,7 +33,6 @@ import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statS
 import { basename, dirname, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { externalSource, intranetPackageNames } from './pack-tarball.mjs'
-import { pruneStaged } from './pack-prune.mjs'
 
 /** Repository root, resolved from this script's location. */
 export const repoRoot = resolve(fileURLToPath(new URL('..', import.meta.url)))
@@ -44,7 +43,6 @@ const STAGING_ROOT = join(repoRoot, 'tmp', 'npm')
 const GIT = 'git'
 
 /** The third-party plugin a published package inlines rather than declares. */
-const KLINE = '@ftshare-lab/dsh-kline'
 
 /**
  * Edges a published package must never carry: their packages exist only inside
@@ -56,7 +54,8 @@ const KLINE = '@ftshare-lab/dsh-kline'
 const INTRANET_EDGES = intranetPackageNames()
 
 /** Exotic edges that are carried inside the artifact instead of declared. */
-const INLINE_EXOTIC = new Set([KLINE])
+// 没有需要内联的第三方插件：kline 已由上游发布到 registry，按普通依赖解析。
+const INLINE_EXOTIC = new Set()
 
 /**
  * Workspace packages carried inside the artifact rather than resolved from a
@@ -381,10 +380,6 @@ function inlineExotic(published, stagingDir, files, workspace = readWorkspace())
       }
       const dest = join(stagingDir, 'node_modules', ...name.split('/'))
       copyPackageFiles(local.dir, dest, local.manifest)
-      const pruned = pruneStaged(name, dest)
-      for (const rule of pruned.unmatched) {
-        console.warn(`pack-npm: prune rule ${JSON.stringify(rule)} of ${name} matched nothing; the payload may have changed shape`)
-      }
       files.push(...shippedPaths(local.dir, local.manifest).map(path => join('node_modules', name, path)))
       dependencies[name] = local.manifest.version
       if (!bundled.includes(name)) bundled.push(name)
@@ -394,13 +389,6 @@ function inlineExotic(published, stagingDir, files, workspace = readWorkspace())
     const inlineManifest = JSON.parse(readFileSync(join(source, 'package.json'), 'utf8'))
     const dest = join(stagingDir, 'node_modules', ...name.split('/'))
     copyPackageFiles(source, dest, inlineManifest)
-    // The archive carries store screenshots and build inputs no installed code
-    // reads; keeping them would roughly double the artifact for nothing.
-    const pruned = pruneStaged(name, dest)
-    for (const rule of pruned.unmatched) {
-      console.warn(`pack-npm: prune rule ${JSON.stringify(rule)} of ${name} matched nothing; the payload may have changed shape`)
-    }
-    // Report what actually shipped: the prune below removes part of it.
     files.push(...shippedPaths(source, inlineManifest).map(path => join('node_modules', name, path)))
     dependencies[name] = `>=${inlineManifest.version}`
     bundled.push(name)

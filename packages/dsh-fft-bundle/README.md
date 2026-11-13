@@ -7,23 +7,15 @@
 
 一次安装，把 DeepSeek Harness 组装成一座金融工作台：FTShare 数据面、K 线图表、出图技能、 A 股 / 商品期货模拟盘。
 
-![金融模式会话：问一句行情，模型调用 FTShare 取数并画出内联图表](assets/screenshots/chat.jpg)
+![金融模式会话：让它把取数结果画成图，图直接出现在回答里；右侧是常驻的 K 线助手，行情、板块与龙虎榜都在里面](assets/screenshots/chat.jpg)
 
-> DSH ≥ 0.2.1-rc.2 · 装完新会话就是金融模式 · K 线随包携带 · 账本保存在本地
+> DSH ≥ 0.2.1-rc.2 · 装完新会话就是金融模式 · K 线由依赖安装 · 账本保存在本地
 
 ## 效果
 
-模拟盘：下单前把成交价、佣金、印花税、过户费与剩余资金一次算清；右侧常驻 K 线，点图上的标的一键带回交易页。
+下单与撤单：市价单在收盘后自动排队到下一交易时段，状态与原因（待开盘 / 已撤 / 被拒）都写在订单页，成交前随时可以撤。
 
-![模拟盘：下单预览与 K 线并排](assets/screenshots/paper.jpg)
-
-K 线：多市场行情、均线与成交量，在原生侧栏里打开。
-
-![K 线侧栏：多市场行情与技术指标](assets/screenshots/kline.jpg)
-
-出图：分析结果可以直接出图，模型按技能里的规则选择合适的图型并附在回答后面。
-
-![出图技能：把取数结果画成内联 SVG](assets/screenshots/chart.jpg)
+![订单页：待开盘的委托与已撤记录](assets/screenshots/orders.jpg)
 
 ## 装了什么
 
@@ -32,7 +24,7 @@ K 线：多市场行情、均线与成交量，在原生侧栏里打开。
 | 金融模式（`ft-finance`）预设 | 新会话的默认工作方式：金融人设、行情与取数工具、出图技能 |
 | `@dsh-ft/dsh-fft-settings` | 设置页「金融终端」分区与 API Key 凭据 |
 | `@dsh-ft/dsh-fft-ftshare` | FTShare 数据面工具：行情、板块、资金流、财务等 |
-| `@ftshare-lab/dsh-kline` | K 线图表与侧栏，随包携带 |
+| `@ftshare-lab/dsh-kline` | K 线图表与侧栏，随依赖安装 |
 | `@dsh-ft/dsh-fft-plot` | 出图技能：把取数结果渲染成内联 SVG |
 | `@dsh-ft/dsh-fft-paper-trading` | 模拟盘：本地账本、下单、持仓与复盘 |
 
@@ -44,7 +36,7 @@ K 线：多市场行情、均线与成交量，在原生侧栏里打开。
 dsh plugin add @dsh-ft/finance-all-in-one
 ```
 
-装完重启一次应用。不需要改 pnpm 配置，也不需要 ssh：产物里已经带好依赖的 K 线。
+装完重启一次应用。不需要改 pnpm 配置，也不需要 ssh：所有依赖都从 npm 解析。
 
 - **不要**与同样自带 FTShare 数据服务的入口包（如 `@dsh-ft/dsh-fft-paper-trading`）同时安装：数据服务行会重复，插件管理器里相关项将无法单独开关。
 - 完整 K 线视图依赖本机 Python 3.10+，首次启动会联网准备运行环境；准备失败不影响取数、出图、下单与复盘。
