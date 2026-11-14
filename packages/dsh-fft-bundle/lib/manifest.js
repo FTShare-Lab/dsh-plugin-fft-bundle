@@ -1,7 +1,7 @@
 /** Generated from package.json by scripts/build-manifest.mjs; do not edit. */
 export const manifest = {
   "name": "@dsh-ft/finance-all-in-one",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "dependencies": {
     "@dsh-ft/dsh-fft-settings": ">=0.7.1",
     "@dsh-ft/dsh-fft-ftshare": ">=0.4.2",
