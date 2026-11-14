@@ -138,8 +138,10 @@ describe('dsh-fft-bundle', () => {
     for (const row of rows) {
       assert.equal(typeof row.id, 'string', `row ${row.id} needs a string id`)
       assert.equal(typeof row.name, 'string', `row ${row.id} needs a string name`)
+      // The bundle's own row names this package, which is not its own dependency.
       const wired = manifest.dependencies[row.name] !== undefined
         || HOST_PACKAGES.has(row.name)
+        || row.name === manifest.name
       assert.ok(wired, `row ${row.id} names ${row.name} but it is not a dependency`)
     }
   })

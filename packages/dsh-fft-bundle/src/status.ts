@@ -1,0 +1,348 @@
+/**
+ * Workbench readiness: what the installed composition actually carries.
+ *
+ * The card this feeds answers one question a user cannot answer from the panels
+ * it sits beside — "this install looks complete, why is a piece missing?" So
+ * everything here is observation, never control: no network, no credential
+ * read, no settings write. Each fact has one cheap, local source:
+ *
+ * - rows: the root Loader entries. A row missing there never mounted; the
+ *   preset's rows are mounted in a detached subtree and are reported by the
+ *   preset's own diagnostic instead.
+ * - installed versions: the profile's package resolution (`ctx.pluginPackages`),
+ *   the same table the Loader uses to import the row. The declared specifiers and
+ *   the bundle's own version come from the build-generated `manifest.js`: a
+ *   `link:` checkout has no `node_modules` above it and the profile's resolution
+ *   answers every dependency but never the requester.
+ * - preset: the `agentPresets` registry's own list, which already audits a
+ *   broken definition and returns the failing rows as text.
+ *
+ * Deliberately absent: the FTShare key status (the API Key card owns it), the
+ * paper ledger (the panel owns it), and any request count (nothing in this
+ * process counts them).
+ * @module @dsh-ft/finance-all-in-one/status
+ */
+
+import { manifest as declaredManifest } from './manifest.js'
+
+/** Package whose manifest declares the composition this status describes. */
+export const BUNDLE_NAME = '@dsh-ft/finance-all-in-one'
+
+/** Preset the composition registers as the finance working mode. */
+export const FINANCE_PRESET_ID = 'ft-finance'
+
+/** Exact Fetch route the browser half reads. */
+export const WORKBENCH_ROUTE = '/api/ft-workbench'
+
+/** One dependency of the composition, as declared and as installed. */
+export interface PackageStatus {
+  /** Package name. */
+  name: string
+  /** Display title per interface language, from the package's own locale resources. */
+  title?: Record<string, string>
+  /** Specifier the bundle manifest declares. */
+  declared: string
+  /** Installed version, when the profile resolves the package. */
+  installed?: string
+  /**
+   * `aligned`: the installed version satisfies the declared specifier.
+   * `mismatch`: it does not.
+   * `missing`: the profile cannot resolve the package at all.
+   * `unchecked`: a repository edge (`git+…`, `link:`, `file:`), where registry
+   * version semantics do not apply — the source tree or tarball decides it.
+   */
+  state: 'aligned' | 'mismatch' | 'missing' | 'unchecked'
+}
+
+/** One row the composition is supposed to mount globally. */
+export interface RowStatus {
+  /** Row id in the patch layer. */
+  id: string
+  /** Package (or subpath) the row names. */
+  name: string
+  /** Loader ids of the entries currently carrying that name. */
+  entryIds: string[]
+  /** `mounted` covers the disabled parent case through `LoaderEntry.disabled`. */
+  state: 'mounted' | 'disabled' | 'missing'
+}
+
+/** The finance preset as the registry sees it. */
+export interface PresetStatus {
+  id: string
+  /**
+   * `ready`: registered and usable.
+   * `broken`: registered, but its composition reports unusable rows (detail).
+   * `missing`: the registry is live and does not list it.
+   * `unavailable`: this profile has no preset registry.
+   */
+  state: 'ready' | 'broken' | 'missing' | 'unavailable'
+  /** Whether new sessions select it by default. */
+  isDefault: boolean
+  /** Registry diagnostic for a broken definition; never guessed here. */
+  detail?: string
+}
+
+/** Everything one card read returns. */
+export interface WorkbenchStatus {
+  /** ISO timestamp of this read. */
+  checkedAt: string
+  bundle: { name: string; version?: string }
+  packages: PackageStatus[]
+  rows: RowStatus[]
+  preset: PresetStatus
+}
+
+/** One Loader entry, structurally — the fields this module reads. */
+export interface LoaderEntryLike {
+  options?: { id?: string; name?: string; disabled?: boolean | null }
+  disabled?: boolean
+  fiber?: unknown
+}
+
+/** Slice of `ctx.pluginPackages` this module reads. */
+export interface PackageLookupLike {
+  packageOf(specifier: string, parentUrl: string): {
+    version?: string
+    manifest?: Record<string, unknown>
+  } | undefined
+  metaOf?(specifier: string, parentUrl: string): { title?: string } | undefined
+}
+
+/** Slice of `ctx.agentPresets` this module reads. */
+export interface PresetRegistryLike {
+  list?(): Promise<readonly { id?: string; broken?: string }[]>
+  defaultId?: string
+}
+
+/**
+ * Host context slice.
+ *
+ * Only `get` is read: cordis refuses a direct service property access from a
+ * row that did not declare that service in its inject list, and this row must
+ * mount with no inject at all (a composition layer may not become the reason
+ * the plugins it installs stop loading).
+ */
+export interface WorkbenchHostLike {
+  get?(name: string): unknown
+}
+
+/**
+ * Rows the composition mounts on the global plane. The preset's own rows live
+ * in its detached subtree and are audited by the registry instead, so they are
+ * not listed here.
+ */
+export const GLOBAL_ROW_TARGETS: readonly { id: string; name: string }[] = [
+  { id: 'dsh-fft-settings', name: '@dsh-ft/dsh-fft-settings' },
+  { id: 'dsh-fft-ftshare', name: '@dsh-ft/dsh-fft-ftshare' },
+  { id: 'dsh-kline-sidebar', name: '@ftshare-lab/dsh-kline' },
+  { id: 'ft-paper-trading', name: '@dsh-ft/dsh-fft-paper-trading' },
+  { id: 'preset-ft-finance', name: '@deepseek-ai/dsh-agent-preset' },
+  { id: 'finance-all-in-one', name: BUNDLE_NAME },
+]
+
+/** Longest the registry may take before this read reports it unavailable. */
+const PRESET_TIMEOUT_MS = 3000
+
+/** Repository edges: their specifier is not a registry range. */
+const REPOSITORY_SPEC = /^(?:git\+|git@|github:|gitlab:|bitbucket:|gist:|https?:|file:|link:|workspace:|path:)/iu
+
+type Version = readonly [number, number, number]
+
+/** Parse a plain `x.y.z` (prerelease ignored); undefined for ranges and specifiers. */
+function parseVersion(text: string): Version | undefined {
+  const match = /^(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/u.exec(text.trim())
+  if (match === null) return undefined
+  return [Number(match[1]), Number(match[2]), Number(match[3])]
+}
+
+/** Compare two parsed versions. */
+function compareVersions(left: Version, right: Version): number {
+  return left[0] - right[0] || left[1] - right[1] || left[2] - right[2]
+}
+
+/** Whether a registry range admits `version`; undefined when this module cannot tell. */
+export function specAllows(spec: string, version: string): boolean | undefined {
+  if (REPOSITORY_SPEC.test(spec.trim())) return undefined
+  const parsed = parseVersion(version)
+  if (parsed === undefined) return undefined
+  const text = spec.trim()
+  const exact = parseVersion(text)
+  if (exact !== undefined) return compareVersions(parsed, exact) === 0
+  const caret = /^\^(\d+\.\d+\.\d+)/u.exec(text)
+  if (caret !== null) {
+    const base = parseVersion(caret[1] as string) as Version
+    if (compareVersions(parsed, base) < 0) return false
+    // `^0.y.z` is constrained to the same minor; every other major keeps itself.
+    return base[0] === 0 ? parsed[1] === base[1] : parsed[0] === base[0]
+  }
+  const tilde = /^~(\d+\.\d+\.\d+)/u.exec(text)
+  if (tilde !== null) {
+    const base = parseVersion(tilde[1] as string) as Version
+    return compareVersions(parsed, base) >= 0 && parsed[0] === base[0] && parsed[1] === base[1]
+  }
+  const atLeast = /^>=(\d+\.\d+\.\d+)/u.exec(text)
+  if (atLeast !== null) {
+    return compareVersions(parsed, parseVersion(atLeast[1] as string) as Version) >= 0
+  }
+  return undefined
+}
+
+/** Message of an unknown thrown value. */
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
+/** One package lookup that never throws: a broken resolution is a missing package. */
+function packageOf(host: WorkbenchHostLike, name: string, baseUrl: string): {
+  version?: string
+  manifest?: Record<string, unknown>
+} | undefined {
+  try {
+    return (host.get?.('pluginPackages') as PackageLookupLike | undefined)?.packageOf(name, baseUrl)
+  } catch {
+    return undefined
+  }
+}
+
+/** Normalize a host title (a localized map or a bare string) to non-empty language entries. */
+function normalizeTitle(value: unknown): Record<string, string> | undefined {
+  if (typeof value === 'string') return value.trim() === '' ? undefined : { en: value.trim() }
+  if (typeof value !== 'object' || value === null) return undefined
+  const entries = Object.entries(value).flatMap(([language, text]) =>
+    typeof text === 'string' && text.trim() !== '' ? [[language, text.trim()] as const] : [])
+  return entries.length === 0 ? undefined : Object.fromEntries(entries)
+}
+
+/**
+ * A resolution base inside the profile.
+ *
+ * Presenting a dependency's own locale resources must resolve through the
+ * profile's map: a linked checkout's dependencies that this repository does not
+ * develop against (plot lives in another repo) have no `node_modules` edge above
+ * this module, so the host's resolver answers nothing for them from here.
+ * @returns the profile's Package.json URL, or undefined outside a profile.
+ */
+function profileBaseUrl(host: WorkbenchHostLike): string | undefined {
+  try {
+    const profile = host.get?.('profileContext') as { dir?: unknown } | undefined
+    if (typeof profile?.dir !== 'string' || profile.dir === '') return undefined
+    const encoded = profile.dir.split('/').map(segment => encodeURIComponent(segment)).join('/')
+    return `file://${encoded.startsWith('/') ? '' : '/'}${encoded}/package.json`
+  } catch {
+    return undefined
+  }
+}
+
+/** The package's own display title, through the host's metadata reader. */
+function titleOf(host: WorkbenchHostLike, name: string, baseUrl: string): Record<string, string> | undefined {
+  try {
+    const meta = (host.get?.('pluginPackages') as PackageLookupLike | undefined)?.metaOf?.(name, baseUrl)
+    return normalizeTitle(meta?.title)
+  } catch {
+    return undefined
+  }
+}
+
+/** Read the composition's dependency statuses. */
+function packageStatuses(host: WorkbenchHostLike, baseUrl: string): PackageStatus[] {
+  // Titles resolve against the profile, where every declared dependency lives.
+  const metaBase = profileBaseUrl(host) ?? baseUrl
+  const dependencies = declaredManifest.dependencies as Record<string, unknown>
+  const statuses: PackageStatus[] = []
+  for (const [name, declared] of Object.entries(dependencies)) {
+    if (typeof declared !== 'string') continue
+    const installed = packageOf(host, name, baseUrl)?.version
+    // Repository edges ship from this very tree; their specifier has no version.
+    if (REPOSITORY_SPEC.test(declared.trim())) {
+      const title = titleOf(host, name, metaBase)
+      statuses.push({ name, declared, ...(installed === undefined ? {} : { installed }), ...(title === undefined ? {} : { title }), state: 'unchecked' })
+      continue
+    }
+    if (installed === undefined) {
+      const title = titleOf(host, name, metaBase)
+      statuses.push({ name, declared, ...(title === undefined ? {} : { title }), state: 'missing' })
+      continue
+    }
+    const allowed = specAllows(declared, installed)
+    const state = allowed === true ? 'aligned' : allowed === false ? 'mismatch' : 'unchecked'
+    const title = titleOf(host, name, metaBase)
+    statuses.push({ name, declared, installed, ...(title === undefined ? {} : { title }), state })
+  }
+  return statuses
+}
+
+/** Read the global rows' mount state. */
+function rowStatuses(host: WorkbenchHostLike): RowStatus[] {
+  const entries = [...((host.get?.('loader') as { entries?(): Iterable<LoaderEntryLike> } | undefined)?.entries?.() ?? [])]
+  return GLOBAL_ROW_TARGETS.map(target => {
+    const matches = entries.filter(entry => entry.options?.name === target.name)
+    const entryIds = matches.flatMap(entry => {
+      const id = entry.options?.id
+      return typeof id === 'string' ? [id] : []
+    })
+    const disabled = matches.length > 0 && matches.every(entry => entry.disabled === true)
+    const state = matches.length === 0 ? 'missing' : disabled ? 'disabled' : 'mounted'
+    return { id: target.id, name: target.name, entryIds, state }
+  })
+}
+
+/** Race a promise against the registry timeout. */
+async function withTimeout<T>(task: Promise<T>, ms: number, message: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      task,
+      new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => reject(new Error(message)), ms)
+      }),
+    ])
+  } finally {
+    if (timer !== undefined) clearTimeout(timer)
+  }
+}
+
+/** Read the finance preset through the registry's own audit. */
+export async function presetStatus(host: WorkbenchHostLike): Promise<PresetStatus> {
+  const registry = host.get?.('agentPresets') as PresetRegistryLike | undefined
+  if (registry === undefined || typeof registry.list !== 'function') {
+    return { id: FINANCE_PRESET_ID, state: 'unavailable', isDefault: false }
+  }
+  let rows: readonly { id?: string; broken?: string }[]
+  try {
+    rows = await withTimeout(
+      registry.list(),
+      PRESET_TIMEOUT_MS,
+      'preset registry did not answer in time',
+    )
+  } catch (error) {
+    return { id: FINANCE_PRESET_ID, state: 'unavailable', isDefault: false, detail: errorMessage(error) }
+  }
+  const row = rows.find(entry => entry.id === FINANCE_PRESET_ID)
+  if (row === undefined) return { id: FINANCE_PRESET_ID, state: 'missing', isDefault: false }
+  const detail = typeof row.broken === 'string' && row.broken.trim() !== '' ? row.broken.trim() : undefined
+  return {
+    id: FINANCE_PRESET_ID,
+    state: detail === undefined ? 'ready' : 'broken',
+    isDefault: registry.defaultId === FINANCE_PRESET_ID,
+    ...(detail === undefined ? {} : { detail }),
+  }
+}
+
+/**
+ * Collect one read of the workbench status.
+ * @param host - the plugin context, narrowed to the services this module reads.
+ * @param baseUrl - module URL the dependency lookup resolves against.
+ * @returns the status; a failed probe never rejects — it lands in the field.
+ */
+export async function collectWorkbenchStatus(
+  host: WorkbenchHostLike,
+  baseUrl: string,
+): Promise<WorkbenchStatus> {
+  return {
+    checkedAt: new Date().toISOString(),
+    bundle: { name: BUNDLE_NAME, version: declaredManifest.version },
+    packages: packageStatuses(host, baseUrl),
+    rows: rowStatuses(host),
+    preset: await presetStatus(host),
+  }
+}

@@ -42,6 +42,11 @@
     # @dsh-ft/dsh-fft-paper-trading 钉版成对存在。
     - id: ft-paper-trading
       name: '@dsh-ft/dsh-fft-paper-trading'
+    # 工作台自身：宿主半在 `/api/ft-workbench` 回答「这份安装缺了什么」，浏览器半在
+    # 「金融终端」设置页贡献一张只读自检卡。放在最后一行：它观察的是上面这些行的挂载
+    # 状态与版本，行自己不需要先读任何东西（每次请求现读 loader）。
+    - id: finance-all-in-one
+      name: '@dsh-ft/finance-all-in-one'
     - id: preset-ft-finance
       name: '@deepseek-ai/dsh-agent-preset'
       config:

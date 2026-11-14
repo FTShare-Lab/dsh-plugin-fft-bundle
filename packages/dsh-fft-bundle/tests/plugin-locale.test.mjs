@@ -68,6 +68,7 @@ function componentNames() {
  * patch without touching this file.
  */
 const TITLES = new Map([
+  ['@dsh-ft/finance-all-in-one', '金融工作台'],
   ['@dsh-ft/dsh-fft-settings', 'FT 设置'],
   ['@dsh-ft/dsh-fft-ftshare', 'FTShare 数据'],
   ['@dsh-ft/dsh-fft-paper-trading', '模拟交易'],
