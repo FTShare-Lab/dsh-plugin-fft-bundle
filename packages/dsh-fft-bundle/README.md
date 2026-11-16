@@ -41,7 +41,7 @@ dsh plugin add @dsh-ft/finance-all-in-one
 
 ## 上手三步
 
-1. **配置数据源（可选）**：DSH「设置 → 金融终端」里填 FTShare API Key，免费申请地址 <https://ftai.chat/me/profile?tab=api-key&utm_source=dsh-fft>，无 key 时使用匿名额度。
+1. **配置数据源（可选）**：DSH「设置 → 金融终端」里填 FTShare API Key，免费申请地址 [FTShare 官网](https://ftai.chat/ftshare?utm_source=dsh-fft&utm_medium=AI&utm_campaign=dsh)，无 key 时使用匿名额度。
 2. **新建会话**：默认就是金融模式，不用再选预设。
 3. **直接问**：
 
