@@ -4,6 +4,20 @@
 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循
 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [1.0.4] - 2026-11-16
+
+包页 README 的申请 Key 入口改为 FTShare 落地页，并补齐 UTM 归因；运行代码不变。
+
+### Changed
+
+- `packages/dsh-fft-bundle/README.md` 的「免费申请地址」由登录后的 `/me/profile?tab=api-key`
+  （只带 `utm_source`）改为 `https://ftai.chat/ftshare?utm_source=dsh-fft&utm_medium=AI&utm_campaign=dsh`
+- 仓库内两个未发布插件的 `#path:` 依赖边随本版前移到 `v1.0.4`
+
+### Note
+
+- 纯文档与依赖锚点改动：不新增依赖、不改运行代码，公开 npm 侧安装行为与 API 不变。
+
 ## [1.0.3] - 2026-11-14
 
 组合包不再只是组合：新增「金融工作台」自检卡，在「金融终端」设置页直接显示依赖包版本与挂载点状态。
