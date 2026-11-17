@@ -1,0 +1,59 @@
+{
+  "name": "@dsh-ft/dsh-fft-gallery",
+  "version": "0.1.0",
+  "description": "FT gallery: a right-sidebar shelf of third-party web apps registered through a repository manifest.",
+  "license": "MIT",
+  "author": "Ben <ben@ft.tech>",
+  "homepage": "https://github.com/FTShare-Lab/dsh-plugin-fft-bundle#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FTShare-Lab/dsh-plugin-fft-bundle.git",
+    "directory": "packages/dsh-fft-gallery"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "default": "./lib/client.js"
+    },
+    "./gallery/catalog.json": "./gallery/catalog.json",
+    "./gallery/index.json": "./gallery/index.json",
+    "./package.json": "./package.json",
+    "./cordis.patch.yml": "./cordis.patch.yml"
+  },
+  "files": [
+    "lib/index.js",
+    "lib/client.js",
+    "gallery/catalog.json",
+    "gallery/index.json",
+    "cordis.patch.yml"
+  ],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "pnpm run build && node --test tests/*.test.mjs"
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-slots",
+        "@deepseek-ai/dsh-client-ui-sidebar-right"
+      ]
+    },
+    "engines": {
+      "dsh": ">=0.2.1-rc.2"
+    }
+  }
+}

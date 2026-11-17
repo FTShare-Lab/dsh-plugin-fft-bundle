@@ -1,0 +1,64 @@
+{
+  "format": 1,
+  "generatedAt": "2026-11-17T09:21:07.014Z",
+  "categories": {
+    "market": {
+      "zh": "行情",
+      "en": "Market data"
+    },
+    "chart": {
+      "zh": "图表",
+      "en": "Charts"
+    }
+  },
+  "entries": [
+    {
+      "id": "ftshare.etf-flow",
+      "kind": "web",
+      "trust": "verified",
+      "category": "market",
+      "order": 10,
+      "title": {
+        "zh": "ETF 资金流",
+        "en": "ETF fund flow"
+      },
+      "description": {
+        "zh": "份额申赎与资金净流入联动看板，按板块与宽基拆分。",
+        "en": "Share creation/redemption against net fund flow, split by sector and index."
+      },
+      "author": "FTShare-Lab",
+      "repo": "https://github.com/FTShare-Lab/FtShare_fincase",
+      "homepage": "https://etf.jtxaionline.com/",
+      "engines": {
+        "dsh": ">=0.2.1-rc.2"
+      },
+      "url": "https://ftshare-etf-flow.zippymarshmallow.chatgpt.site/"
+    },
+    {
+      "id": "ft.plot",
+      "kind": "plugin",
+      "trust": "verified",
+      "category": "chart",
+      "order": 20,
+      "title": {
+        "zh": "FT 绘图",
+        "en": "FT Plot"
+      },
+      "description": {
+        "zh": "把取数结果画成对话内联 SVG 图表，零第三方依赖。",
+        "en": "Renders query results into inline SVG charts inside the conversation, with zero third-party dependencies."
+      },
+      "author": "FT",
+      "repo": "https://github.com/gigaflw/dsh-fft-base",
+      "homepage": "https://dsh-fft.com/",
+      "engines": {},
+      "spec": {
+        "type": "npm",
+        "name": "@dsh-ft/dsh-fft-plot",
+        "version": "0.2.0",
+        "registry": "https://registry.npmjs.org"
+      },
+      "publishTimestamp": 1794903777
+    }
+  ]
+}

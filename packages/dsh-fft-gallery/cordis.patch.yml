@@ -1,0 +1,11 @@
+# dsh-fft-gallery patch layer: inserts the gallery row.
+#
+#   dsh plugin --profile <name> add @dsh-ft/dsh-fft-gallery
+#
+# The row carries both halves: the host half serves the catalog route, the
+# browser half registers the right-sidebar "画廊" tab. A bare-name global row is
+# the only shape the DSH browser-module scan can see, so this cannot live in a
+# preset.
+- insert:
+    - id: ft-gallery
+      name: '@dsh-ft/dsh-fft-gallery'

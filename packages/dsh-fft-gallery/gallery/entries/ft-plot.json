@@ -1,0 +1,26 @@
+{
+  "id": "ft.plot",
+  "kind": "plugin",
+  "trust": "verified",
+  "category": "chart",
+  "order": 20,
+  "title": {
+    "zh": "FT 绘图",
+    "en": "FT Plot"
+  },
+  "description": {
+    "zh": "把取数结果画成对话内联 SVG 图表，零第三方依赖。",
+    "en": "Renders query results into inline SVG charts inside the conversation, with zero third-party dependencies."
+  },
+  "spec": {
+    "type": "npm",
+    "name": "@dsh-ft/dsh-fft-plot",
+    "version": "0.2.0",
+    "registry": "https://registry.npmjs.org"
+  },
+  "publishTimestamp": 1794903777,
+  "homepage": "https://dsh-fft.com/",
+  "repo": "https://github.com/gigaflw/dsh-fft-base",
+  "author": "FT",
+  "engines": {}
+}
