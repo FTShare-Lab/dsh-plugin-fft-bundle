@@ -4,6 +4,20 @@
 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循
 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [1.0.5] - 2026-11-17
+
+金融模式默认在对话内出图，只有明确要求在 K 线图上画图时才调用 K 线绘图；README 首图换成四类出图示例。出图能力来自 `plot` 0.2.0 的新图型。
+
+### Changed
+
+- 金融模式要图时默认对话内出图，只有明确要求在 K 线图上画图才用 K 线；不再先问用户，也不再把图开在右侧栏。
+- README 首图改为 1×4 四类图展示（走势、热力图、瀑布图、产业链），并更新模拟交易说明。
+- 仓库内两个未发布插件的 `#path:` 依赖边随本版前移到 `v1.0.5`。
+
+### Note
+
+- 出图能力随 `@dsh-ft/dsh-fft-plot` 0.2.0 提供；bundle 的依赖下界同步前移到 `>=0.2.0`。
+
 ## [1.0.4] - 2026-11-16
 
 包页 README 的申请 Key 入口改为 FTShare 落地页，并补齐 UTM 归因；运行代码不变。
@@ -356,3 +370,4 @@ K 线改由上游 `0.6.11` 提供，FT 定制构建退场；本次只更新装�
 [0.5.2]: https://github.com/gigaflw/dsh-fft-bundle/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/gigaflw/dsh-fft-bundle/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/gigaflw/dsh-fft-bundle/tree/v0.5.0
+[1.0.5]: https://github.com/FTShare-Lab/dsh-plugin-fft-bundle/compare/v1.0.4...v1.0.5

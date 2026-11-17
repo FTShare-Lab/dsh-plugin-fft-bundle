@@ -80,8 +80,8 @@ importers:
         specifier: '>=0.7.2'
         version: 0.7.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-api-remotes@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-scope@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4)))(@deepseek-ai/dsh-client-ui-layout@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-client-ui-settings@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-client-ui-slots@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-credentials@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-llm@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-tools@0.2.1-rc.2(484a077a99424b8596be40b14db4948d))(@deepseek-ai/schemastery@3.18.5)(react@18.3.1)(zod@4.6.5)
       '@dsh-ft/dsh-fft-plot':
-        specifier: '>=0.1.0'
-        version: 0.1.0(@deepseek-ai/dsh-skill@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-llm@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-scope@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4)))
+        specifier: '>=0.2.0'
+        version: 0.2.0(@deepseek-ai/dsh-skill@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-llm@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-scope@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4)))
       '@dsh-ft/dsh-fft-settings':
         specifier: '>=0.7.1'
         version: 0.7.1(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-api-remotes@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-scope@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4)))(@deepseek-ai/dsh-client-ui-layout@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-client-ui-settings@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-client-ui-slots@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-credentials@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/schemastery@3.18.5)(react@18.3.1)
@@ -460,8 +460,8 @@ packages:
       '@deepseek-ai/dsh-tools': 0.2.1-rc.2
       react: ^18.2.0
 
-  '@dsh-ft/dsh-fft-plot@0.1.0':
-    resolution: {integrity: sha512-9roODVG4LfQxJXz+NgdM+9OPd7MwfZrWLl6GzkI7TgWX6Yt7zTmJe7YTFtPZiPbPn8NYdQU9JtyL0OidyakqNA==}
+  '@dsh-ft/dsh-fft-plot@0.2.0':
+    resolution: {integrity: sha512-M4zOnLwtK7A2WMCplrbCCWBmY7TDu/hcRPwZ0fy0IvGxc6wjsdvR3+8RJRBwT9P7am3mHhEh6ZACm7zhk3L2Kg==}
     engines: {node: '>=22.19.0'}
     peerDependencies:
       '@deepseek-ai/dsh-skill': 0.2.1-rc.2
@@ -1324,7 +1324,7 @@ snapshots:
       - supports-color
       - zod
 
-  '@dsh-ft/dsh-fft-plot@0.1.0(@deepseek-ai/dsh-skill@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-llm@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-scope@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4)))':
+  '@dsh-ft/dsh-fft-plot@0.2.0(@deepseek-ai/dsh-skill@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-llm@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-scope@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4)))':
     dependencies:
       '@deepseek-ai/dsh-skill': 0.2.1-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-llm@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-scope@0.2.1-rc.2(@deepseek-ai/cordis@4.0.4))
 
