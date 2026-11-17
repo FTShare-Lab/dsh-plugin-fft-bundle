@@ -449,7 +449,7 @@ describe('the finance preset in this bundle', () => {
     const prefix = persona.config?.prefix
     assert.equal(typeof prefix, 'string', 'the persona prefix must stay a string')
     assert.match(prefix, /dsh-fft-plot/u, 'the persona must name the inline plot skill')
-    assert.match(prefix, /默认.*dsh-fft-plot|dsh-fft-plot.*默认/u, 'inline drawing must be the default')
+    assert.match(prefix, /默认.*dsh-fft-plot|dsh-fft-plot.*(?:内联出图|默认)/u, 'inline drawing must be the default')
     assert.match(prefix, /明确要求.*K 线图/u, 'K-line drawing must be gated on an explicit request')
     assert.match(prefix, /不要打开右侧栏/u, 'the default path must not open the K-line sidebar')
   })
@@ -576,7 +576,7 @@ describe('the finance preset in this bundle', () => {
       )
       // Drawing requests default to the inline plot skill. K-line drawing is
       // allowed only when the user explicitly asks for it on the K-line chart.
-      assert.match(bundlePersona.config.prefix, /默认.*dsh-fft-plot|dsh-fft-plot.*默认/u)
+      assert.match(bundlePersona.config.prefix, /默认.*dsh-fft-plot|dsh-fft-plot.*(?:内联出图|默认)/u)
       assert.match(bundlePersona.config.prefix, /明确要求.*K 线图/u)
       assert.match(bundlePersona.config.prefix, /不要打开右侧栏/u)
     })
