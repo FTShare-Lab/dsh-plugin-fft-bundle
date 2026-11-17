@@ -5,15 +5,19 @@
 
 一次安装，把 DeepSeek Harness 组装成一座金融工作台：FTShare 数据面、K 线图表、出图技能、 A 股 / 商品期货模拟盘。
 
-![金融模式会话：让它把取数结果画成图，图直接出现在回答里；右侧是常驻的 K 线助手，行情、板块与龙虎榜都在里面](https://raw.githubusercontent.com/FTShare-Lab/dsh-plugin-fft-bundle/dev/packages/dsh-fft-bundle/assets/screenshots/chat.jpg)
+一次对话，按自然语言画出四类图：走势、热力图、瀑布图与产业链。
+
+![一次对话生成四类图：走势、热力图、瀑布图、产业链](https://raw.githubusercontent.com/FTShare-Lab/dsh-plugin-fft-bundle/dev/packages/dsh-fft-bundle/assets/screenshots/plot-1x4.jpg)
+
+金融模式会话：让它把取数结果画成图，图直接出现在回答里；右侧是常驻的 K 线助手，行情、板块与龙虎榜都在里面。
+
+![金融模式会话：取数、出图与 K 线助手](https://raw.githubusercontent.com/FTShare-Lab/dsh-plugin-fft-bundle/dev/packages/dsh-fft-bundle/assets/screenshots/chat.jpg)
+
+模拟交易：A 股与商品期货的本地账本，下单、撤单、持仓与复盘都在一处，成交前随时可以撤。
+
+![模拟交易：订单页的待开盘委托与已撤记录](https://raw.githubusercontent.com/FTShare-Lab/dsh-plugin-fft-bundle/dev/packages/dsh-fft-bundle/assets/screenshots/orders.jpg)
 
 > DSH ≥ 0.2.1-rc.2 · 装完新会话就是金融模式 · K 线由依赖安装 · 账本保存在本地
-
-## 效果
-
-下单与撤单：市价单在收盘后自动排队到下一交易时段，状态与原因（待开盘 / 已撤 / 被拒）都写在订单页，成交前随时可以撤。
-
-![订单页：待开盘的委托与已撤记录](https://raw.githubusercontent.com/FTShare-Lab/dsh-plugin-fft-bundle/dev/packages/dsh-fft-bundle/assets/screenshots/orders.jpg)
 
 ## 装了什么
 
