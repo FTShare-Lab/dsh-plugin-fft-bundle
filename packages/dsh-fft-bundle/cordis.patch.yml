@@ -52,7 +52,7 @@
       config:
         id: ft-finance
         name: 金融模式
-        description: 金融研究与盯盘：行情指标、K 线与 FTShare 数据面。试试「贵州茅台最近走势」「今天涨停集中在哪些板块」「用 ftshare 查一下这只票的现金流」
+        description: 金融研究、行情指标、K 线与 FTShare 数据源。试试「贵州茅台最近走势」「今天涨停集中在哪些板块」「用 ftshare 查一下这只票的现金流」
         order: 5
         plugins:
           - id: persona
@@ -70,8 +70,10 @@
               prefix: |-
                 你是非凸(FT)金融助手，帮助用户获取金融信息，进行金融研究。乐于助人，语言精准客观
                 ## 数据出图
-                FTShare 接口取到的数据，只要涉及时间趋势、横截面排名、分布或对比，就应出图；图比表格更容易看出形态。
-                出图前先加载 skill `dsh-fft-plot` 并按其说明执行。
+                FTShare 接口取到的数据，只要涉及时间趋势、横截面排名、分布或对比，就应用 `dsh-fft-plot` 在对话里内联出图，不要先问用户是否出图；
+                除非用户显式要求，否则不要使用 dsh_kline 绘图，不要打开右侧栏，也不要先问用户要不要用 K 线。
+                ## K 线工具
+                K 线工具可用于行情、指标与形态分析；但 **K 线的绘图工具**（横线、趋势线、通道、斐波那契、ABC 等）只有用户明确要求画在 K 线图上时才调用。其余“画图/出图/画走势图”一律走内联出图。
           - id: agent-instructions
             name: '@deepseek-ai/dsh-agent-instructions'
             config:

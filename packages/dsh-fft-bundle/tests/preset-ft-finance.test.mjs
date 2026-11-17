@@ -441,6 +441,19 @@ describe('the finance preset in this bundle', () => {
     }
   })
 
+  it('routes drawing to the inline skill unless K-line drawing is explicit', () => {
+    // Drawing requests default to the inline plot skill. K-line drawing is the
+    // explicit-only exception: the user has to ask for it on the K-line chart.
+    const persona = bundlePlugins.find(row => row.id === PERSONA_ID)
+    assert.ok(persona, `"${PRESET_ID}" must declare a "${PERSONA_ID}" plugin`)
+    const prefix = persona.config?.prefix
+    assert.equal(typeof prefix, 'string', 'the persona prefix must stay a string')
+    assert.match(prefix, /dsh-fft-plot/u, 'the persona must name the inline plot skill')
+    assert.match(prefix, /默认.*dsh-fft-plot|dsh-fft-plot.*默认/u, 'inline drawing must be the default')
+    assert.match(prefix, /明确要求.*K 线图/u, 'K-line drawing must be gated on an explicit request')
+    assert.match(prefix, /不要打开右侧栏/u, 'the default path must not open the K-line sidebar')
+  })
+
   it('overrides the preset registry with only the durable default key', () => {
     // The loader replaces a row's whole config, so this override is only safe
     // while it restates every key the official row declares. The next test
@@ -561,6 +574,11 @@ describe('the finance preset in this bundle', () => {
         /非凸|FT/u,
         `"${PERSONA_ID}".config.prefix must name the FT identity it was changed for`,
       )
+      // Drawing requests default to the inline plot skill. K-line drawing is
+      // allowed only when the user explicitly asks for it on the K-line chart.
+      assert.match(bundlePersona.config.prefix, /默认.*dsh-fft-plot|dsh-fft-plot.*默认/u)
+      assert.match(bundlePersona.config.prefix, /明确要求.*K 线图/u)
+      assert.match(bundlePersona.config.prefix, /不要打开右侧栏/u)
     })
   })
 
