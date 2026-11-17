@@ -1,0 +1,29 @@
+{
+  "entries": [
+    {
+      "id": "ftshare.etf-flow",
+      "kind": "web",
+      "title": { "zh": "ETF 资金流", "en": "ETF fund flow" },
+      "summary": { "zh": "份额申赎与资金净流入联动看板", "en": "Fund flow against share changes" },
+      "details": { "zh": "按板块与宽基拆分……", "en": "Split by sector and broad index." },
+      "cover": "./assets/cover.png",
+      "screenshots": [
+        { "src": "./assets/shot-flow.png", "alt": { "zh": "资金流看板", "en": "Fund flow board" } }
+      ],
+      "url": "https://ftshare-etf-flow.zippymarshmallow.chatgpt.site/",
+      "homepage": "https://etf.jtxaionline.com/",
+      "author": "FTShare-Lab",
+      "category": "market"
+    },
+    {
+      "id": "ft.paper-trading",
+      "kind": "plugin",
+      "title": { "zh": "模拟交易", "en": "Paper trading" },
+      "summary": { "zh": "手工下单与持仓复盘", "en": "Manual orders and review" },
+      "cover": "./assets/cover-paper.png",
+      "spec": { "type": "npm", "name": "@dsh-ft/dsh-fft-paper-trading", "version": "0.7.2" },
+      "open": { "kind": "paper-trading" },
+      "category": "tool"
+    }
+  ]
+}

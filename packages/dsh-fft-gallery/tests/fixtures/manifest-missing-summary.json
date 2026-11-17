@@ -1,0 +1,15 @@
+{
+  "entries": [
+    {
+      "id": "ftshare.etf-flow",
+      "kind": "web",
+      "title": { "zh": "ETF 资金流", "en": "ETF fund flow" },
+      "cover": "./assets/cover.png",
+      "screenshots": [
+        { "src": "./assets/shot-flow.png", "alt": { "zh": "资金流看板", "en": "Fund flow board" } }
+      ],
+      "url": "https://ftshare-etf-flow.zippymarshmallow.chatgpt.site/",
+      "category": "market"
+    }
+  ]
+}

@@ -1,57 +1,193 @@
 /**
  * Host entry for the FT gallery.
  *
- * The package's substance is its data: `gallery/catalog.json` lists the web
- * apps (and, for the Host market index, the plugin bundles) a third party
- * registered through a repository manifest. This module is the one thing a
- * client half cannot do on its own — read that file off disk and answer on an
- * exact Fetch route.
+ * Two routes, no state machine:
+ *   GET  /api/ft-gallery/catalog  the merged catalog: the bundled baseline plus
+ *                                 the remotely synced one (`?refresh=1` bypasses
+ *                                 the cache TTL), failing back to the last good
+ *                                 copy and then to the bundled file;
+ *   GET  /api/ft-gallery/state    the user's shelf (favorites);
+ *   POST /api/ft-gallery/state    one favorite/unfavorite mutation.
  *
- * Everything is lazy and optional: the route appears with `connection`, and a
- * profile without that service simply has no route instead of failing to load.
- * A catalog read never throws at the caller; a missing or invalid file lands in
- * the payload so the shelf can say what is wrong.
+ * The shelf lives in a file rather than in browser storage on purpose: the
+ * desktop app serves the UI from a new port on every start, so a localStorage
+ * origin does not survive a restart.
+ *
+ * Everything is dependency-injected, so the routes are testable without a host:
+ * a test hands in its own fetch, clock and directories.
  * @module @dsh-ft/dsh-fft-gallery
  */
 
-import { readFile } from 'node:fs/promises'
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { homedir } from 'node:os'
+import { dirname, join } from 'node:path'
 
 /** Package name the Loader shows. */
 export const name = '@dsh-ft/dsh-fft-gallery'
 
-/** The one route the browser half reads. */
+/** The catalog route the browser half reads. */
 export const CATALOG_ROUTE = '/api/ft-gallery/catalog'
 
-/** Bundled catalog file, resolved relative to this module (lib/ or src/). */
+/** The shelf route the browser half reads and writes. */
+export const STATE_ROUTE = '/api/ft-gallery/state'
+
+/** Bundled catalog, resolved relative to this module (lib/ or src/). */
 const CATALOG_FILE = new URL('../gallery/catalog.json', import.meta.url)
+
+/** Where the daily sync publishes the synced catalog. */
+const DEFAULT_REMOTE_CATALOG =
+  'https://raw.githubusercontent.com/FTShare-Lab/dsh-plugin-fft-bundle/catalog/gallery/catalog.json'
+
+/** How long a fetched catalog is trusted before another read. */
+const DEFAULT_TTL_MS = 60 * 60 * 1000
+
+/** How long one remote read may take before the bundled baseline answers. */
+const DEFAULT_FETCH_TIMEOUT_MS = 8_000
 
 /** JSON response helper. */
 function json(status, payload) {
   return new Response(JSON.stringify(payload), {
     status,
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
   })
 }
 
-/**
- * Read and parse the bundled catalog.
- * @returns {Promise<object>} the catalog document.
- */
+/** The DSH home this process uses; the shelf lives under it. */
+export function dshHome() {
+  const configured = process.env.DSH_HOME?.trim()
+  return configured === undefined || configured === '' ? join(homedir(), '.dsh') : configured
+}
+
+/** Absolute path of the shelf file. */
+export function defaultStateFile() {
+  return join(dshHome(), '.dsh-fft-gallery', 'state.json')
+}
+
+/** Absolute path of the remote catalog cache. */
+export function defaultCacheFile() {
+  return join(dshHome(), '.dsh-fft-gallery', 'cache', 'catalog.json')
+}
+
+/** Read and parse the bundled catalog. */
 export async function readBundledCatalog() {
   const text = await readFile(CATALOG_FILE, 'utf8')
   const catalog = JSON.parse(text)
-  if (catalog === null || typeof catalog !== 'object') throw new Error('catalog.json is not an object')
-  if (catalog.format !== 1) throw new Error(`catalog.json has unsupported format: ${String(catalog.format)}`)
-  if (!Array.isArray(catalog.entries)) throw new Error('catalog.json has no entries array')
+  assertCatalog(catalog, 'bundled catalog')
   return catalog
 }
 
+/** Fail early on a document this code cannot render. */
+export function assertCatalog(catalog, label) {
+  if (catalog === null || typeof catalog !== 'object') throw new Error(`${label} is not an object`)
+  if (catalog.format !== 2) throw new Error(`${label} has unsupported format: ${String(catalog.format)}`)
+  if (!Array.isArray(catalog.entries)) throw new Error(`${label} has no entries array`)
+  for (const entry of catalog.entries) {
+    if (entry === null || typeof entry !== 'object' || typeof entry.id !== 'string') {
+      throw new Error(`${label} has an entry without an id`)
+    }
+  }
+}
+
 /**
- * Build the exact route the shelf reads.
- * @param {() => Promise<object>} read - produces one catalog read; it may reject.
+ * Merge the bundled baseline with the synced catalog: one entry per id, the
+ * synced one winning, bundled-only entries retained so an offline install still
+ * shows something.
+ * @param bundled - the catalog shipped in this package.
+ * @param remote - the catalog the daily sync published.
+ * @returns one catalog document.
+ */
+export function mergeCatalogs(bundled, remote) {
+  const byId = new Map()
+  for (const entry of bundled.entries ?? []) byId.set(entry.id, entry)
+  for (const entry of remote.entries ?? []) byId.set(entry.id, entry)
+  return {
+    format: 2,
+    generatedAt: remote.generatedAt ?? bundled.generatedAt,
+    categories: { ...bundled.categories, ...remote.categories },
+    entries: [...byId.values()].sort((left, right) => {
+      const order = (left.order ?? 100) - (right.order ?? 100)
+      return order !== 0 ? order : left.id.localeCompare(right.id)
+    }),
+  }
+}
+
+/** Read JSON from a file, or fall back to a default. */
+async function readJsonOr(file, fallback) {
+  try {
+    return JSON.parse(await readFile(file, 'utf8'))
+  } catch {
+    return fallback
+  }
+}
+
+/** Write JSON through a temporary file, so a crash never leaves half a document. */
+async function writeJsonAtomic(file, value) {
+  await mkdir(dirname(file), { recursive: true })
+  const temporary = `${file}.${process.pid}.tmp`
+  await writeFile(temporary, `${JSON.stringify(value, null, 2)}\n`)
+  await rename(temporary, file)
+}
+
+/**
+ * Route that answers with the merged catalog.
+ *
+ * @param options - injected collaborators; every one has a production default.
  * @returns the route the host connection registry accepts.
  */
-export function createCatalogRoute(read) {
+export function createCatalogRoute(options = {}) {
+  const {
+    readBundled = readBundledCatalog,
+    fetchRemote = (...args) => globalThis.fetch(...args),
+    remoteUrl = process.env.DSH_FT_GALLERY_CATALOG_URL?.trim() || DEFAULT_REMOTE_CATALOG,
+    cacheFile = defaultCacheFile(),
+    ttlMs = DEFAULT_TTL_MS,
+    timeoutMs = DEFAULT_FETCH_TIMEOUT_MS,
+    now = () => Date.now(),
+  } = options
+
+  /** Last good synced catalog, with the tag it was fetched under. */
+  async function readCache() {
+    const cached = await readJsonOr(cacheFile, undefined)
+    return cached !== null && typeof cached === 'object' && cached.catalog !== undefined ? cached : undefined
+  }
+
+  /** One synced read, honouring the TTL and the ETag; failures fall back to the cache. */
+  async function readRemote({ refresh }) {
+    const cached = await readCache()
+    if (!refresh && cached !== undefined && now() - cached.fetchedAt < ttlMs) {
+      return { catalog: cached.catalog, cached: true }
+    }
+    try {
+      const headers = { accept: 'application/json' }
+      if (cached?.etag !== undefined) headers['if-none-match'] = cached.etag
+      const response = await fetchRemote(remoteUrl, {
+        headers,
+        // A hung remote must never hold the shelf on a spinner.
+        signal: AbortSignal.timeout(timeoutMs),
+      })
+      if (response.status === 304 && cached !== undefined) return { catalog: cached.catalog, cached: true }
+      if (!response.ok) {
+        const failure = new Error(`remote catalog answered HTTP ${response.status}`)
+        failure.status = response.status
+        throw failure
+      }
+      const catalog = JSON.parse(await response.text())
+      assertCatalog(catalog, 'remote catalog')
+      await writeJsonAtomic(cacheFile, {
+        etag: response.headers?.get?.('etag') ?? undefined,
+        fetchedAt: now(),
+        catalog,
+      })
+      return { catalog, cached: false }
+    } catch (error) {
+      if (cached !== undefined) return { catalog: cached.catalog, cached: true, stale: true }
+      // A 404 is the expected state before the first sync publishes the branch:
+      // the bundled baseline is the whole catalog, not a stale copy of it.
+      if (error?.status === 404) return { notPublished: true }
+      throw error
+    }
+  }
+
   return {
     path: CATALOG_ROUTE,
     methods: ['GET'],
@@ -60,34 +196,124 @@ export function createCatalogRoute(read) {
       if (request.method !== 'GET') {
         return json(405, { ok: false, error: { code: 'METHOD_NOT_ALLOWED', message: '只支持 GET' } })
       }
+      const url = new URL(request.url)
+      const refresh = url.searchParams.get('refresh') === '1'
+      let bundled
       try {
-        const catalog = await read()
-        return json(200, {
-          ok: true,
-          catalog: {
-            ...catalog,
-            source: 'bundled',
-          },
-        })
+        bundled = await readBundled()
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error)
-        return json(200, { ok: false, error: { code: 'CATALOG_UNAVAILABLE', message } })
+        return json(200, {
+          ok: false,
+          error: { code: 'CATALOG_UNAVAILABLE', message: error instanceof Error ? error.message : String(error) },
+        })
+      }
+      let remote
+      let warning
+      try {
+        remote = await readRemote({ refresh })
+      } catch (error) {
+        warning = error instanceof Error ? error.message : String(error)
+      }
+      const catalog = remote?.catalog === undefined ? bundled : mergeCatalogs(bundled, remote.catalog)
+      return json(200, {
+        ok: true,
+        catalog: {
+          ...catalog,
+          meta: {
+            remote: remote?.catalog === undefined ? 'unavailable' : remote.cached ? 'cached' : 'fresh',
+            stale: remote?.stale === true,
+            ...remote?.notPublished === true ? { notPublished: true } : {},
+            ...warning === undefined ? {} : { warning },
+          },
+        },
+      })
+    },
+  }
+}
+
+/** The default shelf document. */
+function emptyState() {
+  return { version: 1, favorites: {}, updatedAt: new Date(0).toISOString() }
+}
+
+/**
+ * Route that answers with, and mutates, the user's shelf.
+ *
+ * Mutations are serialized through one chain so two clicks cannot interleave
+ * reads and writes; each write goes through a temporary file.
+ * @param options - injected collaborators.
+ * @returns the route the host connection registry accepts.
+ */
+export function createStateRoute(options = {}) {
+  const { stateFile = defaultStateFile(), now = () => new Date().toISOString() } = options
+  let queue = Promise.resolve()
+
+  const read = () => readJsonOr(stateFile, emptyState())
+  const write = async (state) => {
+    await writeJsonAtomic(stateFile, state)
+    return state
+  }
+
+  return {
+    path: STATE_ROUTE,
+    methods: ['GET', 'POST'],
+    requestBody: 'buffered',
+    async fetch(request) {
+      if (request.method === 'GET') {
+        return json(200, { ok: true, state: await read() })
+      }
+      if (request.method !== 'POST') {
+        return json(405, { ok: false, error: { code: 'METHOD_NOT_ALLOWED', message: '只支持 GET / POST' } })
+      }
+      let body
+      try {
+        body = JSON.parse(await request.text())
+      } catch {
+        return json(400, { ok: false, error: { code: 'BAD_BODY', message: '请求体不是 JSON' } })
+      }
+      const op = body?.op
+      const id = body?.id
+      if ((op !== 'favorite' && op !== 'unfavorite') || typeof id !== 'string' || id === '') {
+        return json(400, { ok: false, error: { code: 'BAD_REQUEST', message: '需要 { op: favorite|unfavorite, id }' } })
+      }
+      const run = queue.then(async () => {
+        const state = await read()
+        const favorites = { ...(state.favorites ?? {}) }
+        if (op === 'favorite') favorites[id] = { at: now() }
+        else delete favorites[id]
+        return write({ ...state, version: 1, favorites, updatedAt: now() })
+      })
+      queue = run.catch(() => {})
+      try {
+        return json(200, { ok: true, state: await run })
+      } catch (error) {
+        return json(200, {
+          ok: false,
+          error: { code: 'STATE_WRITE_FAILED', message: error instanceof Error ? error.message : String(error) },
+        })
       }
     },
   }
 }
 
 /**
- * Attach the catalog route.
- * @param {object} ctx - the plugin context.
+ * Attach both routes.
+ *
+ * The route appears with `connection`; a profile without that service has no
+ * gallery routes instead of a failing plugin row.
+ * @param ctx - the plugin context.
  */
 export function apply(ctx) {
   ctx.inject(['connection'], scope => {
     const connection = scope.get('connection')
     if (connection === undefined || typeof connection.fetch?.register !== 'function') return
     scope.effect(
-      () => connection.fetch.register(createCatalogRoute(readBundledCatalog)),
+      () => connection.fetch.register(createCatalogRoute()),
       'dsh-fft-gallery: catalog route',
+    )
+    scope.effect(
+      () => connection.fetch.register(createStateRoute()),
+      'dsh-fft-gallery: state route',
     )
   })
 }

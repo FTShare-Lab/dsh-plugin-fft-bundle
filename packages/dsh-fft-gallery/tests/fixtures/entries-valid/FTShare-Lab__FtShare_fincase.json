@@ -1,0 +1,29 @@
+{
+  "source": "github",
+  "repo": "https://github.com/FTShare-Lab/FtShare_fincase",
+  "stars": 35,
+  "syncedAt": "2026-11-17T00:00:00.000Z",
+  "entries": [
+    {
+      "id": "ftshare.etf-flow",
+      "kind": "web",
+      "category": "market",
+      "order": 10,
+      "title": {
+        "zh": "ETF 资金流",
+        "en": "ETF fund flow"
+      },
+      "summary": {
+        "zh": "份额申赎与资金净流入联动看板，按板块与宽基拆分。",
+        "en": "Share creation/redemption against net fund flow, split by sector and index."
+      },
+      "url": "https://ftshare-etf-flow.zippymarshmallow.chatgpt.site/",
+      "homepage": "https://etf.jtxaionline.com/",
+      "author": "FTShare-Lab",
+      "engines": {
+        "dsh": ">=0.2.1-rc.2"
+      },
+      "embeddable": false
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "entries": [
+    {
+      "id": "ft.paper-trading",
+      "kind": "plugin",
+      "title": { "zh": "模拟交易", "en": "Paper trading" },
+      "summary": { "zh": "手工下单与持仓复盘", "en": "Manual orders and review" },
+      "spec": { "type": "npm", "name": "@dsh-ft/dsh-fft-paper-trading", "version": "0.7.2" },
+      "category": "tool"
+    },
+    {
+      "id": "ft.paper-trading",
+      "kind": "plugin",
+      "title": { "zh": "模拟交易（重复）", "en": "Paper trading (duplicate)" },
+      "summary": { "zh": "同一清单里重复声明", "en": "Declared twice in one manifest" },
+      "spec": { "type": "git", "url": "https://github.com/FTShare-Lab/dsh-plugin-fft-bundle", "commit": "4e50b34f0b7f8f6d6a9d9a8f2b3f6c1e7d5a4b3c" },
+      "category": "tool"
+    }
+  ]
+}

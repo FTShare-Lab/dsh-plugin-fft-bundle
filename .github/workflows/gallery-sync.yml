@@ -1,0 +1,58 @@
+name: gallery-sync
+
+# Keeps the gallery catalog fresh without cutting a release: the topic is
+# scanned, the entries are validated, the catalog is built, and the result is
+# published to the `catalog` branch the shelf reads over raw.githubusercontent.
+#
+# A new repository with `dsh-ft-gallery.json` + topic `dsh-ft-gallery` therefore
+# appears to users within a day, without a version bump. The bundled catalog
+# stays the offline baseline; releasers still run `pnpm --filter
+# @dsh-ft/dsh-fft-gallery run build` to fold the latest entries into a release.
+
+on:
+  schedule:
+    # Daily, just after 03:17 UTC so the run does not pile onto release work.
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gallery-sync
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Scan the topic and refresh the entries
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node packages/dsh-fft-gallery/scripts/gallery-sync.mjs --token GITHUB_TOKEN
+
+      - name: Rebuild the catalog
+        run: node packages/dsh-fft-gallery/scripts/build.mjs
+
+      - name: Publish the catalog branch
+        run: |
+          set -euo pipefail
+          src="$GITHUB_WORKSPACE/packages/dsh-fft-gallery/gallery/catalog.json"
+          out="$(mktemp -d)"
+          git worktree add --detach "$out"
+          cd "$out"
+          git checkout --orphan catalog
+          git rm -rf . >/dev/null
+          mkdir -p gallery
+          cp "$src" gallery/catalog.json
+          git add gallery/catalog.json
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -m "chore(gallery): sync catalog"
+          git push --force origin catalog

@@ -23,7 +23,6 @@
       "default": "./lib/client.js"
     },
     "./gallery/catalog.json": "./gallery/catalog.json",
-    "./gallery/index.json": "./gallery/index.json",
     "./package.json": "./package.json",
     "./cordis.patch.yml": "./cordis.patch.yml"
   },
@@ -31,12 +30,13 @@
     "lib/index.js",
     "lib/client.js",
     "gallery/catalog.json",
-    "gallery/index.json",
     "cordis.patch.yml"
   ],
   "scripts": {
     "build": "node scripts/build.mjs",
-    "test": "pnpm run build && node --test tests/*.test.mjs"
+    "test": "pnpm run build && node --test tests/*.test.mjs",
+    "gallery:sync": "node scripts/gallery-sync.mjs",
+    "gallery:check": "node scripts/gallery-sync.mjs --check"
   },
   "engines": {
     "node": ">=22.19.0"
@@ -48,6 +48,7 @@
     "client": {
       "platform": "web",
       "inject": [
+        "@deepseek-ai/dsh-api-remotes",
         "@deepseek-ai/dsh-client-ui-slots",
         "@deepseek-ai/dsh-client-ui-sidebar-right"
       ]
