@@ -58,14 +58,22 @@ describe('catalog shape', () => {
 
   it('covers every category an entry names', () => {
     for (const entry of built.entries) {
+      if (entry.category === undefined) continue
       assert.ok(built.categories[entry.category] !== undefined, `${entry.id} names undeclared category ${entry.category}`)
     }
+  })
+
+  it('leaves an entry without a category out of the pills but keeps it in the catalog', () => {
+    const catalog = buildCatalog([{ source: 'github', repo: 'https://example.com/r', stars: 0, syncedAt: FIXED_AT,
+      entries: [{ id: 'no.category', kind: 'web', title: { zh: '无分类', en: 'No category' }, summary: { zh: '无', en: 'No' }, url: 'https://example.com/' }] }], { generatedAt: FIXED_AT })
+    assert.equal(catalog.entries[0].category, undefined)
+    assert.equal(Object.keys(catalog.categories).length, 5)
   })
 
   it('keeps ids unique', () => {
     const ids = built.entries.map(entry => entry.id)
     assert.deepEqual(ids, [...new Set(ids)])
-    assert.deepEqual(ids, ['ftshare.etf-flow', 'ft.plot'], 'order 10 sorts before order 20')
+    assert.deepEqual(ids, ['ftshare.etf-flow', 'ft.paper-trading'], 'order 10 sorts before order 20')
   })
 
   it('projects the repository snapshot onto every entry', () => {
@@ -86,12 +94,13 @@ describe('catalog shape', () => {
     assert.equal(web.spec, undefined)
     assert.equal(web.open, undefined)
 
-    const plugin = built.entries.find(entry => entry.id === 'ft.plot')
+    const plugin = built.entries.find(entry => entry.id === 'ft.paper-trading')
     assert.equal(plugin.kind, 'plugin')
-    assert.deepEqual(plugin.spec, { type: 'npm', name: '@dsh-ft/dsh-fft-plot', version: '0.2.0' })
+    assert.deepEqual(plugin.spec, { type: 'npm', name: '@dsh-ft/dsh-fft-paper-trading', version: '0.7.2' })
+    assert.deepEqual(plugin.open, { panel: 'ft-paper-trading' })
     assert.equal(plugin.url, undefined)
     assert.equal(plugin.embeddable, undefined)
-    assert.equal(plugin.summary.en, 'Inline SVG charts from query results.')
+    assert.equal(plugin.summary.en, 'Paper orders, positions and review for A-shares and commodity futures.')
   })
 
   it('does not leak fields the schema does not define', () => {
@@ -102,7 +111,7 @@ describe('catalog shape', () => {
     for (const entry of built.entries) {
       for (const key of Object.keys(entry)) assert.ok(allowed.has(key), `${entry.id} leaks ${key}`)
     }
-    assert.equal(built.entries[1].details.zh, '把取数结果画成对话内联 SVG 图表，零第三方依赖。')
+    assert.equal(built.entries[1].details.zh, '本地账本记录成交与持仓，内置 FTShare 行情与 K 线；安装后从右侧栏打开，和手工装的模拟交易完全一致。')
   })
 })
 

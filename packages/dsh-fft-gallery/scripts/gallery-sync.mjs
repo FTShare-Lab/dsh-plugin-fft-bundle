@@ -165,12 +165,16 @@ function normalizeSpec(fail, spec) {
   fail('spec.type must be npm or git')
 }
 
-/** The optional sidebar tab a plugin entry opens. */
+/** The optional surface a plugin entry opens: a sidebar tab kind or a main panel. */
 function normalizeOpen(fail, open) {
   if (!isObject(open)) fail('open must be an object')
-  const unknown = Object.keys(open).filter(key => key !== 'kind')
+  const unknown = Object.keys(open).filter(key => key !== 'kind' && key !== 'panel')
   if (unknown.length > 0) fail(`open has unknown field(s): ${unknown.join(', ')}`)
-  return { kind: text(fail, open.kind, 'open.kind') }
+  if (open.kind !== undefined && open.panel !== undefined) fail('open carries either kind or panel, not both')
+  if (open.kind === undefined && open.panel === undefined) fail('open needs kind or panel')
+  return open.kind === undefined
+    ? { panel: text(fail, open.panel, 'open.panel') }
+    : { kind: text(fail, open.kind, 'open.kind') }
 }
 
 /** An optional SemVer range; kept loose so a future range syntax is not rejected. */
@@ -238,7 +242,9 @@ export function validateEntry(entry, { knownIds, file } = {}) {
   if (unknown.length > 0) fail(`unknown field(s): ${unknown.join(', ')}`)
   if (knownIds !== undefined && knownIds.has(entry.id)) fail(`duplicate entry id: ${entry.id}`)
   if (!KINDS.has(entry.kind)) fail('kind must be web or plugin')
-  if (!CATEGORY_IDS.has(entry.category)) fail(`category must be one of ${[...CATEGORY_IDS].join(', ')}`)
+  if (entry.category !== undefined && !CATEGORY_IDS.has(entry.category)) {
+    fail(`category must be one of ${[...CATEGORY_IDS].join(', ')} when present`)
+  }
   if (entry.order !== undefined && (!Number.isInteger(entry.order) || entry.order < 0)) {
     fail('order must be a non-negative integer')
   }
@@ -247,7 +253,7 @@ export function validateEntry(entry, { knownIds, file } = {}) {
   const record = {
     id: entry.id,
     kind: entry.kind,
-    category: entry.category,
+    ...entry.category === undefined ? {} : { category: entry.category },
     order: entry.order ?? DEFAULT_ORDER,
     title: localized(fail, entry.title, 'title'),
     summary: localized(fail, entry.summary, 'summary', SUMMARY_MAX),

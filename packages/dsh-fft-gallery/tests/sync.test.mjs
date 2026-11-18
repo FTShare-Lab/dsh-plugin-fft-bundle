@@ -95,6 +95,23 @@ describe('parseManifest', () => {
     assert.deepEqual(plugin.spec, { type: 'npm', name: '@dsh-ft/dsh-fft-paper-trading', version: '0.7.2' })
     assert.deepEqual(plugin.open, { kind: 'paper-trading' })
     assert.equal(plugin.cover, 'https://raw.githubusercontent.com/Example-Lab/dsh-ft-demo/main/assets/cover-paper.png')
+
+    const panelEntries = await parseManifest(JSON.stringify({ entries: [{
+      id: 'panel.open', kind: 'plugin', category: 'tool',
+      title: { zh: '面板', en: 'Panel' }, summary: { zh: '面板', en: 'Panel' },
+      spec: { type: 'npm', name: '@dsh-ft/dsh-fft-paper-trading', version: '0.7.2' },
+      open: { panel: 'ft-paper-trading' },
+    }] }), { baseManifestUrl: MANIFEST_URL })
+    assert.deepEqual(panelEntries[0].open, { panel: 'ft-paper-trading' })
+    assert.throws(
+      () => parseManifest(JSON.stringify({ entries: [{
+        id: 'both.open', kind: 'plugin', category: 'tool',
+        title: { zh: '面板', en: 'Panel' }, summary: { zh: '面板', en: 'Panel' },
+        spec: { type: 'npm', name: '@dsh-ft/dsh-fft-plot', version: '0.2.0' },
+        open: { kind: 'a', panel: 'b' },
+      }] }), { baseManifestUrl: MANIFEST_URL }),
+      /either kind or panel/,
+    )
   })
 
   it('rejects unparseable JSON', async () => {

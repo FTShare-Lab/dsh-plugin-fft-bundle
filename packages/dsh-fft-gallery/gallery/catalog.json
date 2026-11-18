@@ -1,6 +1,6 @@
 {
   "format": 2,
-  "generatedAt": "2026-11-17T11:59:41.412Z",
+  "generatedAt": "2026-11-18T07:54:29.424Z",
   "categories": {
     "market": {
       "zh": "行情",
@@ -78,33 +78,63 @@
       "syncedAt": "2026-11-17T00:00:00.000Z"
     },
     {
-      "id": "ft.plot",
+      "id": "ft.paper-trading",
       "kind": "plugin",
-      "category": "chart",
+      "category": "tool",
       "order": 20,
       "title": {
-        "zh": "FT 绘图",
-        "en": "FT Plot"
+        "zh": "模拟交易",
+        "en": "Paper trading"
       },
       "summary": {
-        "zh": "把取数结果画成对话内联 SVG 图表。",
-        "en": "Inline SVG charts from query results."
+        "zh": "A 股与商品期货模拟下单、持仓与复盘。",
+        "en": "Paper orders, positions and review for A-shares and commodity futures."
       },
       "details": {
-        "zh": "把取数结果画成对话内联 SVG 图表，零第三方依赖。",
-        "en": "Renders query results into inline SVG charts inside the conversation, with zero third-party dependencies."
+        "zh": "本地账本记录成交与持仓，内置 FTShare 行情与 K 线；安装后从右侧栏打开，和手工装的模拟交易完全一致。",
+        "en": "A local ledger records fills and positions, with FTShare quotes and K-line built in. Once installed it opens from the right sidebar, exactly like a hand-installed plugin."
       },
+      "cover": "https://raw.githubusercontent.com/gigaflw/dsh-fft-paper-trading/HEAD/assets/screenshots/trade.jpg",
+      "screenshots": [
+        {
+          "src": "https://raw.githubusercontent.com/gigaflw/dsh-fft-paper-trading/HEAD/assets/screenshots/trade.jpg",
+          "alt": {
+            "zh": "下单与持仓",
+            "en": "Orders and positions"
+          }
+        },
+        {
+          "src": "https://raw.githubusercontent.com/gigaflw/dsh-fft-paper-trading/HEAD/assets/screenshots/futures.jpg",
+          "alt": {
+            "zh": "商品期货",
+            "en": "Commodity futures"
+          }
+        },
+        {
+          "src": "https://raw.githubusercontent.com/gigaflw/dsh-fft-paper-trading/HEAD/assets/screenshots/review.jpg",
+          "alt": {
+            "zh": "交易复盘",
+            "en": "Trade review"
+          }
+        }
+      ],
       "spec": {
         "type": "npm",
-        "name": "@dsh-ft/dsh-fft-plot",
-        "version": "0.2.0"
+        "name": "@dsh-ft/dsh-fft-paper-trading",
+        "version": "0.7.2"
       },
-      "homepage": "https://dsh-fft.com/",
-      "author": "FT",
+      "open": {
+        "panel": "ft-paper-trading"
+      },
+      "homepage": "https://github.com/gigaflw/dsh-fft-paper-trading#readme",
+      "author": "Ben",
+      "engines": {
+        "dsh": ">=0.2.0-rc.2"
+      },
       "source": "github",
-      "repo": "https://github.com/gigaflw/dsh-fft-base",
-      "stars": 0,
-      "syncedAt": "2026-11-17T00:00:00.000Z"
+      "repo": "https://github.com/gigaflw/dsh-fft-paper-trading",
+      "stars": 2,
+      "syncedAt": "2026-11-18T00:00:00.000Z"
     }
   ]
 }

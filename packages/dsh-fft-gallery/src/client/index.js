@@ -1,10 +1,10 @@
 /**
- * Browser half of the FT gallery: the right-sidebar "画廊" tab.
+ * Browser half of the FT gallery: the right-sidebar "金融组件库" tab.
  *
  * Three surfaces share one tab:
  *   - 发现 (Discover): a CSS-columns waterfall of the catalog entries the Host
  *     half serves on `/api/ft-gallery/catalog`;
- *   - 我的画廊 (My gallery): saved entries (`/api/ft-gallery/state`) merged with
+ *   - 我的收藏 (Saved): saved entries (`/api/ft-gallery/state`) merged with
  *     the entries installed plugins registered at runtime through `ctx.ftGallery`;
  *   - 详情 (detail): screenshots, summary/details, links and the open action,
  *     rendered in place of the list with a back control.
@@ -17,7 +17,7 @@
  * the gallery never installs a plugin — it only shows a copyable command.
  *
  * It also provides the `ftGallery` service: any installed plugin may register
- * its own entry (which appears in 我的画廊 only), and the returned disposer
+ * its own entry (which appears in 我的收藏 only), and the returned disposer
  * removes it again on plugin unload.
  */
 window.__ModuleLoader__.load({
@@ -48,10 +48,10 @@ window.__ModuleLoader__.load({
     const pick = (zh, en) => (ZH ? zh : en)
 
     const TEXT = {
-      title: pick('画廊', 'Gallery'),
-      guide: pick('第三方网页应用与插件', 'Third-party web apps and plugins'),
+      title: pick('金融组件库', 'Finance gallery'),
+      guide: pick('网页应用与插件组件，收藏后可随时打开', 'Web apps and plugin components; save one to open later'),
       discover: pick('发现', 'Discover'),
-      shelf: pick('我的画廊', 'My gallery'),
+      shelf: pick('我的收藏', 'Saved'),
       refresh: pick('刷新目录', 'Refresh catalog'),
       refreshFailed: pick('刷新失败，仍显示上次的目录', 'Refresh failed; showing the previous catalog'),
       loading: pick('正在读取目录…', 'Loading the catalog…'),
@@ -62,8 +62,8 @@ window.__ModuleLoader__.load({
       emptyCatalog: pick('目录暂时没有条目', 'The catalog has no entries yet'),
       emptyFiltered: pick('该分类下没有条目', 'Nothing in this category'),
       emptyShelf: pick(
-        '还没有收藏。在「发现」里点 ☆ 收进这里；已安装的插件会自动出现。',
-        'Nothing saved yet. Tap ☆ in Discover; installed plugins appear here automatically.',
+        '还没有收藏。在「发现」里点 ♡ 收进这里；已安装的插件会自动出现。',
+        'Nothing saved yet. Tap ♡ in Discover; installed plugins appear here automatically.',
       ),
       all: pick('全部', 'All'),
       stale: pick('目录可能过期', 'The catalog may be out of date'),
@@ -84,6 +84,7 @@ window.__ModuleLoader__.load({
       loadingSaved: pick('正在读取收藏…', 'Loading saved entries…'),
       noBrowser: pick('此环境没有侧栏浏览器，已在系统浏览器打开', 'No sidebar browser here; opened in your system browser'),
       tabMissing: (kind) => pick(`宿主没有注册「${kind}」页面，可能需要重启或等待热应用`, `The host has no "${kind}" view registered; restart or wait for hot-apply`),
+      panelMissing: (panel) => pick(`宿主没有注册「${panel}」面板，可能需要重启或等待热应用`, `The host has no "${panel}" panel registered; restart or wait for hot-apply`),
       openFailed: pick('打开失败', 'Could not open the entry'),
       summary: pick('简介', 'Summary'),
       details: pick('详情', 'Details'),
@@ -95,7 +96,7 @@ window.__ModuleLoader__.load({
       starsNote: pick('热度（GitHub ★），非评分', 'Popularity (GitHub stars), not a rating'),
       stars: (count) => `★ ${count}`,
       installTitle: pick('安装命令', 'Install command'),
-      installHint: pick('画廊不安装插件。安装后需重启或等待热应用。', 'The gallery never installs anything. Restart or wait for hot-apply after installing.'),
+      installHint: pick('这里不安装插件。安装后需重启或等待热应用。', 'Nothing is installed from here. Restart or wait for hot-apply after installing.'),
       unknownInstall: pick('暂时无法确认安装状态；可在命令行查看。', 'Installation state is unknown right now; check it in the terminal.'),
       copy: pick('复制', 'Copy'),
       copied: pick('已复制', 'Copied'),
@@ -143,10 +144,11 @@ window.__ModuleLoader__.load({
 .ftg-tag[data-state="yes"]{color:var(--dsw-alias-state-success-primary)}
 .ftg-tag[data-state="no"]{color:var(--dsw-alias-label-tertiary)}
 .ftg-author{max-width:9em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ftg-stars{margin-left:auto;color:var(--dsw-alias-state-warn-primary);font-variant-numeric:tabular-nums;white-space:nowrap}
-.ftg-fav{flex:none;width:20px;height:20px;padding:0;border:0;border-radius:var(--dsw-radius-xs);background:transparent;color:var(--dsw-alias-label-tertiary);font-size:13px;line-height:1;cursor:pointer}
-.ftg-fav:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-state-warn-primary)}
-.ftg-fav[data-on]{color:var(--dsw-alias-state-warn-primary)}
+.ftg-stars{margin-left:auto;color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;white-space:nowrap}
+.ftg-media{position:relative}
+.ftg-fav{position:absolute;top:6px;right:6px;width:24px;height:24px;padding:0;border:0;border-radius:50%;background:rgba(0,0,0,.38);color:#fff;font-size:13px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.ftg-fav:hover{background:rgba(0,0,0,.55)}
+.ftg-fav[data-on]{color:#ffd479;background:rgba(0,0,0,.55)}
 .ftg-fav[disabled]{opacity:.5;cursor:default}
 .ftg-state{margin:28px 18px;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:1.65;text-align:center}
 .ftg-state-title{margin-bottom:4px;color:var(--dsw-alias-label-secondary);font-size:12.5px;font-weight:600}
@@ -312,6 +314,11 @@ window.__ModuleLoader__.load({
       return entry.open !== null && typeof entry.open === 'object' && typeof entry.open.kind === 'string' ? entry.open.kind : ''
     }
 
+    /** The main panel id a plugin entry opens, else ''. */
+    function openPanelOf(entry) {
+      return entry.open !== null && typeof entry.open === 'object' && typeof entry.open.panel === 'string' ? entry.open.panel : ''
+    }
+
     /** Saved-state map shape guard; a null prototype keeps hostile ids inert. */
     function readFavorites(state) {
       const source = state !== null && typeof state === 'object'
@@ -357,14 +364,28 @@ window.__ModuleLoader__.load({
 
     // -------------------------------------------------------------- transport
 
-    /** Resolve how one plugin entry's installation stands. */
-    function installedState(entry, bundles) {
+    /**
+     * Resolve how one plugin entry's installation stands.
+     *
+     * A live tab type for the entry's `open.kind` is itself proof: a bundle
+     * dependency is not always listed as a profile bundle, but a plugin that
+     * registered its tab is loaded.
+     */
+    function installedState(entry, bundles, hasTabKind, hasMainPanel) {
       if (entry.source === 'runtime') return { status: 'runtime' }
       if (entry.kind !== 'plugin') return { status: 'web' }
       const spec = entry.spec
-      if (spec === null || typeof spec !== 'object' || spec.type !== 'npm' || typeof spec.name !== 'string') return { status: 'unknown' }
-      if (bundles.status !== 'ready') return { status: 'unknown' }
-      const row = bundles.byName.get(spec.name)
+      const named = spec !== null && typeof spec === 'object' && spec.type === 'npm' && typeof spec.name === 'string'
+      const row = named && bundles.status === 'ready' ? bundles.byName.get(spec.name) : undefined
+      const kind = openKindOf(entry)
+      if (kind !== '' && typeof hasTabKind === 'function' && hasTabKind(kind)) {
+        return { status: 'installed', version: row !== undefined && typeof row.version === 'string' ? row.version : '' }
+      }
+      const panel = openPanelOf(entry)
+      if (panel !== '' && typeof hasMainPanel === 'function' && hasMainPanel(panel)) {
+        return { status: 'installed', version: row !== undefined && typeof row.version === 'string' ? row.version : '' }
+      }
+      if (!named || bundles.status !== 'ready') return { status: 'unknown' }
       if (row === undefined || row.installed !== true) return { status: 'missing' }
       return { status: 'installed', version: typeof row.version === 'string' ? row.version : '' }
     }
@@ -405,6 +426,15 @@ window.__ModuleLoader__.load({
         host.right.openTab(kind)
       } catch {
         pushToast('error', TEXT.tabMissing(kind))
+      }
+    }
+
+    /** Select a plugin's main panel; a profile without that panel says so. */
+    function openPanel(host, panel, pushToast) {
+      try {
+        host.layout.selectPanel(panel)
+      } catch {
+        pushToast('error', TEXT.panelMissing(panel))
       }
     }
 
@@ -716,7 +746,24 @@ window.__ModuleLoader__.load({
           onOpen(entry)
         },
       },
-        h(Picture, { src: httpsUrl(entry.cover) || firstScreenshot(entry), alt: '', className: 'ftg-cover', glyph: firstGlyph(entry.title) }),
+        h('div', { className: 'ftg-media' },
+          h(Picture, { src: httpsUrl(entry.cover) || firstScreenshot(entry), alt: '', className: 'ftg-cover', glyph: firstGlyph(entry.title) }),
+          canSave
+            ? h('button', {
+              type: 'button',
+              className: 'ftg-fav',
+              'data-on': saved ? '' : undefined,
+              'aria-pressed': saved,
+              'aria-label': saved ? TEXT.unsave : TEXT.save,
+              title: saved ? TEXT.unsave : TEXT.save,
+              disabled: saving,
+              onClick: (event) => {
+                event.stopPropagation()
+                onToggleFavorite(entry)
+              },
+            }, saved ? '♥' : '♡')
+            : null,
+        ),
         h('div', { className: 'ftg-card-body' },
           h('div', { className: 'ftg-card-title' }, entryTitle(entry)),
           summary === '' ? null : h('div', { className: 'ftg-card-summary' }, summary),
@@ -724,21 +771,6 @@ window.__ModuleLoader__.load({
             h(InstalledTag, { entry, installed }),
             author === '' ? null : h('span', { className: 'ftg-author' }, author),
             stars === null ? null : h('span', { className: 'ftg-stars', title: TEXT.starsNote }, TEXT.stars(stars)),
-            canSave
-              ? h('button', {
-                type: 'button',
-                className: 'ftg-fav',
-                'data-on': saved ? '' : undefined,
-                'aria-pressed': saved,
-                'aria-label': saved ? TEXT.unsave : TEXT.save,
-                title: saved ? TEXT.unsave : TEXT.save,
-                disabled: saving,
-                onClick: (event) => {
-                  event.stopPropagation()
-                  onToggleFavorite(entry)
-                },
-              }, saved ? '★' : '☆')
-              : null,
           ),
         ),
       )
@@ -827,12 +859,13 @@ window.__ModuleLoader__.load({
         : []
       const cover = httpsUrl(entry.cover) || firstScreenshot(entry)
       const openKind = openKindOf(entry)
+      const openPanelId = openPanelOf(entry)
       const runtime = entry.source === 'runtime'
       const canOpen = runtime
-        ? typeof entry.onOpen === 'function' || openKind !== ''
+        ? typeof entry.onOpen === 'function' || openKind !== '' || openPanelId !== ''
         : entry.kind === 'web'
           ? httpsUrl(entry.url) !== ''
-          : installed.status === 'installed' && openKind !== ''
+          : installed.status === 'installed' && (openKind !== '' || openPanelId !== '')
       const command = entry.kind === 'plugin' && (installed.status === 'missing' || installed.status === 'unknown')
         ? installCommand(entry)
         : ''
@@ -874,7 +907,7 @@ window.__ModuleLoader__.load({
               title: saved ? TEXT.unsave : TEXT.save,
               disabled: saving,
               onClick: () => onToggleFavorite(entry),
-            }, saved ? '★' : '☆')
+            }, saved ? '♥' : '♡')
             : null,
         ),
         h('div', { className: 'ftg-detail-body' },
@@ -1025,7 +1058,22 @@ window.__ModuleLoader__.load({
 
       const closeDetail = useCallback(() => setDetailId(''), [])
 
-      const installedOf = useCallback((entry) => installedState(entry, bundles), [bundles])
+      const hasTabKind = useCallback((kind) => {
+        const tabs = host.tabs
+        return tabs !== undefined && typeof tabs.get === 'function' && tabs.get(kind) !== undefined
+      }, [host])
+      const hasMainPanel = useCallback((panel) => {
+        const slots = host.slots
+        try {
+          return typeof slots.entries === 'function' && slots.entries('main').some(entry => entry?.options?.key === panel)
+        } catch {
+          return false
+        }
+      }, [host])
+      const installedOf = useCallback(
+        (entry) => installedState(entry, bundles, hasTabKind, hasMainPanel),
+        [bundles, hasTabKind, hasMainPanel],
+      )
       const savedOf = useCallback((entry) => (entry.source === 'runtime' ? false : isSaved(favorites.map, entry.id)), [favorites.map])
       // The star stays in place when saved state is unavailable; only disabled.
       const canSave = useCallback((entry) => entry.source !== 'runtime', [])
@@ -1046,6 +1094,11 @@ window.__ModuleLoader__.load({
         }
         if (entry.kind === 'web') {
           openWeb(host, entry.url, pushToast)
+          return
+        }
+        const panel = openPanelOf(entry)
+        if (panel !== '') {
+          openPanel(host, panel, pushToast)
           return
         }
         openPlugin(host, openKindOf(entry), pushToast)
@@ -1147,7 +1200,7 @@ window.__ModuleLoader__.load({
       let body
       const catalogFailed = catalog.status === 'failed'
       const catalogFailure = TEXT.loadFailed(catalog.error === '' ? TEXT.badResponse : catalog.error)
-      // 我的画廊 can still show runtime entries while the catalog is down.
+      // 我的收藏 can still show runtime entries while the catalog is down.
       if (!ready && !(catalogFailed && view === 'shelf' && runtimeEntries.length > 0)) {
         body = catalogFailed
           ? h(StateNote, {
@@ -1229,6 +1282,8 @@ window.__ModuleLoader__.load({
       const host = {
         get right() { return ctx.sidebarRight },
         get tabs() { return ctx.sidebarRightTabs },
+        get layout() { return ctx.layout },
+        get slots() { return ctx.slots },
         listBundles() {
           // `remote.pluginManager` is its own cordis service, so `ctx.get`
           // reads it without needing the `remote` namespace service too.
@@ -1254,7 +1309,7 @@ window.__ModuleLoader__.load({
     }
 
     exports.apply = apply
-    exports.inject = ['slots', 'sidebarRightTabs', 'sidebarRight', 'remote.pluginManager']
+    exports.inject = ['slots', 'sidebarRightTabs', 'sidebarRight', 'layout', 'remote.pluginManager']
     return module.exports
   },
 })
