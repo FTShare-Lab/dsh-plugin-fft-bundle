@@ -1,0 +1,68 @@
+name: publish-gallery
+
+# Manual release for @dsh-ft/dsh-fft-gallery. The version in package.json is
+# published only when the registry does not have it yet, so re-running is safe.
+# npm trusted publishing supplies the credential over OIDC; this file's name is
+# what the trusted publisher on npmjs.com must name.
+#
+# Independent of the bundle: pushing a bundle tag publishes the bundle only, and
+# this workflow never publishes it. Run from `dev`, the branch the package is
+# developed on; the job refuses any other ref.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-gallery
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write   # npm trusted publishing (OIDC)
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false
+
+      - name: Refuse anything but the dev branch
+        run: |
+          branch="${GITHUB_REF#refs/heads/}"
+          if [ "$branch" != "dev" ]; then
+            echo "::error::publish-gallery runs from dev, not $branch"
+            exit 1
+          fi
+
+      - name: Install npm with trusted publishing
+        run: npm install -g npm@11
+
+      - name: Build and test
+        run: |
+          node packages/dsh-fft-gallery/scripts/build.mjs
+          node --test packages/dsh-fft-gallery/tests/*.test.mjs
+          # lib/ must be committed: a git install delivers tracked files only.
+          git diff --exit-code -- packages/dsh-fft-gallery/lib
+
+      - name: Publish the version the registry lacks
+        working-directory: packages/dsh-fft-gallery
+        env:
+          NPM_CONFIG_PROVENANCE: 'true'
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./package.json').version")"
+          if npm view "@dsh-ft/dsh-fft-gallery@${version}" version >/dev/null 2>&1; then
+            echo "@dsh-ft/dsh-fft-gallery@${version} is already published"
+          else
+            npm publish --access public
+          fi

@@ -1,5 +1,8 @@
 name: gallery-sync
 
+# Catalog workflow only: this pushes the `catalog` branch and publishes no npm
+# package. The gallery release is its own file, `publish-gallery.yml`.
+#
 # Keeps the gallery catalog fresh without cutting a release: the topic is
 # scanned, the entries are validated, the catalog is built, and the result is
 # pushed to the `catalog` branch. The shelf reads it through jsDelivr's GitHub
