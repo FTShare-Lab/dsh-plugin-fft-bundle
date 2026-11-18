@@ -53,5 +53,6 @@
         "en": "Splits ETF share creation/redemption and net fund flow by sector, index and security, with daily and intraday turnover views. Data comes from FTShare and public sources, with bundled sample data."
       }
     }
-  ]
+  ],
+  "owner": "FTShare-Lab"
 }

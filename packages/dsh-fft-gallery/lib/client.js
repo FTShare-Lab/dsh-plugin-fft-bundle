@@ -334,13 +334,17 @@ window.__ModuleLoader__.load({
     /** One read of a host route; `{ ok: false }` and non-2xx are both failures. */
     async function readJson(route, init) {
       const response = await fetch(route, init)
-      if (!response.ok) throw new Error(`HTTP ${response.status}`)
       let body
       try {
         body = await response.json()
       } catch {
-        throw new Error(TEXT.badResponse)
+        body = undefined
       }
+      if (!response.ok) {
+        const message = body !== null && typeof body === 'object' && typeof body.error?.message === 'string' ? body.error.message : ''
+        throw new Error(message === '' ? `HTTP ${response.status}` : message)
+      }
+      if (body === undefined) throw new Error(TEXT.badResponse)
       if (body === null || typeof body !== 'object' || body.ok !== true) {
         const error = body !== null && typeof body === 'object' ? body.error : undefined
         const message = error !== null && typeof error === 'object' && typeof error.message === 'string' ? error.message : ''
@@ -732,7 +736,9 @@ window.__ModuleLoader__.load({
     function Card({ entry, saved, canSave, saving, installed, onOpen, onToggleFavorite }) {
       const summary = entrySummary(entry)
       const stars = typeof entry.stars === 'number' && Number.isFinite(entry.stars) ? entry.stars : null
-      const author = typeof entry.author === 'string' ? entry.author : ''
+      const author = typeof entry.author === 'string' && entry.author !== ''
+        ? entry.author
+        : typeof entry.owner === 'string' ? entry.owner : ''
       return h('div', {
         className: 'ftg-card',
         role: 'button',
@@ -851,7 +857,9 @@ window.__ModuleLoader__.load({
       const summary = entrySummary(entry)
       const details = localized(entry.details)
       const stars = typeof entry.stars === 'number' && Number.isFinite(entry.stars) ? entry.stars : null
-      const author = typeof entry.author === 'string' && entry.author !== '' ? entry.author : ''
+      const author = typeof entry.author === 'string' && entry.author !== ''
+        ? entry.author
+        : typeof entry.owner === 'string' ? entry.owner : ''
       const homepage = httpsUrl(entry.homepage)
       const repo = httpsUrl(entry.repo)
       const shots = Array.isArray(entry.screenshots)

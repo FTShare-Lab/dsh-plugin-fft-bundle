@@ -106,7 +106,7 @@ describe('catalog shape', () => {
   it('does not leak fields the schema does not define', () => {
     const allowed = new Set([
       'id', 'kind', 'category', 'order', 'title', 'summary', 'details', 'cover', 'screenshots',
-      'url', 'spec', 'open', 'homepage', 'author', 'engines', 'embeddable', 'source', 'repo', 'stars', 'syncedAt',
+      'url', 'spec', 'open', 'homepage', 'author', 'owner', 'engines', 'embeddable', 'source', 'repo', 'stars', 'syncedAt',
     ])
     for (const entry of built.entries) {
       for (const key of Object.keys(entry)) assert.ok(allowed.has(key), `${entry.id} leaks ${key}`)

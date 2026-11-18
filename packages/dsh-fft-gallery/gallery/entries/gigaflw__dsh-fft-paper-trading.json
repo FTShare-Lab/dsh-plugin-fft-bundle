@@ -54,10 +54,11 @@
         "panel": "ft-paper-trading"
       },
       "homepage": "https://github.com/gigaflw/dsh-fft-paper-trading#readme",
-      "author": "Ben",
+      "author": "gigaflw",
       "engines": {
         "dsh": ">=0.2.0-rc.2"
       }
     }
-  ]
+  ],
+  "owner": "gigaflw"
 }

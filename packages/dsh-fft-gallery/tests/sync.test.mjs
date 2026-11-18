@@ -337,7 +337,7 @@ describe('probePage', () => {
 })
 
 describe('buildEntries', () => {
-  const repo = { url: REPO_URL, stars: 42, syncedAt: '2026-11-17T00:00:00.000Z' }
+  const repo = { url: REPO_URL, owner: 'Example-Lab', stars: 42, syncedAt: '2026-11-17T00:00:00.000Z' }
 
   it('writes the repository snapshot and the observed embeddability', async () => {
     const entries = parseManifest(await readFixture('manifest-valid.json'), { file: 'm.json', repoUrl: REPO_URL, baseManifestUrl: MANIFEST_URL })
@@ -352,6 +352,22 @@ describe('buildEntries', () => {
     const [web, plugin] = file.entries
     assert.equal(web.embeddable, true)
     assert.equal(plugin.embeddable, undefined, 'only a web entry carries embeddable')
+  })
+
+  it('names the repository owner as the author unless the manifest says otherwise', async () => {
+    const entries = parseManifest(JSON.stringify({ entries: [{
+      id: 'no.author', kind: 'web', category: 'market',
+      title: { zh: '无作者', en: 'No author' }, summary: { zh: '无', en: 'No' },
+      url: 'https://example.com/',
+    }, {
+      id: 'own.author', kind: 'web', category: 'market',
+      title: { zh: '有作者', en: 'Own author' }, summary: { zh: '有', en: 'Own' },
+      url: 'https://example.com/own', author: 'Someone Else',
+    }] }), { file: 'm.json', repoUrl: REPO_URL, baseManifestUrl: MANIFEST_URL })
+    const file = buildEntries(repo, entries, { images: {}, pages: {} })
+    assert.equal(file.owner, 'Example-Lab')
+    assert.equal(file.entries[0].author, 'Example-Lab')
+    assert.equal(file.entries[1].author, 'Someone Else')
   })
 
   it('defaults embeddable to false and keeps assets when nothing was probed', async () => {

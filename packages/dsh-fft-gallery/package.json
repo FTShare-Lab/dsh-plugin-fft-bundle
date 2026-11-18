@@ -1,7 +1,7 @@
 {
   "name": "@dsh-ft/dsh-fft-gallery",
   "version": "0.1.0",
-  "description": "FT gallery: a right-sidebar shelf of third-party web apps registered through a repository manifest.",
+  "description": "FT gallery: the right-sidebar 金融组件库 shelf for third-party web apps and plugin components registered through a repository manifest.",
   "license": "MIT",
   "author": "Ben <ben@ft.tech>",
   "homepage": "https://github.com/FTShare-Lab/dsh-plugin-fft-bundle#readme",
@@ -30,7 +30,8 @@
     "lib/index.js",
     "lib/client.js",
     "gallery/catalog.json",
-    "cordis.patch.yml"
+    "cordis.patch.yml",
+    "README.md"
   ],
   "scripts": {
     "build": "node scripts/build.mjs",

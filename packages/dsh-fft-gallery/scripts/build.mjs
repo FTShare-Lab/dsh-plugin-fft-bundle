@@ -28,7 +28,7 @@ export const CATALOG_FORMAT = 2
 const CATALOG_FIELDS = [
   'id', 'kind', 'category', 'order', 'title', 'summary', 'details', 'cover', 'screenshots',
   'url', 'spec', 'open', 'homepage', 'author', 'engines', 'embeddable',
-  'source', 'repo', 'stars', 'syncedAt',
+  'source', 'repo', 'owner', 'stars', 'syncedAt',
 ]
 
 /**
@@ -56,6 +56,7 @@ export function projectEntry(entry, container) {
     ...entry.engines === undefined ? {} : { engines: entry.engines },
     source: container.source,
     repo: container.repo,
+    ...container.owner === undefined ? {} : { owner: container.owner },
     stars: container.stars,
     syncedAt: container.syncedAt,
   }

@@ -71,7 +71,7 @@ const ENTRY_FIELDS = new Set([
 const MANIFEST_FIELDS = new Set([...ENTRY_FIELDS].filter(field => field !== 'embeddable'))
 
 /** Top-level fields of one file under `gallery/entries/`. */
-const CONTAINER_FIELDS = new Set(['source', 'repo', 'stars', 'syncedAt', 'entries'])
+const CONTAINER_FIELDS = new Set(['source', 'repo', 'owner', 'stars', 'syncedAt', 'entries'])
 
 /** One validation failure; the CLI catches it per repository and moves on. */
 export class GalleryError extends Error {
@@ -367,7 +367,7 @@ export function parseEntriesFile(text, { file = 'entries.json' } = {}) {
   if (!Array.isArray(data.entries) || data.entries.length === 0) fail('entries must be a non-empty array')
   const knownIds = new Set()
   const entries = data.entries.map(entry => validateEntry(entry, { file, knownIds }))
-  return { source: 'github', repo, stars: data.stars, syncedAt: data.syncedAt, entries }
+  return { source: 'github', repo, owner: data.owner, stars: data.stars, syncedAt: data.syncedAt, entries }
 }
 
 /**
@@ -533,6 +533,7 @@ export function buildEntries(repo, manifest, probes = {}) {
   const pages = probes.pages ?? {}
   const list = Array.isArray(manifest) ? manifest : manifest.entries
   if (!isObject(repo) || typeof repo.url !== 'string') throw new GalleryError('buildEntries: repo.url is required')
+  if (typeof repo.owner !== 'string' || repo.owner === '') throw new GalleryError('buildEntries: repo.owner is required')
   if (!Array.isArray(list) || list.length === 0) throw new GalleryError('buildEntries: no entries to write')
 
   const entries = list.map(entry => {
@@ -567,12 +568,16 @@ export function buildEntries(repo, manifest, probes = {}) {
     } else {
       delete built.embeddable
     }
+    // The ecosystem convention names the repository owner as the author; a
+    // manifest may override the display name.
+    if (typeof built.author !== 'string' || built.author === '') built.author = repo.owner
     return built
   })
 
   return {
     source: 'github',
     repo: repo.url,
+    owner: repo.owner,
     stars: Number.isInteger(repo.stars) && repo.stars >= 0 ? repo.stars : 0,
     syncedAt: typeof repo.syncedAt === 'string' && repo.syncedAt !== '' ? repo.syncedAt : new Date().toISOString(),
     entries,
@@ -749,7 +754,7 @@ export async function syncFromGitHub(options = {}, context = {}) {
 
     let probes = { images: {}, pages: {} }
     if (!offline) probes = await probeEntries(entries, { fetchImpl, warn })
-    const file = buildEntries({ url: repository.url, stars: repository.stars, syncedAt: now().toISOString() }, entries, { ...probes, warn })
+    const file = buildEntries({ url: repository.url, owner: repository.owner, stars: repository.stars, syncedAt: now().toISOString() }, entries, { ...probes, warn })
     if (dryRun) {
       log(`would write gallery/entries/${target} (${file.entries.length} entries)`)
     } else {

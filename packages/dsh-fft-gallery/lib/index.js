@@ -106,7 +106,9 @@ export function mergeCatalogs(bundled, remote) {
     categories: { ...bundled.categories, ...remote.categories },
     entries: [...byId.values()].sort((left, right) => {
       const order = (left.order ?? 100) - (right.order ?? 100)
-      return order !== 0 ? order : left.id.localeCompare(right.id)
+      if (order !== 0) return order
+      // Code point, not locale: the order must be identical on every machine.
+      return left.id < right.id ? -1 : left.id > right.id ? 1 : 0
     }),
   }
 }

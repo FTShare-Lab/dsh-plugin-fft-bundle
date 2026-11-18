@@ -1,6 +1,6 @@
 {
   "format": 2,
-  "generatedAt": "2026-11-18T07:54:29.424Z",
+  "generatedAt": "2026-11-18T08:18:34.264Z",
   "categories": {
     "market": {
       "zh": "行情",
@@ -74,6 +74,7 @@
       "embeddable": true,
       "source": "github",
       "repo": "https://github.com/FTShare-Lab/FtShare_fincase",
+      "owner": "FTShare-Lab",
       "stars": 35,
       "syncedAt": "2026-11-17T00:00:00.000Z"
     },
@@ -127,12 +128,13 @@
         "panel": "ft-paper-trading"
       },
       "homepage": "https://github.com/gigaflw/dsh-fft-paper-trading#readme",
-      "author": "Ben",
+      "author": "gigaflw",
       "engines": {
         "dsh": ">=0.2.0-rc.2"
       },
       "source": "github",
       "repo": "https://github.com/gigaflw/dsh-fft-paper-trading",
+      "owner": "gigaflw",
       "stars": 2,
       "syncedAt": "2026-11-18T00:00:00.000Z"
     }
