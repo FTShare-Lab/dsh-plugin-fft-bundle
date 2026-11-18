@@ -34,9 +34,22 @@ export const STATE_ROUTE = '/api/ft-gallery/state'
 /** Bundled catalog, resolved relative to this module (lib/ or src/). */
 const CATALOG_FILE = new URL('../gallery/catalog.json', import.meta.url)
 
-/** Where the daily sync publishes the synced catalog. */
-const DEFAULT_REMOTE_CATALOG =
-  'https://raw.githubusercontent.com/FTShare-Lab/dsh-plugin-fft-bundle/catalog/gallery/catalog.json'
+/**
+ * The synced catalog lives on a branch of this repository. Two addresses serve
+ * the same file: jsDelivr's GitHub endpoint (not the blockable raw host) first,
+ * then raw itself for networks where the CDN is the unreachable one.
+ */
+const CATALOG_REPO = 'FTShare-Lab/dsh-plugin-fft-bundle'
+const CATALOG_BRANCH = 'catalog'
+const CATALOG_PATH = 'gallery/catalog.json'
+const DEFAULT_REMOTE_CATALOG = `https://cdn.jsdelivr.net/gh/${CATALOG_REPO}@${CATALOG_BRANCH}/${CATALOG_PATH}`
+const RAW_REMOTE_CATALOG = `https://raw.githubusercontent.com/${CATALOG_REPO}/${CATALOG_BRANCH}/${CATALOG_PATH}`
+
+/**
+ * Where the synced catalog may live, most reliable first. A source that answers
+ * 404 is "not published yet"; the first source that answers a document wins.
+ */
+const DEFAULT_SOURCES = [DEFAULT_REMOTE_CATALOG, RAW_REMOTE_CATALOG]
 
 /** How long a fetched catalog is trusted before another read. */
 const DEFAULT_TTL_MS = 60 * 60 * 1000
@@ -131,6 +144,26 @@ async function writeJsonAtomic(file, value) {
 }
 
 /**
+ * One source, one attempt. Throws with `.status` when the source answered one.
+ * @param source - an HTTPS URL to a format-2 catalog.
+ * @returns the catalog, or `{ notModified: true }` when an ETag still matches.
+ */
+async function readSource(source, { fetchImpl, timeoutMs, etag }) {
+  const headers = { accept: 'application/json' }
+  if (etag !== undefined) headers['if-none-match'] = etag
+  const response = await fetchImpl(source, { headers, signal: AbortSignal.timeout(timeoutMs) })
+  if (response.status === 304) return { notModified: true }
+  if (!response.ok) {
+    const failure = new Error(`catalog source answered HTTP ${response.status}`)
+    failure.status = response.status
+    throw failure
+  }
+  const catalog = JSON.parse(await response.text())
+  assertCatalog(catalog, 'remote catalog')
+  return { catalog, etag: response.headers?.get?.('etag') ?? undefined }
+}
+
+/**
  * Route that answers with the merged catalog.
  *
  * @param options - injected collaborators; every one has a production default.
@@ -140,54 +173,76 @@ export function createCatalogRoute(options = {}) {
   const {
     readBundled = readBundledCatalog,
     fetchRemote = (...args) => globalThis.fetch(...args),
-    remoteUrl = process.env.DSH_FT_GALLERY_CATALOG_URL?.trim() || DEFAULT_REMOTE_CATALOG,
+    remoteUrl = process.env.DSH_FT_GALLERY_CATALOG_URL?.trim() || '',
+    sources: sourcesOption,
     cacheFile = defaultCacheFile(),
     ttlMs = DEFAULT_TTL_MS,
     timeoutMs = DEFAULT_FETCH_TIMEOUT_MS,
     now = () => Date.now(),
   } = options
+  // A test or an operator names one URL, or an explicit list; production walks
+  // the defaults. The older single-URL variable keeps working for one source.
+  const configured = process.env.DSH_FT_GALLERY_CATALOG_SOURCES?.trim() || ''
+  const sources = Array.isArray(sourcesOption)
+    ? sourcesOption
+    : typeof sourcesOption === 'string' && sourcesOption !== ''
+      ? [sourcesOption]
+      : configured !== ''
+        ? configured.split(',').map(source => source.trim()).filter(source => source !== '')
+        : remoteUrl !== ''
+          ? [remoteUrl]
+          : DEFAULT_SOURCES
 
-  /** Last good synced catalog, with the tag it was fetched under. */
+  /** Last good synced catalog, with the source and tag it was fetched under. */
   async function readCache() {
     const cached = await readJsonOr(cacheFile, undefined)
     return cached !== null && typeof cached === 'object' && cached.catalog !== undefined ? cached : undefined
   }
 
-  /** One synced read, honouring the TTL and the ETag; failures fall back to the cache. */
+  /**
+   * One synced read, honouring the TTL and the ETag. Sources are tried in
+   * order; the first document that arrives wins and is cached. Nothing
+   * answering leaves the cached copy, then the bundled baseline.
+   */
   async function readRemote({ refresh }) {
     const cached = await readCache()
     if (!refresh && cached !== undefined && now() - cached.fetchedAt < ttlMs) {
-      return { catalog: cached.catalog, cached: true }
+      return { catalog: cached.catalog, cached: true, source: cached.source }
     }
-    try {
-      const headers = { accept: 'application/json' }
-      if (cached?.etag !== undefined) headers['if-none-match'] = cached.etag
-      const response = await fetchRemote(remoteUrl, {
-        headers,
-        // A hung remote must never hold the shelf on a spinner.
-        signal: AbortSignal.timeout(timeoutMs),
-      })
-      if (response.status === 304 && cached !== undefined) return { catalog: cached.catalog, cached: true }
-      if (!response.ok) {
-        const failure = new Error(`remote catalog answered HTTP ${response.status}`)
-        failure.status = response.status
-        throw failure
+    const failures = []
+    for (const source of sources) {
+      try {
+        const result = await readSource(source, {
+          fetchImpl: fetchRemote,
+          timeoutMs,
+          etag: cached?.source === source ? cached.etag : undefined,
+        })
+        if (result.notModified === true && cached !== undefined) {
+          return { catalog: cached.catalog, cached: true, source }
+        }
+        if (result.catalog === undefined) continue
+        await writeJsonAtomic(cacheFile, {
+          etag: result.etag,
+          source,
+          fetchedAt: now(),
+          catalog: result.catalog,
+        })
+        return { catalog: result.catalog, cached: false, source }
+      } catch (error) {
+        failures.push({
+          source,
+          status: error?.status,
+          message: error instanceof Error ? error.message : String(error),
+        })
       }
-      const catalog = JSON.parse(await response.text())
-      assertCatalog(catalog, 'remote catalog')
-      await writeJsonAtomic(cacheFile, {
-        etag: response.headers?.get?.('etag') ?? undefined,
-        fetchedAt: now(),
-        catalog,
-      })
-      return { catalog, cached: false }
-    } catch (error) {
-      if (cached !== undefined) return { catalog: cached.catalog, cached: true, stale: true }
-      // A 404 is the expected state before the first sync publishes the branch:
-      // the bundled baseline is the whole catalog, not a stale copy of it.
-      if (error?.status === 404) return { notPublished: true }
-      throw error
     }
+    if (cached !== undefined) return { catalog: cached.catalog, cached: true, stale: true, source: cached.source }
+    // Every source saying "no such document" is the expected state before the
+    // first sync publishes anything: the bundled baseline is the whole catalog.
+    if (failures.length > 0 && failures.every(failure => failure.status === 404)) {
+      return { notPublished: true }
+    }
+    throw new Error(failures.map(failure => `${failure.source}: ${failure.message}`).join('; '))
   }
 
   return {
@@ -224,6 +279,7 @@ export function createCatalogRoute(options = {}) {
           meta: {
             remote: remote?.catalog === undefined ? 'unavailable' : remote.cached ? 'cached' : 'fresh',
             stale: remote?.stale === true,
+            ...remote?.source === undefined ? {} : { source: remote.source },
             ...remote?.notPublished === true ? { notPublished: true } : {},
             ...warning === undefined ? {} : { warning },
           },

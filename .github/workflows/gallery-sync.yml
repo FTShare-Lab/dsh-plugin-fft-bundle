@@ -2,12 +2,13 @@ name: gallery-sync
 
 # Keeps the gallery catalog fresh without cutting a release: the topic is
 # scanned, the entries are validated, the catalog is built, and the result is
-# published to the `catalog` branch the shelf reads over raw.githubusercontent.
+# pushed to the `catalog` branch. The shelf reads it through jsDelivr's GitHub
+# endpoint (not the blockable raw host) and falls back to raw itself.
 #
 # A new repository with `dsh-ft-gallery.json` + topic `dsh-ft-gallery` therefore
-# appears to users within a day, without a version bump. The bundled catalog
-# stays the offline baseline; releasers still run `pnpm --filter
-# @dsh-ft/dsh-fft-gallery run build` to fold the latest entries into a release.
+# appears to users without a version bump. The bundled catalog stays the offline
+# baseline; releasers still run `pnpm --filter @dsh-ft/dsh-fft-gallery run
+# build` to fold the latest entries into a release.
 
 on:
   schedule:
