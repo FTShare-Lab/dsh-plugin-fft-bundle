@@ -11,8 +11,9 @@ name: gallery-sync
 
 on:
   schedule:
-    # Daily, just after 03:17 UTC so the run does not pile onto release work.
-    - cron: '17 3 * * *'
+    # Every third day, after 03:17 UTC, so the run does not pile onto release
+    # work and a new registration never waits on a release either.
+    - cron: '17 3 */3 * *'
   workflow_dispatch:
 
 permissions:

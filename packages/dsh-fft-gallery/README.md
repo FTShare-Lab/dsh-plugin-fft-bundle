@@ -45,7 +45,7 @@ dsh plugin --profile desktop add @dsh-ft/dsh-fft-gallery
 ## 目录如何更新
 
 - 随包内建的 `gallery/catalog.json` 是离线基线；
-- `.github/workflows/gallery-sync.yml` 每日扫 topic，把合并后的 `catalog.json` 推到 `catalog` 分支，
+- `.github/workflows/gallery-sync.yml` 每三天扫一次 topic，把合并后的 `catalog.json` 推到 `catalog` 分支，
   客户端一小时内看到，不需要等发版。
 
 ## 开发
