@@ -9,7 +9,7 @@ import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { PUBLISH_TARGETS, publishManifest, readWorkspace, repoRoot } from '../../../scripts/pack-npm.mjs'
+import { PUBLISH_TARGETS, PUBLISHED_WORKSPACE, publishManifest, readWorkspace, repoRoot } from '../../../scripts/pack-npm.mjs'
 
 const workspace = readWorkspace()
 const targetsOf = () => PUBLISH_TARGETS.map(target => ({ target, manifest: JSON.parse(readFileSync(join(repoRoot, target.dir, 'package.json'), 'utf8')) }))
@@ -58,6 +58,12 @@ describe('published manifest', () => {
         if (dependency === undefined) continue
         const published = publishManifest(manifest, { workspace, dropDependencies: [] })
         if ((published.dependencies ?? {})[name] === undefined) continue
+        // A workspace package published on its own keeps the declared lower
+        // bound, so the two can release independently.
+        if (PUBLISHED_WORKSPACE.has(name)) {
+          assert.match(published.dependencies[name] ?? '', /^>=/u, `${manifest.name}: ${name} must stay a lower bound`)
+          continue
+        }
         // An inlined workspace package is pinned to the exact version it ships,
         // not a caret range: the artifact contains that version.
         const inlined = target => target.inlineWorkspace?.includes(name) === true
@@ -81,6 +87,20 @@ describe('published manifest', () => {
 
 describe('rewrite safety', () => {
   const base = { name: '@x/y', version: '1.0.0' }
+  const workspaceEdge = (name, version) => new Map([...workspace, [name, { dir: `packages/${name.split('/').at(-1)}`, manifest: { name, version } }]])
+
+  it('keeps the declared lower bound for a workspace package published on its own', () => {
+    const name = '@dsh-ft/dsh-fft-gallery'
+    const published = publishManifest(
+      { ...base, dependencies: { [name]: '>=0.1.0' } },
+      { workspace: workspaceEdge(name, '0.1.0') },
+    )
+    assert.equal(published.dependencies[name], '>=0.1.0')
+    assert.throws(
+      () => publishManifest({ ...base, dependencies: { [name]: '^0.1.0' } }, { workspace: workspaceEdge(name, '0.1.0') }),
+      /must be a registry lower bound/u,
+    )
+  })
 
   it('bumps a workspace edge to the workspace version', () => {
     // The subject is the rewrite rule, not any particular in-repo package: the

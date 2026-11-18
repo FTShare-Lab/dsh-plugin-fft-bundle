@@ -71,6 +71,14 @@ const INLINE_EXOTIC = new Set()
  */
 const INLINE_WORKSPACE = new Set()
 
+/**
+ * Workspace packages that are also published on their own, so a bundle edge to
+ * one must stay a registry lower bound (`>=x.y.z`) instead of being rewritten
+ * to `^<version>`: the two release independently, and a caret would pin the
+ * bundle to one gallery minor line forever.
+ */
+export const PUBLISHED_WORKSPACE = new Set(['@dsh-ft/dsh-fft-gallery'])
+
 /** Fields a published manifest keeps; everything else is repository-only. */
 const PUBLISHED_FIELDS = [
   'name',
@@ -175,6 +183,15 @@ export function publishManifest(manifest, { workspace, dropDependencies = [] }) 
       // artifact instead of asking a consumer to resolve a name no registry has.
       if (INLINE_WORKSPACE.has(name)) {
         dependencies[name] = dependency.manifest.version
+        continue
+      }
+      // A workspace package that IS published on its own keeps the range the
+      // manifest declared; its release cadence is independent of this bundle.
+      if (PUBLISHED_WORKSPACE.has(name)) {
+        if (!/^>=\d+\.\d+\.\d+/u.test(spec)) {
+          throw new Error(`${manifest.name}: dependency ${name}@${spec} must be a registry lower bound (>=x.y.z); it is published on its own`)
+        }
+        dependencies[name] = spec
         continue
       }
       dependencies[name] = `^${dependency.manifest.version}`
@@ -447,6 +464,30 @@ export function packPackage(target, workspace, { outDir, dryRun, head }) {
   }
 }
 
+/**
+ * Every lower bound promised to a published workspace package must already be
+ * on the registry: the bundle's tarball installs its plugins from there, so a
+ * bundle release must never point at a version nobody can fetch.
+ *
+ * Opt-in (PUBLISH_VERIFY_REGISTRY=1) because packing locally should stay
+ * offline; the publish workflow turns it on.
+ */
+export function assertRegistryEdges(packed, { registry = 'https://registry.npmjs.org/', run = spawnSync } = {}) {
+  const missing = []
+  for (const entry of packed) {
+    for (const [name, spec] of Object.entries(entry.dependencies ?? {})) {
+      if (!PUBLISHED_WORKSPACE.has(name)) continue
+      const match = /^>=(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)$/u.exec(spec)
+      if (match === null) throw new Error(`${name}@${spec} must be a >= lower bound`)
+      const result = run('npm', ['view', `${name}@${match[1]}`, 'version', '--registry', registry], { encoding: 'utf8' })
+      if (result.status !== 0) missing.push(`${name}@${match[1]}`)
+    }
+  }
+  if (missing.length > 0) {
+    throw new Error(`registry has no ${missing.join(', ')}; publish the plugin before the bundle`)
+  }
+}
+
 /** @returns {string} Current commit. */
 function headCommit() {
   const result = spawnSync(GIT, ['rev-parse', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' })
@@ -510,6 +551,7 @@ if (invokedDirectly) {
   if (dryRun) {
     console.log('[npm] dry-run: staged manifests are under tmp/npm/, nothing was packed')
   } else {
+    if (process.env.PUBLISH_VERIFY_REGISTRY === '1') assertRegistryEdges(packed)
     const manifestPath = join(outDir, 'manifest.json')
     writeFileSync(manifestPath, `${JSON.stringify({ head, generatedAt: new Date().toISOString(), packages: packed }, null, 2)}\n`)
     console.log(`[npm] wrote ${relative(repoRoot, manifestPath)} — publish with: node scripts/upload.mjs --npm`)

@@ -59,6 +59,10 @@ jobs:
 
       - name: Pack the public artifact
         id: pack
+        env:
+          # Every lower bound promised to a plugin published on its own must
+          # already be on the registry; fail before publishing, not at install.
+          PUBLISH_VERIFY_REGISTRY: '1'
         run: |
           node scripts/pack-npm.mjs
           TARBALL=$(realpath releases/npm/*.tgz)
