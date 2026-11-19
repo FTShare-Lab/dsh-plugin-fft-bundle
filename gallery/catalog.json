@@ -1,0 +1,142 @@
+{
+  "format": 2,
+  "generatedAt": "2026-11-19T11:46:42.450Z",
+  "categories": {
+    "market": {
+      "zh": "行情",
+      "en": "Market data"
+    },
+    "research": {
+      "zh": "研究",
+      "en": "Research"
+    },
+    "chart": {
+      "zh": "图表",
+      "en": "Charts"
+    },
+    "tool": {
+      "zh": "工具",
+      "en": "Tools"
+    },
+    "panel": {
+      "zh": "面板",
+      "en": "Panels"
+    }
+  },
+  "entries": [
+    {
+      "id": "ftshare.etf-flow",
+      "kind": "web",
+      "category": "market",
+      "order": 10,
+      "title": {
+        "zh": "ETF 资金流",
+        "en": "ETF fund flow"
+      },
+      "summary": {
+        "zh": "份额申赎与资金净流入联动看板，按板块与宽基拆分。",
+        "en": "Share creation/redemption against net fund flow, split by sector and index."
+      },
+      "details": {
+        "zh": "按板块、宽基与个股三个层次拆解 ETF 份额申赎与资金净流入，可切换日度/分钟口径查看成交额与净流入的联动。数据来自 FTShare 与公开源，页面自带示例数据。",
+        "en": "Splits ETF share creation/redemption and net fund flow by sector, index and security, with daily and intraday turnover views. Data comes from FTShare and public sources, with bundled sample data."
+      },
+      "cover": "https://raw.githubusercontent.com/FTShare-Lab/FtShare_fincase/HEAD/docs/preview.jpg",
+      "screenshots": [
+        {
+          "src": "https://raw.githubusercontent.com/FTShare-Lab/FtShare_fincase/HEAD/docs/screenshots/daily-netflow.jpg",
+          "alt": {
+            "zh": "每日资金净流入",
+            "en": "Daily net fund flow"
+          }
+        },
+        {
+          "src": "https://raw.githubusercontent.com/FTShare-Lab/FtShare_fincase/HEAD/docs/screenshots/broad-flows.jpg",
+          "alt": {
+            "zh": "宽基与板块资金流",
+            "en": "Index and sector flows"
+          }
+        },
+        {
+          "src": "https://raw.githubusercontent.com/FTShare-Lab/FtShare_fincase/HEAD/docs/screenshots/cumulative-turnover.jpg",
+          "alt": {
+            "zh": "累计成交额",
+            "en": "Cumulative turnover"
+          }
+        }
+      ],
+      "url": "https://ftshare-etf-flow.zippymarshmallow.chatgpt.site/",
+      "homepage": "https://etf.jtxaionline.com/",
+      "author": "FTShare-Lab",
+      "engines": {
+        "dsh": ">=0.2.1-rc.2"
+      },
+      "embeddable": true,
+      "source": "github",
+      "repo": "https://github.com/FTShare-Lab/FtShare_fincase",
+      "owner": "FTShare-Lab",
+      "stars": 35,
+      "syncedAt": "2026-11-17T00:00:00.000Z"
+    },
+    {
+      "id": "ft.paper-trading",
+      "kind": "plugin",
+      "category": "tool",
+      "order": 20,
+      "title": {
+        "zh": "模拟交易",
+        "en": "Paper trading"
+      },
+      "summary": {
+        "zh": "A 股与商品期货模拟下单、持仓与复盘。",
+        "en": "Paper orders, positions and review for A-shares and commodity futures."
+      },
+      "details": {
+        "zh": "本地账本记录成交与持仓，内置 FTShare 行情与 K 线；安装后从右侧栏打开，和手工装的模拟交易完全一致。",
+        "en": "A local ledger records fills and positions, with FTShare quotes and K-line built in. Once installed it opens from the right sidebar, exactly like a hand-installed plugin."
+      },
+      "cover": "https://raw.githubusercontent.com/gigaflw/dsh-fft-paper-trading/HEAD/assets/screenshots/trade.jpg",
+      "screenshots": [
+        {
+          "src": "https://raw.githubusercontent.com/gigaflw/dsh-fft-paper-trading/HEAD/assets/screenshots/trade.jpg",
+          "alt": {
+            "zh": "下单与持仓",
+            "en": "Orders and positions"
+          }
+        },
+        {
+          "src": "https://raw.githubusercontent.com/gigaflw/dsh-fft-paper-trading/HEAD/assets/screenshots/futures.jpg",
+          "alt": {
+            "zh": "商品期货",
+            "en": "Commodity futures"
+          }
+        },
+        {
+          "src": "https://raw.githubusercontent.com/gigaflw/dsh-fft-paper-trading/HEAD/assets/screenshots/review.jpg",
+          "alt": {
+            "zh": "交易复盘",
+            "en": "Trade review"
+          }
+        }
+      ],
+      "spec": {
+        "type": "npm",
+        "name": "@dsh-ft/dsh-fft-paper-trading",
+        "version": "0.7.2"
+      },
+      "open": {
+        "panel": "ft-paper-trading"
+      },
+      "homepage": "https://github.com/gigaflw/dsh-fft-paper-trading#readme",
+      "author": "gigaflw",
+      "engines": {
+        "dsh": ">=0.2.0-rc.2"
+      },
+      "source": "github",
+      "repo": "https://github.com/gigaflw/dsh-fft-paper-trading",
+      "owner": "gigaflw",
+      "stars": 2,
+      "syncedAt": "2026-11-18T00:00:00.000Z"
+    }
+  ]
+}
