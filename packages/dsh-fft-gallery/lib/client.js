@@ -4,7 +4,9 @@
  * Three surfaces share one tab:
  *   - 发现 (Discover): a CSS-columns waterfall of the catalog entries the Host
  *     half serves on `/api/ft-gallery/catalog`;
- *   - 我的收藏 (Saved): the entries this user saved (`/api/ft-gallery/state`);
+ *   - 我的收藏 (Saved): one timeline of the components the user saved plus the
+ *     personal launchers they added — URLs and local HTML pages — all kept on
+ *     the Host (`/api/ft-gallery/state`);
  *   - 详情 (detail): screenshots, summary/details, links and the open action,
  *     rendered in place of the list with a back control.
  *
@@ -49,7 +51,7 @@ window.__ModuleLoader__.load({
       title: pick('金融组件库', 'Finance gallery'),
       guide: pick('网页应用与插件组件，收藏后可随时打开', 'Web apps and plugin components; save one to open later'),
       discover: pick('发现', 'Discover'),
-      shelf: pick('我的收藏', 'Saved'),
+      shelf: pick('收藏', 'Saved'),
       refresh: pick('刷新目录', 'Refresh catalog'),
       refreshFailed: pick('刷新失败，仍显示上次的目录', 'Refresh failed; showing the previous catalog'),
       loading: pick('正在读取目录…', 'Loading the catalog…'),
@@ -59,10 +61,34 @@ window.__ModuleLoader__.load({
       retry: pick('重试', 'Retry'),
       emptyCatalog: pick('目录暂时没有条目', 'The catalog has no entries yet'),
       emptyFiltered: pick('该分类下没有条目', 'Nothing in this category'),
-      emptyShelf: pick(
-        '还没有收藏。在「发现」里点 ♡ 收进这里；已装插件主动注册后也会出现在这里。',
-        'Nothing saved yet. Tap ♡ in Discover; plugins that register themselves appear here.',
-      ),
+      componentShelf: pick('组件收藏', 'Saved components'),
+      personalShelf: pick('个人收藏', 'Personal collection'),
+      emptyComponents: pick('还没有收藏组件。', 'No saved components yet.'),
+      goDiscover: pick('去发现', 'Discover'),
+      emptyPersonal: pick('还没有添加网址或本地页面。点右上角「添加」。', 'No URLs or local pages yet. Use Add.'),
+      add: pick('添加', 'Add'),
+      addLink: pick('添加网址', 'Add a URL'),
+      addPage: pick('添加本地页面', 'Add a local page'),
+      linkHint: pick('在侧栏浏览器打开', 'Opens in the sidebar browser'),
+      pageHint: pick('用文档预览在侧栏打开', 'Opens in the sidebar document preview'),
+      titleField: pick('标题', 'Title'),
+      urlField: pick('网址', 'URL'),
+      pathField: pick('文件路径', 'File path'),
+      titleHint: (fallback) => pick(`留空用「${fallback}」`, `Blank uses "${fallback}"`),
+      saveForm: pick('保存', 'Save'),
+      updatedRow: pick('已保存', 'Saved'),
+      cancel: pick('取消', 'Cancel'),
+      edit: pick('编辑', 'Edit'),
+      remove: pick('删除', 'Delete'),
+      confirmRemove: pick('确认删除', 'Confirm delete'),
+      addFailed: (message) => pick(`保存失败：${message}`, `Could not save: ${message}`),
+      removed: pick('已删除', 'Removed'),
+      linkAdded: pick('网址已添加', 'URL added'),
+      pageAdded: pick('本地页面已添加', 'Local page added'),
+      previewUnavailable: pick('无法打开文档预览：宿主未启用该能力', 'Document preview is unavailable in this host'),
+      noSession: pick('打开一个会话后才能预览本地页面', 'Open a conversation to preview local pages'),
+      urlRequired: pick('需要填写 http/https 网址', 'An http(s) URL is required'),
+      pathRequired: pick('需要填写绝对路径且以 .html 结尾', 'An absolute path ending in .html is needed'),
       all: pick('全部', 'All'),
       stale: pick('目录可能过期', 'The catalog may be out of date'),
       cached: pick('来自缓存', 'Served from cache'),
@@ -109,7 +135,8 @@ window.__ModuleLoader__.load({
 .ftg{display:flex;flex-direction:column;height:100%;min-height:0;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-base);font-size:13px;line-height:1.4}
 .ftg *{box-sizing:border-box}
 .ftg button{font-family:inherit}
-.ftg-head{display:flex;align-items:center;gap:8px;padding:10px 14px 6px}
+.ftg-head{position:relative;display:flex;align-items:center;gap:8px;padding:10px 14px 6px}
+.ftg-head .ftg-grow{flex:1}
 .ftg-seg{display:flex;align-items:center;gap:2px;padding:2px;border-radius:var(--dsw-radius-md);background:var(--dsw-alias-bg-layer-2);min-width:0}
 .ftg-seg button{appearance:none;border:0;background:transparent;color:var(--dsw-alias-label-secondary);font-size:12px;line-height:1.2;padding:4px 10px;border-radius:calc(var(--dsw-radius-md) - 2px);cursor:pointer;white-space:nowrap}
 .ftg-seg button[data-on]{background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary);font-weight:600}
@@ -182,6 +209,40 @@ window.__ModuleLoader__.load({
 .ftg-install-head .ftg-btn{margin-left:auto;padding:2px 8px;font-size:10.5px}
 .ftg-cmd{display:block;margin-top:6px;padding:6px 8px;border-radius:var(--dsw-radius-xs);background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;line-height:1.5;word-break:break-all;white-space:pre-wrap;user-select:all}
 .ftg-install-hint{margin-top:6px;font-size:10.5px;line-height:1.5;color:var(--dsw-alias-label-tertiary)}
+.ftg-sec-head{display:flex;align-items:center;gap:8px;margin-top:10px;padding:10px 14px 4px;border-top:1px solid var(--dsw-alias-border-l1)}
+.ftg-sec-head[data-first]{margin-top:2px;padding-top:2px;border-top:0}
+.ftg-sec-title{font-size:12px;font-weight:600;color:var(--dsw-alias-label-secondary)}
+.ftg-sec-count{font-size:10.5px;color:var(--dsw-alias-label-tertiary)}
+.ftg-sec-note{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:4px 14px 8px;color:var(--dsw-alias-label-tertiary);font-size:11.5px;line-height:1.5}
+.ftg-add{position:relative}
+.ftg-add-menu{position:absolute;right:0;top:calc(100% + 4px);z-index:20;min-width:190px;padding:5px;border:1px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-md);background:var(--dsw-alias-bg-base);box-shadow:0 8px 24px rgba(0,0,0,.14)}
+.ftg-add-menu button{display:flex;flex-direction:column;align-items:flex-start;gap:1px;width:100%;padding:6px 8px;border:0;border-radius:var(--dsw-radius-sm);background:transparent;text-align:left;cursor:pointer;color:var(--dsw-alias-label-primary);font-size:12px}
+.ftg-add-menu button:hover{background:var(--dsw-alias-interactive-bg-hover)}
+.ftg-add-menu small{color:var(--dsw-alias-label-tertiary);font-size:10px}
+.ftg-form{margin:0 14px 10px;padding:9px 10px;border:1px dashed var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-md);background:var(--dsw-alias-bg-layer-1)}
+.ftg-form-error{margin:0 0 6px;color:var(--dsw-alias-state-error-primary);font-size:11px;line-height:1.45}
+.ftg-field{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.ftg-field label{width:52px;flex:none;font-size:11px;color:var(--dsw-alias-label-secondary)}
+.ftg-field input{flex:1;min-width:0;padding:5px 8px;border:1px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-sm);background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary);font-size:12px}
+.ftg-form-actions{display:flex;justify-content:flex-end;gap:6px}
+.ftg-list{display:flex;flex-direction:column;gap:2px;padding:2px 8px 16px}
+.ftg-row{display:flex;align-items:flex-start;gap:10px;padding:8px;border-radius:var(--dsw-radius-md);cursor:pointer}
+.ftg-row:hover{background:var(--dsw-alias-bg-layer-2)}
+.ftg-row:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:-2px}
+.ftg-row-ico{width:40px;height:40px;flex:none;border-radius:var(--dsw-radius-md);overflow:hidden;display:flex;align-items:center;justify-content:center;background:var(--dsw-alias-bg-layer-3);color:var(--dsw-alias-label-secondary);font-size:10px;font-weight:600}
+.ftg-row-ico img{width:100%;height:100%;object-fit:cover;display:block}
+.ftg-row-ico[data-kind="link"]{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-link);font-size:15px}
+.ftg-row-ico[data-kind="page"]{background:var(--dsw-alias-bg-layer-3);color:var(--dsw-alias-label-secondary);font-size:9px}
+.ftg-row-main{flex:1;min-width:0}
+.ftg-row-title{font-size:12.5px;font-weight:600;line-height:1.3;color:var(--dsw-alias-label-primary);display:flex;align-items:center;gap:6px;word-break:break-word}
+.ftg-row-sub{margin-top:2px;font-size:10.5px;color:var(--dsw-alias-label-tertiary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ftg-row-when{flex:none;font-size:10.5px;color:var(--dsw-alias-label-tertiary);padding-top:2px;font-variant-numeric:tabular-nums}
+.ftg-row-more{flex:none;border:0;background:transparent;color:var(--dsw-alias-label-tertiary);cursor:pointer;font-size:15px;line-height:1;padding:2px 6px;border-radius:var(--dsw-radius-xs)}
+.ftg-row-more:hover{background:var(--dsw-alias-interactive-bg-hover)}
+.ftg-row-menu{display:flex;gap:4px;padding:0 8px 8px 58px}
+.ftg-row-menu .ftg-btn{padding:2px 8px;font-size:10.5px}
+.ftg-mini-tag{font-size:9.5px;line-height:1.5;padding:0 5px;border-radius:var(--dsw-radius-xs);background:var(--dsw-alias-bg-layer-3);color:var(--dsw-alias-label-secondary);white-space:nowrap}
+.ftg-mini-tag[data-saved]{background:transparent;color:var(--dsw-alias-label-tertiary);border:1px solid var(--dsw-alias-border-l2)}
 `
 
     /**
@@ -251,6 +312,31 @@ window.__ModuleLoader__.load({
       return `${time.getFullYear()}-${pad(time.getMonth() + 1)}-${pad(time.getDate())} ${pad(time.getHours())}:${pad(time.getMinutes())}`
     }
 
+    /** A short "when" label for one saved row. */
+    function formatWhen(at) {
+      const time = typeof at === 'string' ? Date.parse(at) : Number.NaN
+      if (!Number.isFinite(time)) return ''
+      const now = Date.now()
+      const diff = Math.max(0, now - time)
+      const minute = 60 * 1000
+      const hour = 60 * minute
+      if (diff < minute) return pick('刚刚', 'Just now')
+      if (diff < hour) return pick(`${Math.floor(diff / minute)} 分钟前`, `${Math.floor(diff / minute)} min ago`)
+      const date = new Date(time)
+      const pad = (number) => String(number).padStart(2, '0')
+      const clock = `${pad(date.getHours())}:${pad(date.getMinutes())}`
+      if (date.toDateString() === new Date(now).toDateString()) return pick(`今天 ${clock}`, `Today ${clock}`)
+      if (date.toDateString() === new Date(now - 24 * hour).toDateString()) return pick(`昨天 ${clock}`, `Yesterday ${clock}`)
+      return pick(`${date.getMonth() + 1}月${date.getDate()}日`, `${date.getMonth() + 1}/${date.getDate()}`)
+    }
+
+    /** The host's file-resource address for one local page, mirroring its grammar. */
+    function fileAddress(sessionId, path) {
+      const encode = (segment) => encodeURIComponent(segment).replace(/%3A/giu, ':')
+      const encoded = path.replace(/\\/gu, '/').replace(/^(?:\.\/)+/u, '').split('/').map(encode).join('/')
+      return `dsh-resource://file/session/${encode(sessionId)}/${encoded}`
+    }
+
     /** One human-readable message out of anything thrown. */
     function messageOf(error) {
       if (error instanceof Error && error.message !== '') return error.message
@@ -304,7 +390,8 @@ window.__ModuleLoader__.load({
     }
 
     /** Saved-state map shape guard; a null prototype keeps hostile ids inert. */
-    function readFavorites(state) {
+    /** The parsed shelf: favorites by id, plus the personal launchers the host stores. */
+    function readShelfState(state) {
       const source = state !== null && typeof state === 'object'
         && state.favorites !== null && typeof state.favorites === 'object' ? state.favorites : {}
       const map = Object.create(null)
@@ -312,7 +399,39 @@ window.__ModuleLoader__.load({
         if (!ID_PATTERN.test(id)) continue
         map[id] = { at: value !== null && typeof value === 'object' && typeof value.at === 'string' ? value.at : '' }
       }
-      return map
+      const atOf = (value) => (value !== null && typeof value === 'object' && typeof value.at === 'string' ? value.at : '')
+      const links = (state !== null && typeof state === 'object' && Array.isArray(state.links) ? state.links : [])
+        .flatMap((row) => {
+          if (row === null || typeof row !== 'object') return []
+          if (typeof row.id !== 'string' || !/^link_[a-z0-9]{8,}$/u.test(row.id)) return []
+          if (typeof row.url !== 'string' || !/^https?:\/\//iu.test(row.url)) return []
+          const title = typeof row.title === 'string' && row.title.trim() !== '' ? row.title.trim() : hostOf(row.url)
+          return [{ key: `link:${row.id}`, id: row.id, title, url: row.url, at: atOf(row) }]
+        })
+      const pages = (state !== null && typeof state === 'object' && Array.isArray(state.pages) ? state.pages : [])
+        .flatMap((row) => {
+          if (row === null || typeof row !== 'object') return []
+          if (typeof row.id !== 'string' || !/^page_[a-z0-9]{8,}$/u.test(row.id)) return []
+          if (typeof row.path !== 'string' || !row.path.startsWith('/')) return []
+          const title = typeof row.title === 'string' && row.title.trim() !== '' ? row.title.trim() : baseName(row.path)
+          return [{ key: `page:${row.id}`, id: row.id, title, path: row.path, at: atOf(row) }]
+        })
+      return { map, links, pages }
+    }
+
+    /** A link's hostname, or the URL itself when it does not parse. */
+    function hostOf(url) {
+      try {
+        return new URL(url).hostname
+      } catch {
+        return url
+      }
+    }
+
+    /** The last path segment, for a page title that was left blank. */
+    function baseName(path) {
+      const parts = path.replace(/\\/gu, '/').split('/')
+      return parts[parts.length - 1] || path
     }
 
     /** One read of a host route; `{ ok: false }` and non-2xx are both failures. */
@@ -343,13 +462,6 @@ window.__ModuleLoader__.load({
     }
 
     /** A saved entry's timestamp for ordering; unparsable ones sort last. */
-    function savedAt(map, id) {
-      const record = map[id]
-      if (record === null || typeof record !== 'object' || typeof record.at !== 'string') return 0
-      const time = Date.parse(record.at)
-      return Number.isNaN(time) ? 0 : time
-    }
-
     // -------------------------------------------------------------- transport
 
     /**
@@ -462,8 +574,8 @@ window.__ModuleLoader__.load({
       return { status: state.status, data: state.data, error: state.error, refreshing: state.refreshing, load }
     }
 
-    function useFavorites(pushToast) {
-      const [state, setState] = useState({ status: 'loading', map: Object.create(null), error: '' })
+    function useShelf(pushToast) {
+      const [state, setState] = useState({ status: 'loading', map: Object.create(null), links: [], pages: [], error: '' })
       const mapRef = useRef(Object.create(null))
       const pendingRef = useRef(new Set())
       const [pending, setPending] = useState({})
@@ -471,20 +583,33 @@ window.__ModuleLoader__.load({
       const load = useCallback(async () => {
         setState((current) => (current.status === 'ready'
           ? { ...current, error: '' }
-          : { status: 'loading', map: current.map, error: '' }))
+          : { status: 'loading', map: current.map, links: current.links, pages: current.pages, error: '' }))
         try {
           const body = await readJson(STATE_ROUTE, { cache: 'no-store' })
-          const map = readFavorites(body.state)
-          mapRef.current = map
-          setState({ status: 'ready', map, error: '' })
+          const shelf = readShelfState(body.state)
+          mapRef.current = shelf.map
+          setState({ status: 'ready', map: shelf.map, links: shelf.links, pages: shelf.pages, error: '' })
         } catch (error) {
           const message = messageOf(error)
-          setState((current) => ({ status: current.status === 'ready' ? 'ready' : 'failed', map: current.map, error: message }))
+          setState((current) => ({ status: current.status === 'ready' ? 'ready' : 'failed', map: current.map, links: current.links, pages: current.pages, error: message }))
           pushToast('error', TEXT.savedStateFailed(message))
         }
       }, [pushToast])
 
       useEffect(() => { void load() }, [load])
+
+      /** One mutation; the host answers with the whole new shelf. */
+      const mutate = useCallback(async (payload) => {
+        const body = await readJson(STATE_ROUTE, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        const shelf = readShelfState(body.state)
+        mapRef.current = shelf.map
+        setState({ status: 'ready', map: shelf.map, links: shelf.links, pages: shelf.pages, error: '' })
+        return shelf
+      }, [])
 
       const toggle = useCallback(async (entry) => {
         const id = entry !== null && typeof entry === 'object' && typeof entry.id === 'string' ? entry.id : ''
@@ -505,9 +630,9 @@ window.__ModuleLoader__.load({
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify({ op: removing ? 'unfavorite' : 'favorite', id }),
           })
-          const map = readFavorites(body.state)
-          mapRef.current = map
-          setState({ status: 'ready', map, error: '' })
+          const shelf = readShelfState(body.state)
+          mapRef.current = shelf.map
+          setState({ status: 'ready', map: shelf.map, links: shelf.links, pages: shelf.pages, error: '' })
         } catch (error) {
           const rolled = Object.create(null)
           for (const [key, value] of Object.entries(mapRef.current)) rolled[key] = value
@@ -526,7 +651,7 @@ window.__ModuleLoader__.load({
         }
       }, [pushToast])
 
-      return { status: state.status, map: state.map, error: state.error, pending, load, toggle }
+      return { status: state.status, map: state.map, links: state.links, pages: state.pages, error: state.error, pending, load, toggle, mutate }
     }
 
     function useBundles(host) {
@@ -861,11 +986,15 @@ window.__ModuleLoader__.load({
     // ------------------------------------------------------------------- tab
 
     /** The right-sidebar tab: view switch, waterfall, detail, save state. */
-    function Gallery({ host }) {
+    function Gallery({ host, sessionId }) {
       const [view, setView] = useState('discover')
       const [detailId, setDetailId] = useState('')
       const [category, setCategory] = useState('')
       const [toast, setToast] = useState(null)
+      const [addOpen, setAddOpen] = useState(false)
+      const [editor, setEditor] = useState(null)
+      const [rowMenu, setRowMenu] = useState('')
+      const [confirming, setConfirming] = useState('')
 
       const pushToast = useCallback((kind, message) => {
         if (typeof message !== 'string' || message === '') return
@@ -879,7 +1008,7 @@ window.__ModuleLoader__.load({
       }, [toast])
 
       const catalog = useCatalog(pushToast)
-      const favorites = useFavorites(pushToast)
+      const favorites = useShelf(pushToast)
       const bundles = useBundles(host)
 
       const catalogEntries = useMemo(() => {
@@ -912,16 +1041,20 @@ window.__ModuleLoader__.load({
         ? catalogEntries
         : catalogEntries.filter((entry) => entry.category === category)), [catalogEntries, category])
 
-      const shelfEntries = useMemo(() => {
+      const shelfRows = useMemo(() => {
         if (favorites.status !== 'ready') return []
-        const favorited = []
+        const rows = []
         for (const id of Object.keys(favorites.map)) {
           const entry = catalogById.get(id)
-          if (entry !== undefined) favorited.push(entry)
+          if (entry === undefined) continue
+          const at = favorites.map[id]?.at ?? ''
+          rows.push({ key: `catalog:${id}`, kind: 'catalog', at: Date.parse(at) || 0, when: formatWhen(at), entry })
         }
-        favorited.sort((left, right) => savedAt(favorites.map, right.id) - savedAt(favorites.map, left.id))
-        return favorited
-      }, [favorites.status, favorites.map, catalogById])
+        for (const link of favorites.links) rows.push({ key: link.key, kind: 'link', at: Date.parse(link.at) || 0, when: formatWhen(link.at), title: link.title, link })
+        for (const page of favorites.pages) rows.push({ key: page.key, kind: 'page', at: Date.parse(page.at) || 0, when: formatWhen(page.at), title: page.title, page })
+        rows.sort((left, right) => right.at - left.at)
+        return rows
+      }, [favorites.status, favorites.map, favorites.links, favorites.pages, catalogById])
 
       const detailEntry = useMemo(
         () => (detailId === '' ? undefined : catalogById.get(detailId)),
@@ -973,6 +1106,134 @@ window.__ModuleLoader__.load({
         void favorites.toggle(entry)
       }, [favorites])
 
+      const openLink = useCallback((url) => {
+        openWeb(host, url, pushToast)
+      }, [host, pushToast])
+
+      const openPage = useCallback((path) => {
+        if (typeof sessionId !== 'string' || sessionId === '') {
+          pushToast('info', TEXT.noSession)
+          return
+        }
+        try {
+          host.right.openResource(fileAddress(sessionId, path))
+        } catch {
+          pushToast('error', TEXT.previewUnavailable)
+        }
+      }, [host, sessionId, pushToast])
+
+      const startEdit = useCallback((kind, row) => {
+        setAddOpen(false)
+        setRowMenu('')
+        setConfirming('')
+        setEditor(kind === 'link'
+          ? { kind, id: row?.link?.id, title: row?.link?.title ?? '', url: row?.link?.url ?? '', path: '', error: '', busy: false }
+          : { kind, id: row?.page?.id, title: row?.page?.title ?? '', url: '', path: row?.page?.path ?? '', error: '', busy: false })
+      }, [])
+
+      const submitEditor = useCallback(async (event) => {
+        if (event !== undefined) event.preventDefault()
+        if (editor === null || editor.busy) return
+        const isLink = editor.kind === 'link'
+        const title = editor.title.trim()
+        const url = editor.url.trim()
+        const path = editor.path.trim()
+        if (isLink && !/^https?:\/\//iu.test(url)) {
+          setEditor((current) => (current === null ? current : { ...current, error: TEXT.urlRequired }))
+          return
+        }
+        if (!isLink && !path.startsWith('/')) {
+          setEditor((current) => (current === null ? current : { ...current, error: TEXT.pathRequired }))
+          return
+        }
+        const payload = isLink
+          ? { op: editor.id === undefined ? 'add-link' : 'update-link', ...(editor.id === undefined ? {} : { id: editor.id }), title, url }
+          : { op: editor.id === undefined ? 'add-page' : 'update-page', ...(editor.id === undefined ? {} : { id: editor.id }), title, path }
+        setEditor((current) => (current === null ? current : { ...current, busy: true, error: '' }))
+        try {
+          await favorites.mutate(payload)
+          setEditor(null)
+          pushToast('info', editor.id === undefined ? (isLink ? TEXT.linkAdded : TEXT.pageAdded) : TEXT.updatedRow)
+        } catch (error) {
+          setEditor((current) => (current === null ? current : { ...current, busy: false, error: TEXT.addFailed(messageOf(error)) }))
+        }
+      }, [editor, favorites, pushToast])
+
+      const removeRow = useCallback(async (kind, id) => {
+        try {
+          await favorites.mutate({ op: kind === 'link' ? 'remove-link' : 'remove-page', id })
+          setRowMenu('')
+          setConfirming('')
+          pushToast('info', TEXT.removed)
+        } catch (error) {
+          pushToast('error', TEXT.addFailed(messageOf(error)))
+        }
+      }, [favorites, pushToast])
+
+      /** One row of the unified timeline: a saved component, a URL or a local page. */
+      const renderShelfRow = (row) => {
+        const open = () => {
+          if (row.kind === 'catalog') setDetailId(row.entry.id)
+          else if (row.kind === 'link') openLink(row.link.url)
+          else openPage(row.page.path)
+        }
+        const title = row.kind === 'catalog' ? entryTitle(row.entry) : row.title
+        const sub = row.kind === 'catalog'
+          ? (entrySummary(row.entry) || row.entry.id)
+          : row.kind === 'link' ? row.link.url : row.page.path
+        const menuOpen = rowMenu === row.key
+        const confirmingRow = confirming === row.key
+        const icon = row.kind === 'link'
+          ? h('div', { className: 'ftg-row-ico', 'data-kind': 'link' }, firstGlyph(row.link.title) || '↗')
+          : row.kind === 'page'
+            ? h('div', { className: 'ftg-row-ico', 'data-kind': 'page' }, 'HTML')
+            : h('div', { className: 'ftg-row-ico' }, firstGlyph(row.entry.title))
+        return h('div', { key: row.key },
+          h('div', {
+            className: 'ftg-row',
+            role: 'button',
+            tabIndex: 0,
+            'data-row': row.key,
+            onClick: open,
+            onKeyDown: (event) => {
+              if (event.target !== event.currentTarget) return
+              if (event.key !== 'Enter' && event.key !== ' ') return
+              event.preventDefault()
+              open()
+            },
+          },
+          icon,
+          h('div', { className: 'ftg-row-main' },
+            h('div', { className: 'ftg-row-title' }, title),
+            h('div', { className: 'ftg-row-sub' }, sub)),
+          h('span', { className: 'ftg-row-when' }, row.when),
+          row.kind === 'catalog' ? null : h('button', {
+            type: 'button',
+            className: 'ftg-row-more',
+            'aria-label': TEXT.edit,
+            title: TEXT.edit,
+            onClick: (event) => { event.stopPropagation(); setRowMenu(menuOpen ? '' : row.key); setConfirming('') },
+          }, '⋯')),
+          menuOpen ? h('div', { className: 'ftg-row-menu' },
+            h('button', {
+              type: 'button',
+              className: 'ftg-btn',
+              onClick: (event) => { event.stopPropagation(); startEdit(row.kind, row) },
+            }, TEXT.edit),
+            confirmingRow
+              ? h('button', {
+                type: 'button',
+                className: 'ftg-btn',
+                onClick: (event) => { event.stopPropagation(); void removeRow(row.kind, row.link?.id ?? row.page?.id) },
+              }, TEXT.confirmRemove)
+              : h('button', {
+                type: 'button',
+                className: 'ftg-btn',
+                onClick: (event) => { event.stopPropagation(); setConfirming(row.key) },
+              }, TEXT.remove)) : null,
+        )
+      }
+
       const categoryTitleOf = useCallback((entry) => {
         const declared = catalog.data !== null && typeof catalog.data.categories === 'object' && catalog.data.categories !== null
           ? catalog.data.categories
@@ -1014,7 +1275,7 @@ window.__ModuleLoader__.load({
           'aria-pressed': view === 'shelf',
           onClick: () => setView('shelf'),
         }, TEXT.shelf,
-        shelfEntries.length === 0 ? null : h('span', { className: 'ftg-n' }, String(shelfEntries.length))),
+        shelfRows.length === 0 ? null : h('span', { className: 'ftg-n' }, String(shelfRows.length))),
       )
 
       const header = h('div', { className: 'ftg-head' },
@@ -1028,12 +1289,25 @@ window.__ModuleLoader__.load({
           disabled: catalog.refreshing,
           onClick: () => { void catalog.load(true) },
         }, '↻'),
+        h('div', { className: 'ftg-add' },
+          h('button', {
+            type: 'button',
+            className: 'ftg-btn',
+            'data-primary': '',
+            'aria-expanded': addOpen,
+            onClick: () => setAddOpen((open) => !open),
+          }, `＋ ${TEXT.add}`),
+          addOpen
+            ? h('div', { className: 'ftg-add-menu' },
+              h('button', { type: 'button', onClick: () => startEdit('link') }, TEXT.addLink, h('small', null, TEXT.linkHint)),
+              h('button', { type: 'button', onClick: () => startEdit('page') }, TEXT.addPage, h('small', null, TEXT.pageHint)))
+            : null),
       )
 
       // Freshness: the Host reports it as top-level flags in the client contract
       // and as `meta.stale` / `meta.remote` in the shipped route; both work.
       const freshness = freshnessOf(catalog.data)
-      const subline = ready
+      const subline = view === 'discover' && ready
         ? h('div', { className: 'ftg-sub' },
           formatTime(catalog.data.generatedAt) === ''
             ? null
@@ -1089,14 +1363,6 @@ window.__ModuleLoader__.load({
         const loading = favorites.status === 'loading'
         if (loading) {
           body = h(StateNote, { title: '', message: TEXT.loadingSaved })
-        } else if (shelfEntries.length === 0) {
-          body = h(StateNote, {
-            title: failed ? TEXT.savedStateFailed(favorites.error === '' ? TEXT.badResponse : favorites.error) : '',
-            message: TEXT.emptyShelf,
-            action: failed
-              ? h('button', { type: 'button', className: 'ftg-btn', onClick: () => { void favorites.load() } }, TEXT.retry)
-              : undefined,
-          })
         } else {
           const notes = []
           if (catalogFailed) {
@@ -1109,16 +1375,58 @@ window.__ModuleLoader__.load({
               h('span', { className: 'ftg-stale' }, TEXT.savedStateFailed(favorites.error === '' ? TEXT.badResponse : favorites.error)),
               h('button', { type: 'button', className: 'ftg-pill', onClick: () => { void favorites.load() } }, TEXT.retry)))
           }
-          body = [...notes, h(Waterfall, {
-            key: 'shelf-grid',
-            entries: shelfEntries,
-            savedOf,
-            canSave,
-            savingOf,
-            installedOf,
-            onOpen: (entry) => setDetailId(entry.id),
-            onToggleFavorite: toggleFavorite,
-          })]
+          const form = editor === null ? null : h('form', { className: 'ftg-form', onSubmit: submitEditor },
+            editor.error === '' ? null : h('div', { className: 'ftg-form-error' }, editor.error),
+            h('div', { className: 'ftg-field' },
+              h('label', null, TEXT.titleField),
+              h('input', {
+                value: editor.title,
+                placeholder: TEXT.titleHint(editor.kind === 'link' ? hostOf(editor.url) : baseName(editor.path)),
+                onChange: (event) => setEditor((current) => (current === null ? current : { ...current, title: event.target.value })),
+              })),
+            editor.kind === 'link'
+              ? h('div', { className: 'ftg-field' },
+                h('label', null, TEXT.urlField),
+                h('input', {
+                  value: editor.url,
+                  placeholder: 'https://',
+                  onChange: (event) => setEditor((current) => (current === null ? current : { ...current, url: event.target.value })),
+                }))
+              : h('div', { className: 'ftg-field' },
+                h('label', null, TEXT.pathField),
+                h('input', {
+                  value: editor.path,
+                  placeholder: '/Users/…/report.html',
+                  onChange: (event) => setEditor((current) => (current === null ? current : { ...current, path: event.target.value })),
+                })),
+            h('div', { className: 'ftg-form-actions' },
+              h('button', { type: 'button', className: 'ftg-btn', onClick: () => setEditor(null) }, TEXT.cancel),
+              h('button', { type: 'submit', className: 'ftg-btn', 'data-primary': '', disabled: editor.busy }, editor.busy ? '…' : TEXT.saveForm)))
+          const savedComponents = shelfRows.filter((row) => row.kind === 'catalog')
+          const personalRows = shelfRows.filter((row) => row.kind !== 'catalog')
+          const componentHead = h('div', { className: 'ftg-sec-head', 'data-first': '' },
+            h('span', { className: 'ftg-sec-title' }, TEXT.componentShelf),
+            savedComponents.length === 0 ? null : h('span', { className: 'ftg-sec-count' }, String(savedComponents.length)))
+          const componentBody = savedComponents.length === 0
+            ? h('div', { className: 'ftg-sec-note' },
+              TEXT.emptyComponents,
+              h('button', { type: 'button', className: 'ftg-btn', onClick: () => setView('discover') }, TEXT.goDiscover))
+            : h(Waterfall, {
+              entries: savedComponents.map((row) => row.entry),
+              savedOf,
+              canSave,
+              savingOf,
+              installedOf,
+              onOpen: (entry) => setDetailId(entry.id),
+              onToggleFavorite: toggleFavorite,
+            })
+          const personalHead = h('div', { className: 'ftg-sec-head' },
+            h('span', { className: 'ftg-sec-title' }, TEXT.personalShelf),
+            personalRows.length === 0 ? null : h('span', { className: 'ftg-sec-count' }, String(personalRows.length)))
+          const personalBody = personalRows.length === 0
+            ? h('div', { className: 'ftg-sec-note' }, TEXT.emptyPersonal)
+            : h('div', { className: 'ftg-list' }, personalRows.map(renderShelfRow))
+          body = [...notes, form, componentHead, componentBody, personalHead, personalBody]
         }
       }
 
@@ -1155,7 +1463,7 @@ window.__ModuleLoader__.load({
           return Promise.resolve(manager.listBundles())
         },
       }
-      const Seat = () => h(Gallery, { host })
+      const Seat = ({ sessionId }) => h(Gallery, { host, sessionId })
       ctx.effect(() => ctx.sidebarRightTabs.register({
         id: TAB_ID,
         kind: KIND,

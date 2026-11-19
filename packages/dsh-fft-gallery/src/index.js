@@ -6,8 +6,10 @@
  *                                 the remotely synced one (`?refresh=1` bypasses
  *                                 the cache TTL), failing back to the last good
  *                                 copy and then to the bundled file;
- *   GET  /api/ft-gallery/state    the user's shelf (favorites);
- *   POST /api/ft-gallery/state    one favorite/unfavorite mutation.
+ *   GET  /api/ft-gallery/state    the user's shelf: favorites plus the personal
+ *                                 launchers (bookmarked URLs and local pages);
+ *   POST /api/ft-gallery/state    one mutation: favorite/unfavorite, or one of
+ *                                 add/update/remove for a link or a page.
  *
  * The shelf lives in a file rather than in browser storage on purpose: the
  * desktop app serves the UI from a new port on every start, so a localStorage
@@ -18,9 +20,10 @@
  * @module @dsh-ft/dsh-fft-gallery
  */
 
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { randomUUID } from 'node:crypto'
+import { mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { basename, dirname, isAbsolute, join } from 'node:path'
 
 /** Package name the Loader shows. */
 export const name = '@dsh-ft/dsh-fft-gallery'
@@ -289,27 +292,185 @@ export function createCatalogRoute(options = {}) {
   }
 }
 
-/** The default shelf document. */
+/** The default shelf document: favorites plus the personal launchers. */
 function emptyState() {
-  return { version: 1, favorites: {}, updatedAt: new Date(0).toISOString() }
+  return { version: 2, favorites: {}, links: [], pages: [], updatedAt: new Date(0).toISOString() }
+}
+
+/** A request the user can fix; answers 400 instead of a generic write failure. */
+class ShelfError extends Error {
+  constructor(message) {
+    super(message)
+    this.status = 400
+  }
+}
+
+const MAX_TITLE = 80
+const MAX_URL = 2048
+const MAX_PATH = 1024
+
+/** Bring a stored document to the current shape without dropping unknown fields. */
+export function migrateState(input) {
+  const state = input !== null && typeof input === 'object' ? input : {}
+  const favorites = state.favorites !== null && typeof state.favorites === 'object' && !Array.isArray(state.favorites) ? state.favorites : {}
+  return {
+    ...state,
+    version: 2,
+    favorites,
+    links: Array.isArray(state.links) ? state.links.filter(isLinkRow) : [],
+    pages: Array.isArray(state.pages) ? state.pages.filter(isPageRow) : [],
+  }
+}
+
+/** Whether a stored row is a link this code can render. */
+function isLinkRow(row) {
+  return row !== null && typeof row === 'object'
+    && typeof row.id === 'string'
+    && typeof row.url === 'string'
+    && (row.title === undefined || typeof row.title === 'string')
+    && typeof row.at === 'string'
+}
+
+/** Whether a stored row is a local page this code can render. */
+function isPageRow(row) {
+  return row !== null && typeof row === 'object'
+    && typeof row.id === 'string'
+    && typeof row.path === 'string'
+    && (row.title === undefined || typeof row.title === 'string')
+    && typeof row.at === 'string'
+}
+
+/** A display title: the caller's text, or the row's own fallback. */
+function shelfTitle(value, fallback) {
+  const text = typeof value === 'string' ? value.trim() : ''
+  if (text === '') return fallback
+  if ([...text].length > MAX_TITLE) throw new ShelfError(`标题不能超过 ${MAX_TITLE} 字`)
+  return text
+}
+
+/** One http(s) URL, normalized; protocol is the only scheme a browser tab accepts. */
+function shelfUrl(value) {
+  if (typeof value !== 'string' || value.trim() === '') throw new ShelfError('需要填写网址')
+  const text = value.trim()
+  if (text.length > MAX_URL) throw new ShelfError('网址过长')
+  let parsed
+  try {
+    parsed = new URL(text)
+  } catch {
+    throw new ShelfError('网址格式不正确')
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') throw new ShelfError('只支持 http/https 网址')
+  return parsed.href
+}
+
+/** The hostname a link falls back to when the user gives no title. */
+function linkTitleFrom(url) {
+  try {
+    return new URL(url).hostname
+  } catch {
+    return '未命名网址'
+  }
+}
+
+/** One absolute path to a static HTML file. */
+function shelfPath(value) {
+  if (typeof value !== 'string' || value.trim() === '') throw new ShelfError('需要填写本地文件路径')
+  const text = value.trim().replace(/\\/g, '/')
+  if (text.length > MAX_PATH) throw new ShelfError('路径过长')
+  if (!isAbsolute(text)) throw new ShelfError('本地页面需要绝对路径')
+  if (!/\.html?$/iu.test(text)) throw new ShelfError('只支持 .html / .htm 文件')
+  return text
+}
+
+/** One row id, namespaced so a link and a page can never collide. */
+function newRowId(prefix) {
+  return `${prefix}_${randomUUID().replace(/-/gu, '').slice(0, 12)}`
+}
+
+/** Read a row list and replace it; removing an unknown id is an error, not a no-op. */
+function replaceRow(rows, id) {
+  const index = rows.findIndex(row => row.id === id)
+  if (index === -1) throw new ShelfError('条目不存在')
+  return index
 }
 
 /**
  * Route that answers with, and mutates, the user's shelf.
  *
  * Mutations are serialized through one chain so two clicks cannot interleave
- * reads and writes; each write goes through a temporary file.
+ * reads and writes; each write goes through a temporary file. Local pages are
+ * validated against the filesystem here — the browser half never reads them.
  * @param options - injected collaborators.
  * @returns the route the host connection registry accepts.
  */
 export function createStateRoute(options = {}) {
-  const { stateFile = defaultStateFile(), now = () => new Date().toISOString() } = options
+  const {
+    stateFile = defaultStateFile(),
+    now = () => new Date().toISOString(),
+    statFile = async path => stat(path),
+  } = options
   let queue = Promise.resolve()
 
-  const read = () => readJsonOr(stateFile, emptyState())
+  const read = async () => migrateState(await readJsonOr(stateFile, emptyState()))
   const write = async (state) => {
     await writeJsonAtomic(stateFile, state)
     return state
+  }
+
+  /** Apply one validated mutation to a migrated state; throws ShelfError for user errors. */
+  async function mutate(state, body, at) {
+    const op = typeof body?.op === 'string' ? body.op : ''
+    const id = typeof body?.id === 'string' ? body.id : ''
+    if (op === 'favorite' || op === 'unfavorite') {
+      if (id === '') throw new ShelfError('需要条目标识')
+      const favorites = { ...state.favorites }
+      if (op === 'favorite') favorites[id] = { at }
+      else delete favorites[id]
+      return { ...state, favorites }
+    }
+    if (op === 'add-link') {
+      const url = shelfUrl(body?.url)
+      const title = shelfTitle(body?.title, linkTitleFrom(url))
+      return { ...state, links: [...state.links, { id: newRowId('link'), title, url, at }] }
+    }
+    if (op === 'update-link') {
+      const index = replaceRow(state.links, id)
+      const row = state.links[index]
+      const url = body?.url === undefined ? row.url : shelfUrl(body.url)
+      const title = body?.title === undefined ? row.title : shelfTitle(body.title, linkTitleFrom(url))
+      const links = [...state.links]
+      links[index] = { ...row, title, url }
+      return { ...state, links }
+    }
+    if (op === 'remove-link') {
+      const index = replaceRow(state.links, id)
+      const links = [...state.links]
+      links.splice(index, 1)
+      return { ...state, links }
+    }
+    if (op === 'add-page') {
+      const path = shelfPath(body?.path)
+      const title = shelfTitle(body?.title, basename(path))
+      await requireFile(path, statFile)
+      return { ...state, pages: [...state.pages, { id: newRowId('page'), title, path, at }] }
+    }
+    if (op === 'update-page') {
+      const index = replaceRow(state.pages, id)
+      const row = state.pages[index]
+      const path = body?.path === undefined ? row.path : shelfPath(body.path)
+      const title = body?.title === undefined ? row.title : shelfTitle(body.title, basename(path))
+      if (path !== row.path) await requireFile(path, statFile)
+      const pages = [...state.pages]
+      pages[index] = { ...row, title, path }
+      return { ...state, pages }
+    }
+    if (op === 'remove-page') {
+      const index = replaceRow(state.pages, id)
+      const pages = [...state.pages]
+      pages.splice(index, 1)
+      return { ...state, pages }
+    }
+    throw new ShelfError('未知操作')
   }
 
   return {
@@ -329,22 +490,18 @@ export function createStateRoute(options = {}) {
       } catch {
         return json(400, { ok: false, error: { code: 'BAD_BODY', message: '请求体不是 JSON' } })
       }
-      const op = body?.op
-      const id = body?.id
-      if ((op !== 'favorite' && op !== 'unfavorite') || typeof id !== 'string' || id === '') {
-        return json(400, { ok: false, error: { code: 'BAD_REQUEST', message: '需要 { op: favorite|unfavorite, id }' } })
-      }
       const run = queue.then(async () => {
         const state = await read()
-        const favorites = { ...(state.favorites ?? {}) }
-        if (op === 'favorite') favorites[id] = { at: now() }
-        else delete favorites[id]
-        return write({ ...state, version: 1, favorites, updatedAt: now() })
+        const next = await mutate(state, body, now())
+        return write({ ...next, version: 2, updatedAt: now() })
       })
       queue = run.catch(() => {})
       try {
         return json(200, { ok: true, state: await run })
       } catch (error) {
+        if (error instanceof ShelfError) {
+          return json(400, { ok: false, error: { code: 'BAD_REQUEST', message: error.message } })
+        }
         return json(200, {
           ok: false,
           error: { code: 'STATE_WRITE_FAILED', message: error instanceof Error ? error.message : String(error) },
@@ -352,6 +509,17 @@ export function createStateRoute(options = {}) {
       }
     },
   }
+}
+
+/** Refuse a path that is not an existing regular file; the browser never reads it. */
+async function requireFile(path, statFile) {
+  let info
+  try {
+    info = await statFile(path)
+  } catch {
+    throw new ShelfError('文件不存在或不可读')
+  }
+  if (info === undefined || typeof info.isFile !== 'function' || !info.isFile()) throw new ShelfError('路径不是文件')
 }
 
 /**

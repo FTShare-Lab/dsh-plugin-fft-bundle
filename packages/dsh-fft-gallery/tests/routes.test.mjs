@@ -239,6 +239,92 @@ describe('state route', () => {
   })
 })
 
+describe('personal entries', () => {
+  const statFile = async (path) => {
+    if (path === '/tmp/report.html') return { isFile: () => true }
+    throw new Error('ENOENT')
+  }
+
+  it('migrates a version-1 shelf into version 2 without losing favorites', async () => {
+    const dir = await scratch()
+    const stateFile = join(dir, 'state.json')
+    await writeFile(stateFile, JSON.stringify({ version: 1, favorites: { 'ftshare.etf-flow': { at: '2026-11-01T00:00:00.000Z' } }, updatedAt: '2026-11-01T00:00:00.000Z' }))
+    const route = createStateRoute({ stateFile, statFile })
+    const body = await (await get(route)).json()
+    assert.equal(body.state.version, 2)
+    assert.deepEqual(Object.keys(body.state.favorites), ['ftshare.etf-flow'])
+    assert.deepEqual(body.state.links, [])
+    assert.deepEqual(body.state.pages, [])
+  })
+
+  it('adds a link, defaulting the title to its host, then edits and removes it', async () => {
+    const dir = await scratch()
+    const route = createStateRoute({ stateFile: join(dir, 'state.json'), now: () => '2026-11-19T00:00:00.000Z' })
+    const added = await (await post(route, { op: 'add-link', url: 'https://market.ft.tech/gateway/doc/' })).json()
+    assert.equal(added.ok, true)
+    assert.equal(added.state.links.length, 1)
+    const [link] = added.state.links
+    assert.match(link.id, /^link_[a-z0-9]{8,}$/u)
+    assert.equal(link.title, 'market.ft.tech')
+    assert.equal(link.url, 'https://market.ft.tech/gateway/doc/')
+    assert.equal(link.at, '2026-11-19T00:00:00.000Z')
+
+    const edited = await (await post(route, { op: 'update-link', id: link.id, title: 'FtShare 接口文档' })).json()
+    assert.equal(edited.state.links[0].title, 'FtShare 接口文档')
+    assert.equal(edited.state.links[0].url, link.url)
+
+    const removed = await (await post(route, { op: 'remove-link', id: link.id })).json()
+    assert.equal(removed.state.links.length, 0)
+  })
+
+  it('rejects a non-http URL and mutating an unknown row', async () => {
+    const dir = await scratch()
+    const route = createStateRoute({ stateFile: join(dir, 'state.json') })
+    const badScheme = await post(route, { op: 'add-link', url: 'ftp://example.com/file' })
+    assert.equal(badScheme.status, 400)
+    assert.match((await badScheme.json()).error.message, /http\/https/u)
+    const badUrl = await post(route, { op: 'add-link', url: 'not a url' })
+    assert.equal(badUrl.status, 400)
+    const missing = await post(route, { op: 'remove-link', id: 'link_missing0000' })
+    assert.equal(missing.status, 400)
+  })
+
+  it('adds a page only when the path is an existing html file', async () => {
+    const dir = await scratch()
+    const route = createStateRoute({ stateFile: join(dir, 'state.json'), statFile })
+    const relative = await post(route, { op: 'add-page', path: 'report.html' })
+    assert.equal(relative.status, 400)
+    const notHtml = await post(route, { op: 'add-page', path: '/tmp/report.md' })
+    assert.equal(notHtml.status, 400)
+    const missing = await post(route, { op: 'add-page', path: '/tmp/missing.html' })
+    assert.equal(missing.status, 400)
+
+    const added = await (await post(route, { op: 'add-page', path: '/tmp/report.html', title: '周报' })).json()
+    assert.equal(added.state.pages.length, 1)
+    assert.match(added.state.pages[0].id, /^page_[a-z0-9]{8,}$/u)
+    assert.equal(added.state.pages[0].title, '周报')
+    assert.equal(added.state.pages[0].path, '/tmp/report.html')
+
+    const removed = await (await post(route, { op: 'remove-page', id: added.state.pages[0].id })).json()
+    assert.equal(removed.state.pages.length, 0)
+  })
+
+  it('keeps favorites, links and pages in one serialized document', async () => {
+    const dir = await scratch()
+    const stateFile = join(dir, 'state.json')
+    const route = createStateRoute({ stateFile, statFile })
+    await Promise.all([
+      post(route, { op: 'favorite', id: 'ftshare.etf-flow' }),
+      post(route, { op: 'add-link', url: 'https://example.com/' }),
+      post(route, { op: 'add-page', path: '/tmp/report.html' }),
+    ])
+    const body = await (await createStateRoute({ stateFile, statFile }).fetch(new Request(`http://127.0.0.1${STATE_ROUTE}`))).json()
+    assert.deepEqual(Object.keys(body.state.favorites), ['ftshare.etf-flow'])
+    assert.equal(body.state.links.length, 1)
+    assert.equal(body.state.pages.length, 1)
+  })
+})
+
 describe('catalog route without a published branch', () => {
   it('reports the remote as unpublished instead of stale on a 404', async () => {
     const dir = await scratch()
