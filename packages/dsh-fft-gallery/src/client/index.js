@@ -4,8 +4,7 @@
  * Three surfaces share one tab:
  *   - 发现 (Discover): a CSS-columns waterfall of the catalog entries the Host
  *     half serves on `/api/ft-gallery/catalog`;
- *   - 我的收藏 (Saved): saved entries (`/api/ft-gallery/state`) merged with
- *     the entries installed plugins registered at runtime through `ctx.ftGallery`;
+ *   - 我的收藏 (Saved): the entries this user saved (`/api/ft-gallery/state`);
  *   - 详情 (detail): screenshots, summary/details, links and the open action,
  *     rendered in place of the list with a back control.
  *
@@ -16,9 +15,8 @@
  * gradient + first-glyph fallback; external links carry `rel="noopener noreferrer"`;
  * the gallery never installs a plugin — it only shows a copyable command.
  *
- * It also provides the `ftGallery` service: any installed plugin may register
- * its own entry (which appears in 我的收藏 only), and the returned disposer
- * removes it again on plugin unload.
+ * The shelf is favorites-only: nothing appears there that the user did not
+ * save, so the list needs no runtime registry to keep it honest.
  */
 window.__ModuleLoader__.load({
   id: '@dsh-ft/dsh-fft-gallery',
@@ -27,7 +25,7 @@ window.__ModuleLoader__.load({
     var exports = module.exports
 
     const React = require('react')
-    const { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } = React
+    const { useCallback, useEffect, useMemo, useRef, useState } = React
     const h = React.createElement
 
     // ---------------------------------------------------------------- contract
@@ -101,7 +99,6 @@ window.__ModuleLoader__.load({
       copy: pick('复制', 'Copy'),
       copied: pick('已复制', 'Copied'),
       copyFailed: pick('复制失败，请手动选择命令', 'Copy failed; select the command manually'),
-      runtimeSource: pick('由插件在运行时注册', 'Registered by the plugin at runtime'),
       engines: (range) => pick(`运行环境 DSH ${range}`, `Requires DSH ${range}`),
       entryCount: (count) => pick(`${count} 个条目`, `${count} entries`),
     }
@@ -226,19 +223,6 @@ window.__ModuleLoader__.load({
       if (typeof value !== 'string') return ''
       const trimmed = value.trim()
       return /^https:\/\//i.test(trimmed) ? trimmed : ''
-    }
-
-    /** Canonical `{ zh, en }` pair for a runtime registration, or undefined. */
-    function textPair(value) {
-      if (typeof value === 'string') {
-        const text = value.trim()
-        return text === '' ? undefined : { zh: text, en: text }
-      }
-      if (value === null || typeof value !== 'object') return undefined
-      const zh = typeof value.zh === 'string' ? value.zh.trim() : ''
-      const en = typeof value.en === 'string' ? value.en.trim() : ''
-      if (zh === '' && en === '') return undefined
-      return { zh: zh === '' ? en : zh, en: en === '' ? zh : en }
     }
 
     /** The card's fallback glyph: the title's first character. */
@@ -376,7 +360,6 @@ window.__ModuleLoader__.load({
      * registered its tab is loaded.
      */
     function installedState(entry, bundles, hasTabKind, hasMainPanel) {
-      if (entry.source === 'runtime') return { status: 'runtime' }
       if (entry.kind !== 'plugin') return { status: 'web' }
       const spec = entry.spec
       const named = spec !== null && typeof spec === 'object' && spec.type === 'npm' && typeof spec.name === 'string'
@@ -439,109 +422,6 @@ window.__ModuleLoader__.load({
         host.layout.selectPanel(panel)
       } catch {
         pushToast('error', TEXT.panelMissing(panel))
-      }
-    }
-
-    // ------------------------------------------------------- runtime registry
-
-    /** Normalize one runtime registration; throws on an unusable entry. */
-    function normalizeRuntimeEntry(input) {
-      if (input === null || typeof input !== 'object') throw new TypeError('ftGallery.register: an entry object is required')
-      const id = input.id
-      if (typeof id !== 'string' || !ID_PATTERN.test(id)) {
-        throw new TypeError(`ftGallery.register: id must match ${ID_PATTERN} (got ${String(id)})`)
-      }
-      const title = textPair(input.title)
-      if (title === undefined) throw new TypeError(`ftGallery.register(${id}): title must be a non-empty { zh, en } object or string`)
-      const summary = textPair(input.summary)
-      const entry = {
-        id,
-        kind: input.kind === 'web' ? 'web' : 'plugin',
-        title,
-        source: 'runtime',
-        order: typeof input.order === 'number' && Number.isFinite(input.order) ? input.order : 100,
-      }
-      if (summary !== undefined) entry.summary = summary
-      const details = textPair(input.details)
-      if (details !== undefined) entry.details = details
-      const cover = httpsUrl(input.cover)
-      if (cover !== '') entry.cover = cover
-      const screenshots = Array.isArray(input.screenshots)
-        ? input.screenshots
-          .map((shot) => {
-            const src = httpsUrl(shot !== null && typeof shot === 'object' ? shot.src : '')
-            if (src === '') return undefined
-            const alt = textPair(shot !== null && typeof shot === 'object' ? shot.alt : undefined)
-            return alt === undefined ? { src } : { src, alt }
-          })
-          .filter((shot) => shot !== undefined)
-          .slice(0, 4)
-        : []
-      if (screenshots.length > 0) entry.screenshots = screenshots
-      if (typeof input.author === 'string' && input.author.trim() !== '') entry.author = input.author.trim()
-      if (typeof input.category === 'string' && input.category.trim() !== '') entry.category = input.category.trim()
-      if (input.engines !== null && typeof input.engines === 'object' && typeof input.engines.dsh === 'string') {
-        entry.engines = { dsh: input.engines.dsh }
-      }
-      const url = httpsUrl(input.url)
-      if (url !== '') entry.url = url
-      if (input.spec !== null && typeof input.spec === 'object') entry.spec = input.spec
-      if (input.open !== null && typeof input.open === 'object' && typeof input.open.kind === 'string') entry.open = { kind: input.open.kind }
-      if (typeof input.onOpen === 'function') entry.onOpen = input.onOpen
-      return entry
-    }
-
-    /**
-     * The `ftGallery` service: installed plugins register their own entry and
-     * get a disposer back. Snapshots are stable between changes so React can
-     * subscribe with `useSyncExternalStore`.
-     */
-    function createGalleryService() {
-      const records = new Map()
-      const listeners = new Set()
-      let snapshot = []
-      let sequence = 0
-
-      const publish = () => {
-        snapshot = [...records.values()]
-          .sort((left, right) => left.order - right.order || left.sequence - right.sequence)
-          .map((record) => record.entry)
-        for (const listener of [...listeners]) {
-          try {
-            listener()
-          } catch {
-            // A listener that throws is the subscriber's problem, not the registry's.
-          }
-        }
-      }
-
-      return {
-        /** @returns disposer that removes the entry again. */
-        register(input) {
-          const entry = normalizeRuntimeEntry(input)
-          sequence += 1
-          const record = { entry, sequence }
-          records.set(entry.id, record)
-          publish()
-          let active = true
-          return () => {
-            if (!active) return
-            active = false
-            if (records.get(entry.id) !== record) return
-            records.delete(entry.id)
-            publish()
-          }
-        },
-        /** @returns the current runtime entries, in registration order. */
-        list() {
-          return snapshot
-        },
-        /** @returns unsubscribe callback. */
-        subscribe(listener) {
-          if (typeof listener !== 'function') throw new TypeError('ftGallery.subscribe: a listener function is required')
-          listeners.add(listener)
-          return () => { listeners.delete(listener) }
-        },
       }
     }
 
@@ -725,9 +605,6 @@ window.__ModuleLoader__.load({
         const label = installed.version === '' ? TEXT.installed : TEXT.installedVersion(installed.version)
         return h('span', { className: 'ftg-tag', 'data-state': 'yes' }, label)
       }
-      if (installed.status === 'runtime') {
-        return h('span', { className: 'ftg-tag', 'data-state': 'yes' }, TEXT.installed)
-      }
       if (installed.status === 'unknown') return h('span', { className: 'ftg-tag' }, TEXT.plugin)
       return h('span', { className: 'ftg-tag', 'data-state': 'no' }, TEXT.notInstalled)
     }
@@ -868,12 +745,9 @@ window.__ModuleLoader__.load({
       const cover = httpsUrl(entry.cover) || firstScreenshot(entry)
       const openKind = openKindOf(entry)
       const openPanelId = openPanelOf(entry)
-      const runtime = entry.source === 'runtime'
-      const canOpen = runtime
-        ? typeof entry.onOpen === 'function' || openKind !== '' || openPanelId !== ''
-        : entry.kind === 'web'
-          ? httpsUrl(entry.url) !== ''
-          : installed.status === 'installed' && (openKind !== '' || openPanelId !== '')
+      const canOpen = entry.kind === 'web'
+        ? httpsUrl(entry.url) !== ''
+        : installed.status === 'installed' && (openKind !== '' || openPanelId !== '')
       const command = entry.kind === 'plugin' && (installed.status === 'missing' || installed.status === 'unknown')
         ? installCommand(entry)
         : ''
@@ -891,7 +765,6 @@ window.__ModuleLoader__.load({
       }, [onBack])
 
       const notes = []
-      if (runtime) notes.push(TEXT.runtimeSource)
       if (stars !== null) notes.push(TEXT.starsNote)
       if (engines !== '') notes.push(TEXT.engines(engines))
 
@@ -926,7 +799,7 @@ window.__ModuleLoader__.load({
           h('h2', { className: 'ftg-detail-title' }, title),
           h('div', { className: 'ftg-detail-meta' },
             h(InstalledTag, { entry, installed }),
-            entry.kind === 'plugin' && !canOpen && (installed.status === 'installed' || installed.status === 'runtime')
+            entry.kind === 'plugin' && !canOpen && installed.status === 'installed'
               ? h('span', { className: 'ftg-tag' }, TEXT.noSurface)
               : null,
             categoryTitle === '' ? null : h('span', { className: 'ftg-tag' }, categoryTitle),
@@ -988,7 +861,7 @@ window.__ModuleLoader__.load({
     // ------------------------------------------------------------------- tab
 
     /** The right-sidebar tab: view switch, waterfall, detail, save state. */
-    function Gallery({ host, gallery }) {
+    function Gallery({ host }) {
       const [view, setView] = useState('discover')
       const [detailId, setDetailId] = useState('')
       const [category, setCategory] = useState('')
@@ -1008,7 +881,6 @@ window.__ModuleLoader__.load({
       const catalog = useCatalog(pushToast)
       const favorites = useFavorites(pushToast)
       const bundles = useBundles(host)
-      const runtimeEntries = useSyncExternalStore(gallery.subscribe, gallery.list)
 
       const catalogEntries = useMemo(() => {
         const entries = catalog.data !== null && Array.isArray(catalog.data.entries) ? catalog.data.entries : []
@@ -1041,28 +913,20 @@ window.__ModuleLoader__.load({
         : catalogEntries.filter((entry) => entry.category === category)), [catalogEntries, category])
 
       const shelfEntries = useMemo(() => {
-        const runtimeIds = new Set(runtimeEntries.map((entry) => entry.id))
-        const list = [...runtimeEntries]
-        if (favorites.status === 'ready') {
-          const favorited = []
-          for (const id of Object.keys(favorites.map)) {
-            const entry = catalogById.get(id)
-            if (entry === undefined || runtimeIds.has(id)) continue
-            favorited.push(entry)
-          }
-          favorited.sort((left, right) => savedAt(favorites.map, right.id) - savedAt(favorites.map, left.id))
-          list.push(...favorited)
+        if (favorites.status !== 'ready') return []
+        const favorited = []
+        for (const id of Object.keys(favorites.map)) {
+          const entry = catalogById.get(id)
+          if (entry !== undefined) favorited.push(entry)
         }
-        return list
-      }, [runtimeEntries, favorites.status, favorites.map, catalogById])
+        favorited.sort((left, right) => savedAt(favorites.map, right.id) - savedAt(favorites.map, left.id))
+        return favorited
+      }, [favorites.status, favorites.map, catalogById])
 
-      const detailEntry = useMemo(() => {
-        if (detailId === '') return undefined
-        for (const entry of runtimeEntries) {
-          if (entry.id === detailId) return entry
-        }
-        return catalogById.get(detailId)
-      }, [detailId, runtimeEntries, catalogById])
+      const detailEntry = useMemo(
+        () => (detailId === '' ? undefined : catalogById.get(detailId)),
+        [detailId, catalogById],
+      )
 
       const closeDetail = useCallback(() => setDetailId(''), [])
 
@@ -1082,9 +946,9 @@ window.__ModuleLoader__.load({
         (entry) => installedState(entry, bundles, hasTabKind, hasMainPanel),
         [bundles, hasTabKind, hasMainPanel],
       )
-      const savedOf = useCallback((entry) => (entry.source === 'runtime' ? false : isSaved(favorites.map, entry.id)), [favorites.map])
+      const savedOf = useCallback((entry) => isSaved(favorites.map, entry.id), [favorites.map])
       // The star stays in place when saved state is unavailable; only disabled.
-      const canSave = useCallback((entry) => entry.source !== 'runtime', [])
+      const canSave = useCallback(() => true, [])
       const savingOf = useCallback(
         (entry) => favorites.status !== 'ready' || favorites.pending[entry.id] === true,
         [favorites.status, favorites.pending],
@@ -1092,14 +956,6 @@ window.__ModuleLoader__.load({
 
       const openEntry = useCallback((entry) => {
         if (entry === null || typeof entry !== 'object') return
-        if (entry.source === 'runtime' && typeof entry.onOpen === 'function') {
-          try {
-            entry.onOpen()
-          } catch {
-            pushToast('error', TEXT.openFailed)
-          }
-          return
-        }
         if (entry.kind === 'web') {
           openWeb(host, entry.url, pushToast)
           return
@@ -1113,7 +969,7 @@ window.__ModuleLoader__.load({
       }, [host, pushToast])
 
       const toggleFavorite = useCallback((entry) => {
-        if (entry.source === 'runtime' || favorites.status !== 'ready') return
+        if (favorites.status !== 'ready') return
         void favorites.toggle(entry)
       }, [favorites])
 
@@ -1208,8 +1064,7 @@ window.__ModuleLoader__.load({
       let body
       const catalogFailed = catalog.status === 'failed'
       const catalogFailure = TEXT.loadFailed(catalog.error === '' ? TEXT.badResponse : catalog.error)
-      // 我的收藏 can still show runtime entries while the catalog is down.
-      if (!ready && !(catalogFailed && view === 'shelf' && runtimeEntries.length > 0)) {
+      if (!ready && !(catalogFailed && view === 'shelf')) {
         body = catalogFailed
           ? h(StateNote, {
             title: '',
@@ -1231,7 +1086,7 @@ window.__ModuleLoader__.load({
           })
       } else {
         const failed = favorites.status === 'failed'
-        const loading = favorites.status === 'loading' && runtimeEntries.length === 0
+        const loading = favorites.status === 'loading'
         if (loading) {
           body = h(StateNote, { title: '', message: TEXT.loadingSaved })
         } else if (shelfEntries.length === 0) {
@@ -1279,14 +1134,12 @@ window.__ModuleLoader__.load({
     // ------------------------------------------------------------------ apply
 
     /**
-     * Register the tab type, its body and the `ftGallery` service; all three
-     * live exactly as long as the plugin does.
+     * Register the tab type and its body; both live exactly as long as the
+     * plugin does.
      * @param ctx - client plugin context.
      */
     function apply(ctx) {
       ensureStyle()
-      const service = createGalleryService()
-      ctx.provide('ftGallery', service)
       const host = {
         get right() { return ctx.sidebarRight },
         get tabs() { return ctx.sidebarRightTabs },
@@ -1302,7 +1155,7 @@ window.__ModuleLoader__.load({
           return Promise.resolve(manager.listBundles())
         },
       }
-      const Seat = () => h(Gallery, { host, gallery: service })
+      const Seat = () => h(Gallery, { host })
       ctx.effect(() => ctx.sidebarRightTabs.register({
         id: TAB_ID,
         kind: KIND,
