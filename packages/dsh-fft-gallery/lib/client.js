@@ -62,8 +62,8 @@ window.__ModuleLoader__.load({
       emptyCatalog: pick('目录暂时没有条目', 'The catalog has no entries yet'),
       emptyFiltered: pick('该分类下没有条目', 'Nothing in this category'),
       emptyShelf: pick(
-        '还没有收藏。在「发现」里点 ♡ 收进这里；已安装的插件会自动出现。',
-        'Nothing saved yet. Tap ♡ in Discover; installed plugins appear here automatically.',
+        '还没有收藏。在「发现」里点 ♡ 收进这里；已装插件主动注册后也会出现在这里。',
+        'Nothing saved yet. Tap ♡ in Discover; plugins that register themselves appear here.',
       ),
       all: pick('全部', 'All'),
       stale: pick('目录可能过期', 'The catalog may be out of date'),
