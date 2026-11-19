@@ -1,6 +1,6 @@
 {
   "format": 2,
-  "generatedAt": "2026-11-18T10:11:09.690Z",
+  "generatedAt": "2026-11-19T06:36:15.703Z",
   "categories": {
     "market": {
       "zh": "行情",
@@ -30,47 +30,51 @@
       "category": "market",
       "order": 10,
       "title": {
-        "zh": "ETF 资金流",
-        "en": "ETF fund flow"
+        "zh": "ETF 资金观测台",
+        "en": "ETF fund observatory"
       },
       "summary": {
-        "zh": "份额申赎与资金净流入联动看板，按板块与宽基拆分。",
-        "en": "Share creation/redemption against net fund flow, split by sector and index."
+        "zh": "发现成交异动、跟踪宽基资金，盘中观察与盘后复盘一页完成。",
+        "en": "Spot turnover anomalies and broad-index ETF flows, intraday and after-close."
       },
       "details": {
-        "zh": "按板块、宽基与个股三个层次拆解 ETF 份额申赎与资金净流入，可切换日度/分钟口径查看成交额与净流入的联动。数据来自 FTShare 与公开源，页面自带示例数据。",
-        "en": "Splits ETF share creation/redemption and net fund flow by sector, index and security, with daily and intraday turnover views. Data comes from FTShare and public sources, with bundled sample data."
+        "zh": "对照 20/60 日历史同进度成交的异动雷达、12 类宽基的日度净申赎与区间累计、9 张标注数据来源与计算口径的图表；行情自动刷新，多人共享同一份缓存。",
+        "en": "A turnover-anomaly radar against 20/60-day same-progress history, daily net creation/redemption and cumulative flows for 12 broad-index groups, and nine charts that state their data source and calculation; quotes refresh automatically through a shared cache."
       },
       "cover": "https://raw.githubusercontent.com/FTShare-Lab/FtShare_fincase/HEAD/docs/preview.jpg",
       "screenshots": [
         {
-          "src": "https://raw.githubusercontent.com/FTShare-Lab/FtShare_fincase/HEAD/docs/screenshots/daily-netflow.jpg",
+          "src": "https://raw.githubusercontent.com/FTShare-Lab/FtShare_fincase/HEAD/docs/screenshots/broad-flows.jpg",
           "alt": {
-            "zh": "每日资金净流入",
-            "en": "Daily net fund flow"
+            "zh": "宽基分类资金与区间累计",
+            "en": "Broad-index flows and cumulative"
           }
         },
         {
-          "src": "https://raw.githubusercontent.com/FTShare-Lab/FtShare_fincase/HEAD/docs/screenshots/broad-flows.jpg",
+          "src": "https://raw.githubusercontent.com/FTShare-Lab/FtShare_fincase/HEAD/docs/screenshots/daily-netflow.jpg",
           "alt": {
-            "zh": "宽基与板块资金流",
-            "en": "Index and sector flows"
+            "zh": "核心 ETF 历史净申赎",
+            "en": "Core ETF net flows"
+          }
+        },
+        {
+          "src": "https://raw.githubusercontent.com/FTShare-Lab/FtShare_fincase/HEAD/docs/screenshots/minute-turnover.jpg",
+          "alt": {
+            "zh": "分钟成交与指数",
+            "en": "Intraday turnover with the index"
           }
         },
         {
           "src": "https://raw.githubusercontent.com/FTShare-Lab/FtShare_fincase/HEAD/docs/screenshots/cumulative-turnover.jpg",
           "alt": {
-            "zh": "累计成交额",
-            "en": "Cumulative turnover"
+            "zh": "累计成交对比",
+            "en": "Cumulative turnover comparison"
           }
         }
       ],
-      "url": "https://ftshare-etf-flow.zippymarshmallow.chatgpt.site/",
+      "url": "https://etf.jtxaionline.com/#radar",
       "homepage": "https://etf.jtxaionline.com/",
       "author": "FTShare-Lab",
-      "engines": {
-        "dsh": ">=0.2.1-rc.2"
-      },
       "embeddable": true,
       "source": "github",
       "repo": "https://github.com/FTShare-Lab/FtShare_fincase",
@@ -92,8 +96,8 @@
         "en": "Paper orders, positions and review for A-shares and commodity futures."
       },
       "details": {
-        "zh": "本地账本记录成交与持仓，内置 FTShare 行情与 K 线；安装后从右侧栏打开，和手工装的模拟交易完全一致。",
-        "en": "A local ledger records fills and positions, with FTShare quotes and K-line built in. Once installed it opens from the right sidebar, exactly like a hand-installed plugin."
+        "zh": "股票与期货两个独立账本，本地记录成交与持仓；内置 FTShare 行情与 K 线，支持按权重批量建仓、复盘，以及对话里直接下单。安装后从左侧栏「模拟交易」打开。",
+        "en": "Two local ledgers for stocks and futures, with FTShare quotes and K-line built in: bulk weight-based buying, review, and the same account the agent trades. Open it from the sidebar's paper-trading entry."
       },
       "cover": "https://raw.githubusercontent.com/gigaflw/dsh-fft-paper-trading/HEAD/assets/screenshots/trade.jpg",
       "screenshots": [
@@ -122,7 +126,7 @@
       "spec": {
         "type": "npm",
         "name": "@dsh-ft/dsh-fft-paper-trading",
-        "version": "0.7.2"
+        "version": "0.7.3"
       },
       "open": {
         "panel": "ft-paper-trading"

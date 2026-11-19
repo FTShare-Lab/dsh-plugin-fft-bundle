@@ -18,8 +18,8 @@
         "en": "Paper orders, positions and review for A-shares and commodity futures."
       },
       "details": {
-        "zh": "本地账本记录成交与持仓，内置 FTShare 行情与 K 线；安装后从右侧栏打开，和手工装的模拟交易完全一致。",
-        "en": "A local ledger records fills and positions, with FTShare quotes and K-line built in. Once installed it opens from the right sidebar, exactly like a hand-installed plugin."
+        "zh": "股票与期货两个独立账本，本地记录成交与持仓；内置 FTShare 行情与 K 线，支持按权重批量建仓、复盘，以及对话里直接下单。安装后从左侧栏「模拟交易」打开。",
+        "en": "Two local ledgers for stocks and futures, with FTShare quotes and K-line built in: bulk weight-based buying, review, and the same account the agent trades. Open it from the sidebar's paper-trading entry."
       },
       "cover": "https://raw.githubusercontent.com/gigaflw/dsh-fft-paper-trading/HEAD/assets/screenshots/trade.jpg",
       "screenshots": [
@@ -48,7 +48,7 @@
       "spec": {
         "type": "npm",
         "name": "@dsh-ft/dsh-fft-paper-trading",
-        "version": "0.7.2"
+        "version": "0.7.3"
       },
       "open": {
         "panel": "ft-paper-trading"

@@ -96,7 +96,7 @@ describe('catalog shape', () => {
 
     const plugin = built.entries.find(entry => entry.id === 'ft.paper-trading')
     assert.equal(plugin.kind, 'plugin')
-    assert.deepEqual(plugin.spec, { type: 'npm', name: '@dsh-ft/dsh-fft-paper-trading', version: '0.7.2' })
+    assert.deepEqual(plugin.spec, { type: 'npm', name: '@dsh-ft/dsh-fft-paper-trading', version: '0.7.3' })
     assert.deepEqual(plugin.open, { panel: 'ft-paper-trading' })
     assert.equal(plugin.url, undefined)
     assert.equal(plugin.embeddable, undefined)
@@ -111,7 +111,7 @@ describe('catalog shape', () => {
     for (const entry of built.entries) {
       for (const key of Object.keys(entry)) assert.ok(allowed.has(key), `${entry.id} leaks ${key}`)
     }
-    assert.equal(built.entries[1].details.zh, '本地账本记录成交与持仓，内置 FTShare 行情与 K 线；安装后从右侧栏打开，和手工装的模拟交易完全一致。')
+    assert.equal(built.entries[1].details.zh, '股票与期货两个独立账本，本地记录成交与持仓；内置 FTShare 行情与 K 线，支持按权重批量建仓、复盘，以及对话里直接下单。安装后从左侧栏「模拟交易」打开。')
   })
 })
 
