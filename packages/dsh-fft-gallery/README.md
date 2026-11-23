@@ -1,7 +1,15 @@
 # @dsh-ft/dsh-fft-gallery
 
-右侧栏的「金融组件画廊」：以瀑布流浏览第三方为金融工作台做的网页应用与插件组件，收藏进「我的收藏」，
+右侧栏的「金融组件画廊」：以瀑布流浏览第三方为金融工作台做的网页应用与插件组件，收藏进「收藏」；
 网页一键在侧栏打开；插件条目只给出安装命令，画廊本身不安装、也不审核任何代码。
+
+## 界面
+
+右侧栏 tab 标题为「画廊」，引导页入口为「金融组件画廊」。收藏页分两段：组件收藏用卡片，个人收藏合并网址与本机 HTML 页面。
+
+![收藏页：组件收藏卡片与个人收藏列表](https://raw.githubusercontent.com/FTShare-Lab/dsh-plugin-fft-bundle/dev/packages/dsh-fft-gallery/assets/screenshots/saved.jpg)
+
+![组件详情：封面、截图与打开入口](https://raw.githubusercontent.com/FTShare-Lab/dsh-plugin-fft-bundle/dev/packages/dsh-fft-gallery/assets/screenshots/detail.jpg)
 
 ## 安装
 
@@ -9,7 +17,7 @@
 dsh plugin --profile desktop add @dsh-ft/dsh-fft-gallery
 ```
 
-装完重启 DSH。右侧栏引导页会出现「金融组件画廊」入口（tab 标题显示为「画廊」），`发现` 是目录，`收藏` 分两段：组件收藏（卡片）与个人收藏（你添加的网址与本机 HTML 页面，只存在本机，不经过目录）。
+装完重启 DSH。右侧栏引导页会出现「金融组件画廊」入口（tab 标题显示为「画廊」），`发现` 是目录，`收藏` 分两段：组件收藏（卡片）与个人收藏（自行添加的网址与本机 HTML 页面，只存在本机，不经过目录）。
 
 ## 作者接入（两个东西，零 PR）
 
