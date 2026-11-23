@@ -1,5 +1,5 @@
 /**
- * Browser half of the FT gallery: the right-sidebar "金融组件库" tab.
+ * Browser half of the FT gallery: the right-sidebar "金融组件画廊" tab.
  *
  * Three surfaces share one tab:
  *   - 发现 (Discover): a CSS-columns waterfall of the catalog entries the Host
@@ -48,7 +48,7 @@ window.__ModuleLoader__.load({
     const pick = (zh, en) => (ZH ? zh : en)
 
     const TEXT = {
-      title: pick('金融组件库', 'Finance gallery'),
+      title: pick('金融组件画廊', 'Finance gallery'),
       guide: pick('网页应用与插件组件，收藏后可随时打开', 'Web apps and plugin components; save one to open later'),
       discover: pick('发现', 'Discover'),
       shelf: pick('收藏', 'Saved'),
