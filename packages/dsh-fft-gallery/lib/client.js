@@ -49,6 +49,7 @@ window.__ModuleLoader__.load({
 
     const TEXT = {
       title: pick('金融组件画廊', 'Finance gallery'),
+      tabTitle: pick('画廊', 'Gallery'),
       guide: pick('网页应用与插件组件，收藏后可随时打开', 'Web apps and plugin components; save one to open later'),
       discover: pick('发现', 'Discover'),
       shelf: pick('收藏', 'Saved'),
@@ -1468,7 +1469,7 @@ window.__ModuleLoader__.load({
         id: TAB_ID,
         kind: KIND,
         keepMounted: true,
-        title: () => TEXT.title,
+        title: () => TEXT.tabTitle,
         guide: [{ id: 'gallery', order: 60, title: () => TEXT.title, description: () => TEXT.guide }],
       }), 'dsh-fft-gallery: tab type')
       ctx.effect(() => ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register(
