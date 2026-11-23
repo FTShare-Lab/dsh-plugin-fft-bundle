@@ -4,6 +4,24 @@
 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循
 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [1.1.0] - 2026-11-23
+
+组合包内置「金融组件画廊」：右侧栏引导页里的一个入口，用来发现并收藏第三方网页应用与插件组件，也能收藏自己的网址与本机 HTML 页面。
+
+### Added
+
+- 右侧栏新增「金融组件画廊」入口。首次从引导页的胶囊打开，之后按会话记住标签页；发现页以瀑布流浏览通过仓库清单接入的网页应用与插件，收藏页分「组件收藏」（卡片）与「个人收藏」（网址与本地页面合并列表，可添加、编辑、删除）。
+- 个人收藏里的网址在侧栏浏览器打开；本地 HTML 页面用宿主的文档预览打开，沙箱渲染，同目录相对 js/css 由宿主打包。
+- 组合包新增依赖 `@dsh-ft/dsh-fft-gallery >=0.1.3`；目录与收藏状态由该包的宿主半提供，远端目录不可达时回落随包内建目录。
+
+### Changed
+
+- 仓库内两个未发布插件的 `#path:` 依赖边随本版前移到 `v1.1.0`。
+
+### Components
+
+- `@dsh-ft/dsh-fft-gallery` 0.1.3（新增依赖，此前组合包不含画廊）。
+
 ## [1.0.5] - 2026-11-17
 
 金融模式默认在对话内出图，只有明确要求在 K 线图上画图时才调用 K 线绘图；README 首图换成四类出图示例。出图能力来自 `plot` 0.2.0 的新图型。
@@ -371,3 +389,4 @@ K 线改由上游 `0.6.11` 提供，FT 定制构建退场；本次只更新装�
 [0.5.1]: https://github.com/gigaflw/dsh-fft-bundle/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/gigaflw/dsh-fft-bundle/tree/v0.5.0
 [1.0.5]: https://github.com/FTShare-Lab/dsh-plugin-fft-bundle/compare/v1.0.4...v1.0.5
+[1.1.0]: https://github.com/FTShare-Lab/dsh-plugin-fft-bundle/compare/v1.0.5...v1.1.0
