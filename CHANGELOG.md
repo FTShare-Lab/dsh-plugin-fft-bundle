@@ -4,6 +4,20 @@
 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循
 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [1.1.1] - 2026-11-23
+
+组合包把共享底座的下限提到 `settings >=0.7.3` / `ftshare >=0.4.4`：网关请求开始携带 dsh 渠道归因参数（MCP 会话与设置页 Key 探针），网关访问日志可以按渠道统计 dsh 的流量与用户。
+
+### Changed
+
+- 共享底座下限提升到 `@dsh-ft/dsh-fft-settings >=0.7.3` 与 `@dsh-ft/dsh-fft-ftshare >=0.4.4`，安装时会取到带渠道归因的版本。
+- 仓库内两个未发布插件的 `#path:` 依赖边随本版前移到 `v1.1.1`。
+
+### Components
+
+- `@dsh-ft/dsh-fft-settings` 下限 0.7.1 → 0.7.3
+- `@dsh-ft/dsh-fft-ftshare` 下限 0.4.2 → 0.4.4
+
 ## [1.1.0] - 2026-11-23
 
 组合包内置「金融组件画廊」：右侧栏引导页里的一个入口，用来发现并收藏第三方网页应用与插件组件，也能收藏自己的网址与本机 HTML 页面。
@@ -390,3 +404,4 @@ K 线改由上游 `0.6.11` 提供，FT 定制构建退场；本次只更新装�
 [0.5.0]: https://github.com/gigaflw/dsh-fft-bundle/tree/v0.5.0
 [1.0.5]: https://github.com/FTShare-Lab/dsh-plugin-fft-bundle/compare/v1.0.4...v1.0.5
 [1.1.0]: https://github.com/FTShare-Lab/dsh-plugin-fft-bundle/compare/v1.0.5...v1.1.0
+[1.1.1]: https://github.com/FTShare-Lab/dsh-plugin-fft-bundle/compare/v1.1.0...v1.1.1

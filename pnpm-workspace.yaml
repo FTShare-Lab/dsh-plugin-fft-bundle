@@ -39,6 +39,8 @@ minimumReleaseAgeExclude:
   - '@dsh-ft/dsh-fft-plot@0.2.0'
   - '@dsh-ft/dsh-fft-settings@0.7.0'
   - '@dsh-ft/dsh-fft-ftshare@0.4.2'
+  - '@dsh-ft/dsh-fft-ftshare@0.4.4'
+  - '@dsh-ft/dsh-fft-settings@0.7.3'
   - '@dsh-ft/dsh-fft-paper-trading@0.7.0'
   - '@dsh-ft/dsh-fft-paper-trading@0.7.2'
   - '@dsh-ft/dsh-fft-settings@0.7.1'
