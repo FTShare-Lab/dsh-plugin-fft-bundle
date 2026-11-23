@@ -5,6 +5,7 @@ export const manifest = {
   "dependencies": {
     "@dsh-ft/dsh-fft-settings": ">=0.7.1",
     "@dsh-ft/dsh-fft-ftshare": ">=0.4.2",
+    "@dsh-ft/dsh-fft-gallery": ">=0.1.2",
     "@dsh-ft/dsh-fft-plot": ">=0.2.0",
     "@dsh-ft/dsh-fft-paper-trading": ">=0.7.2",
     "@ftshare-lab/dsh-kline": ">=0.6.11"

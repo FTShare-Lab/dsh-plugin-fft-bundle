@@ -42,6 +42,11 @@
     # @dsh-ft/dsh-fft-paper-trading 钉版成对存在。
     - id: ft-paper-trading
       name: '@dsh-ft/dsh-fft-paper-trading'
+    # 金融组件画廊：宿主半提供目录与收藏状态路由，浏览器半注册右侧栏「金融组件画廊」
+    # 标签页（首次由右侧栏引导页里的胶囊打开）。同样是 bare-name 全局行，且必须与
+    # package.json 里的 @dsh-ft/dsh-fft-gallery 依赖成对存在。
+    - id: ft-gallery
+      name: '@dsh-ft/dsh-fft-gallery'
     # 工作台自身：宿主半在 `/api/ft-workbench` 回答「这份安装缺了什么」，浏览器半在
     # 「金融终端」设置页贡献一张只读自检卡。放在最后一行：它观察的是上面这些行的挂载
     # 状态与版本，行自己不需要先读任何东西（每次请求现读 loader）。
