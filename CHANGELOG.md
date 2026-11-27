@@ -4,6 +4,24 @@
 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循
 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [1.2.0] - 2026-11-27
+
+组合包迁到仓库根：仓库本身就是可安装的产品包，宿主与插件市场按仓库根识别，`dsh plugin add github:…#tag` 不再需要子目录。运行代码与两条产物的文件集合都不变。
+
+### Added
+
+- 仓库根声明 `dsh.bundle`，按仓库根发现的插件市场（如 dsh.so）可直接把本仓识别为可安装的 bundle。
+
+### Changed
+
+- 聚合包从 `packages/dsh-fft-bundle` 迁到仓根，`packages/` 只保留随它一起分发的并列组件；npm 产物只有 README（包页与仓库首屏合为同一页）与 `repository.directory` 变化。
+- 仓库内两个未发布插件的 `#path:` 依赖边随本版前移到 `v1.2.0`。
+
+### Components
+
+- `@dsh-ft/dsh-fft-paper-trading` 下限 0.7.2 → 0.8.1
+- `@dsh-ft/dsh-fft-gallery` 0.1.4 → 0.1.5（README 与截图文档）
+
 ## [1.1.1] - 2026-11-23
 
 组合包把共享底座的下限提到 `settings >=0.7.3` / `ftshare >=0.4.4`：网关请求开始携带 dsh 渠道归因参数（MCP 会话与设置页 Key 探针），网关访问日志可以按渠道统计 dsh 的流量与用户。
@@ -405,3 +423,4 @@ K 线改由上游 `0.6.11` 提供，FT 定制构建退场；本次只更新装�
 [1.0.5]: https://github.com/FTShare-Lab/dsh-plugin-fft-bundle/compare/v1.0.4...v1.0.5
 [1.1.0]: https://github.com/FTShare-Lab/dsh-plugin-fft-bundle/compare/v1.0.5...v1.1.0
 [1.1.1]: https://github.com/FTShare-Lab/dsh-plugin-fft-bundle/compare/v1.1.0...v1.1.1
+[1.2.0]: https://github.com/FTShare-Lab/dsh-plugin-fft-bundle/compare/v1.1.1...v1.2.0
