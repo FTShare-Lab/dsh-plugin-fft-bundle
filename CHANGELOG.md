@@ -4,6 +4,19 @@
 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循
 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [1.2.1] - 2026-11-27
+
+模拟盘依赖下限提到 0.9.0：1.2.0 发布时 0.9.0 尚未上架，本版把 FTShare 品牌入口与品牌写法统一带进安装。
+
+### Changed
+
+- `@dsh-ft/dsh-fft-paper-trading` 下限 0.8.1 → 0.9.0：模拟交易页新增页头 FTShare 品牌入口（悬停亮起渐变并切换口号，未配置 Key 时显示「申请 FtShare Key」），数据源状态移到页头同排，界面、README、市场条目与文案统一写作 FtShare。
+- 仓库内两个未发布插件的 `#path:` 依赖边随本版前移到 `v1.2.1`。
+
+### Components
+
+- `@dsh-ft/dsh-fft-paper-trading` 下限 0.8.1 → 0.9.0
+
 ## [1.2.0] - 2026-11-27
 
 组合包迁到仓库根：仓库本身就是可安装的产品包，宿主与插件市场按仓库根识别，`dsh plugin add github:…#tag` 不再需要子目录。运行代码与两条产物的文件集合都不变。
@@ -424,3 +437,4 @@ K 线改由上游 `0.6.11` 提供，FT 定制构建退场；本次只更新装�
 [1.1.0]: https://github.com/FTShare-Lab/dsh-plugin-fft-bundle/compare/v1.0.5...v1.1.0
 [1.1.1]: https://github.com/FTShare-Lab/dsh-plugin-fft-bundle/compare/v1.1.0...v1.1.1
 [1.2.0]: https://github.com/FTShare-Lab/dsh-plugin-fft-bundle/compare/v1.1.1...v1.2.0
+[1.2.1]: https://github.com/FTShare-Lab/dsh-plugin-fft-bundle/compare/v1.2.0...v1.2.1
