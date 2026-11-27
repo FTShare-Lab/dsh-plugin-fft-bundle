@@ -21,7 +21,7 @@ import assert from 'node:assert/strict'
 import { basename } from 'node:path'
 import {
   MANIFESTS, REGISTRY_PINS, pathOf, readEdges, readRegistryPins, refOf,
-} from '../../../scripts/edge-refs.mjs'
+} from '../scripts/edge-refs.mjs'
 
 /** Ref shapes the release flow writes: a release tag, or none on the public remote. */
 const REF_SHAPES = [

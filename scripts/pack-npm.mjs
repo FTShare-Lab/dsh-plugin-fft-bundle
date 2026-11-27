@@ -129,7 +129,7 @@ const NEVER_COPY = new Set(['node_modules', '.git', '__pycache__', '.DS_Store', 
  */
 export const PUBLISH_TARGETS = [
   {
-    dir: 'packages/dsh-fft-bundle',
+    dir: '.',
     dropDependencies: INTRANET_EDGES,
     inlineDependencies: [...INLINE_EXOTIC],
     inlineWorkspace: [...INLINE_WORKSPACE],
@@ -137,7 +137,12 @@ export const PUBLISH_TARGETS = [
 ]
 
 /**
- * Read every package manifest of the workspace.
+ * Read every package manifest of the workspace, plus the repository root when
+ * the root is the composition bundle itself.
+ *
+ * The bundle used to live under `packages/`; it is now the repository's own
+ * package, so the root joins the map under the same rules. A root that is not a
+ * bundle (an older checkout or a bare workspace) is ignored.
  *
  * @param {string} [packagesDir] - Directory holding the packages.
  * @returns {Map<string, {dir: string, manifest: object}>} Manifest by package name.
@@ -151,6 +156,13 @@ export function readWorkspace(packagesDir = PACKAGES_DIR) {
     if (!existsSync(manifestPath)) continue
     const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
     workspace.set(manifest.name, { dir: packageDir, manifest })
+  }
+  const rootManifestPath = join(repoRoot, 'package.json')
+  if (existsSync(rootManifestPath)) {
+    const manifest = JSON.parse(readFileSync(rootManifestPath, 'utf8'))
+    if (manifest.dsh?.bundle !== undefined && !workspace.has(manifest.name)) {
+      workspace.set(manifest.name, { dir: repoRoot, manifest })
+    }
   }
   return workspace
 }
@@ -424,7 +436,10 @@ function inlineExotic(published, stagingDir, files, workspace = readWorkspace())
 export function packPackage(target, workspace, { outDir, dryRun, head }) {
   const manifest = workspace.get(JSON.parse(readFileSync(join(repoRoot, target.dir, 'package.json'), 'utf8')).name).manifest
   const published = publishManifest(manifest, { workspace, dropDependencies: target.dropDependencies })
-  const stagingDir = join(STAGING_ROOT, basename(target.dir), 'package')
+  // The bundle's directory is the repository root, whose basename is empty; name
+  // its staging directory after the package instead.
+  const stagingName = target.dir === '.' ? 'bundle' : basename(target.dir)
+  const stagingDir = join(STAGING_ROOT, stagingName, 'package')
   rmSync(stagingDir, { recursive: true, force: true })
   mkdirSync(stagingDir, { recursive: true })
 

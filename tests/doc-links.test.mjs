@@ -17,7 +17,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { dirname, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..')
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const PACKAGES_DIR = join(REPO_ROOT, 'packages')
 
 /** Every relative markdown link and image destination in a file. */
@@ -69,6 +69,33 @@ function escapingLinks(pkgDir, file) {
   })
   return offenders
 }
+
+/**
+ * The repository root is the composition bundle's package: its README is what
+ * npm shows, so a relative link may only point at a file the tarball ships.
+ */
+describe('root package README', () => {
+  it('links only files the package ships', () => {
+    const manifest = JSON.parse(readFileSync(join(REPO_ROOT, 'package.json'), 'utf8'))
+    const shipped = manifest.files ?? []
+    const matches = (target) => shipped.some((entry) => {
+      if (!entry.includes('*')) return target === entry || target.startsWith(`${entry}/`)
+      const regex = new RegExp(`^${entry.split('/').map(part => part.replace(/[.+^${}()|[\]\\]/gu, '\\$&').replace(/\*\*/gu, '.*').replace(/\*/gu, '[^/]*')).join('/')}$`, 'u')
+      return regex.test(target)
+    })
+    const offenders = []
+    const lines = readFileSync(join(REPO_ROOT, 'README.md'), 'utf8').split('\n')
+    lines.forEach((line, index) => {
+      for (const [, raw] of line.matchAll(LINK)) {
+        const target = raw.split('#')[0].split('?')[0]
+        if (target === '' || /^[a-z][a-z0-9+.-]*:/iu.test(target)) continue
+        if (matches(target)) continue
+        offenders.push(`README.md:${index + 1} -> ${target}`)
+      }
+    })
+    assert.deepEqual(offenders, [], `the npm README must link shipped files or absolute URLs:\n${offenders.join('\n')}`)
+  })
+})
 
 describe('package documents', () => {
   it('never link outside their own package', () => {

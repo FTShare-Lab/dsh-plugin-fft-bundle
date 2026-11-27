@@ -16,14 +16,19 @@
  */
 import assert from 'node:assert/strict'
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
-import { join, relative, resolve } from 'node:path'
+import { basename, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, it } from 'node:test'
 
-const bundleRoot = fileURLToPath(new URL('..', import.meta.url))
-const packagesRoot = resolve(bundleRoot, '..')
-/** Repository root; rule exceptions are written relative to it. */
-const repoRoot = resolve(packagesRoot, '..')
+/** Repository root: it is also the composition bundle's own package directory. */
+const repoRoot = fileURLToPath(new URL('..', import.meta.url))
+const packagesRoot = resolve(repoRoot, 'packages')
+
+/** Repository-only release tooling: not shipped product source, so not scanned. */
+const REPO_TOOLING = new Set([
+  'bump-version.mjs', 'edge-refs.mjs', 'pack-npm.mjs', 'pack-tarball.mjs',
+  'upload.mjs', 'upload-release-asset.mjs', 'ui-audit.mjs', 'ui-audit.allow.json',
+])
 
 /** No source in this repository may speak the FTShare wire protocol. */
 const NOBODY = new Set()
@@ -58,16 +63,30 @@ const SOURCE_EXTENSIONS = ['.ts', '.tsx', '.mjs', '.js']
 /** Walk a directory, skipping generated and dependency trees. */
 function* walk(dir) {
   for (const name of readdirSync(dir)) {
-    if (name === 'node_modules' || name === 'lib' || name === 'tests' || name === '.git') continue
+    if (name === 'node_modules' || name === 'lib' || name === 'tests' || name === '.git' || name === 'public-branch') continue
     const path = join(dir, name)
     if (statSync(path).isDirectory()) yield* walk(path)
     else if (SOURCE_EXTENSIONS.some(extension => name.endsWith(extension))) yield path
   }
 }
 
-/** Every scannable source file under `packages/*`. */
-function sources() {
+/** Source files of the bundle itself, which lives at the repository root. */
+function bundleSources() {
   const files = []
+  for (const name of ['src', 'scripts']) {
+    const dir = join(repoRoot, name)
+    if (!existsSync(dir)) continue
+    for (const path of walk(dir)) {
+      if (REPO_TOOLING.has(basename(path))) continue
+      files.push(path)
+    }
+  }
+  return files
+}
+
+/** Every scannable source file: the bundle's own plus every workspace package. */
+function sources() {
+  const files = bundleSources()
   for (const name of readdirSync(packagesRoot)) {
     const dir = join(packagesRoot, name)
     if (!statSync(dir).isDirectory()) continue
@@ -93,7 +112,7 @@ describe('single egress into FTShare', () => {
     // fixed floor would either fail there or go blind here, so the guard asserts
     // that every package with sources was actually reached.
     assert.ok(files.length > 0, `扫描到的源文件太少（${files.length}），路径或跳过规则不对`)
-    assert.ok(files.some(path => path.includes('dsh-fft-bundle')), '入口包必须在扫描范围内')
+    assert.ok(files.includes(join(repoRoot, 'src', 'index.ts')), '入口包（仓根）必须在扫描范围内')
     for (const name of readdirSync(packagesRoot)) {
       const src = join(packagesRoot, name, 'src')
       if (!existsSync(src)) continue
@@ -117,17 +136,14 @@ describe('single egress into FTShare', () => {
   }
 
   it('keeps the MCP SDK out of every manifest', () => {
+    const manifests = [join(repoRoot, 'package.json')]
+    for (const name of readdirSync(packagesRoot)) manifests.push(join(packagesRoot, name, 'package.json'))
     const offenders = []
-    for (const name of readdirSync(packagesRoot)) {
-      const manifest = join(packagesRoot, name, 'package.json')
-      try {
-        statSync(manifest)
-      } catch {
-        continue
-      }
+    for (const manifest of manifests) {
+      if (!existsSync(manifest)) continue
       const parsed = JSON.parse(readFileSync(manifest, 'utf8'))
       const declared = { ...parsed.dependencies, ...parsed.peerDependencies, ...parsed.devDependencies }
-      if ('@modelcontextprotocol/sdk' in declared) offenders.push(name)
+      if ('@modelcontextprotocol/sdk' in declared) offenders.push(relative(repoRoot, manifest))
     }
     assert.deepEqual(offenders, [], `${offenders.join(', ')} 仍然声明 @modelcontextprotocol/sdk；它属于 dsh-fft-base 仓`)
   })

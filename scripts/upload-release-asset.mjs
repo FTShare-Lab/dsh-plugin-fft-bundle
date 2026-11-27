@@ -100,7 +100,7 @@ function projectFromRemote() {
 
 /** The bundle's version, used when `--version` is absent. */
 function bundleVersion() {
-  return JSON.parse(readFileSync(resolve(repoRoot, 'packages/dsh-fft-bundle/package.json'), 'utf8')).version
+  return JSON.parse(readFileSync(resolve(repoRoot, 'package.json'), 'utf8')).version
 }
 
 /** Encode a project reference for the API path: numeric ids stay as-is, paths are escaped. */

@@ -19,8 +19,9 @@ import { fileURLToPath } from 'node:url'
 import { load } from 'js-yaml'
 import { schema } from './lib/patch-yaml.mjs'
 
-const packages = fileURLToPath(new URL('../../', import.meta.url))
-const bundleRoot = resolve(packages, 'dsh-fft-bundle')
+// This package is the repository root: the bundle's own locale and the components
+// it mounts are resolved from the repository's dependencies.
+const bundleRoot = fileURLToPath(new URL('..', import.meta.url))
 const require = createRequire(join(bundleRoot, 'package.json'))
 
 /**

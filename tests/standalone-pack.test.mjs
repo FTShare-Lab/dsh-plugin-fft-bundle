@@ -12,7 +12,7 @@ import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   httpsUrl, patternToRegExp, pickRange, registryVersionOf, rewriteManifest, satisfiesRange, assertBundledRanges,
-} from '../../../scripts/pack-tarball.mjs'
+} from '../scripts/pack-tarball.mjs'
 
 const EDGE = 'git+ssh://git@github.com/FTShare-Lab/dsh-plugin-fft-bundle.git#path:packages/'
 

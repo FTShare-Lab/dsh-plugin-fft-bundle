@@ -196,15 +196,15 @@ function upstreamSources() {
   sources.push(
     directorySource(
       'thirdparty/deepseek-harness',
-      resolve(root, '../../../thirdparty/deepseek-harness/packages/bundle/web-app'),
+      resolve(root, '../thirdparty/deepseek-harness/packages/bundle/web-app'),
     ),
     directorySource(
       'the sibling dsh-ft checkout',
-      resolve(root, '../../../dsh-ft/submodules/deepseek-harness/packages/bundle/web-app'),
+      resolve(root, '../dsh-ft/submodules/deepseek-harness/packages/bundle/web-app'),
     ),
     directorySource(
       'the sibling dsh-ft checkout',
-      resolve(root, '../../../../dsh-ft/submodules/deepseek-harness/packages/bundle/web-app'),
+      resolve(root, '../../dsh-ft/submodules/deepseek-harness/packages/bundle/web-app'),
     ),
     directorySource(
       'the installed @deepseek-ai/dsh-web-app',
@@ -212,7 +212,7 @@ function upstreamSources() {
     ),
     directorySource(
       'the installed @deepseek-ai/dsh-web-app',
-      resolve(root, '../../../node_modules/@deepseek-ai/dsh-web-app'),
+      resolve(root, '../node_modules/@deepseek-ai/dsh-web-app'),
     ),
   )
   const asarPath = process.env.DSH_DESKTOP_APP

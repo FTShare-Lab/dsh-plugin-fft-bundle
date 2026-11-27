@@ -43,7 +43,7 @@ export const OWN_REPO = /(?:github\.com\/FTShare-Lab\/dsh-plugin-fft-bundle|gith
  * bundle does: the published sub-packages are consumed by registry version.
  */
 export const MANIFESTS = [
-  'packages/dsh-fft-bundle/package.json',
+  'package.json',
 ]
 
 /** The raw text shape of one edge, capturing everything before its committish. */
@@ -65,11 +65,11 @@ export const LOWER_BOUND = /^>=\d+\.\d+\.\d+$/u
  * registry (their git trees do not carry `lib/`).
  */
 export const REGISTRY_PINS = [
-  { manifestPath: 'packages/dsh-fft-bundle/package.json', name: '@dsh-ft/dsh-fft-settings' },
-  { manifestPath: 'packages/dsh-fft-bundle/package.json', name: '@dsh-ft/dsh-fft-ftshare' },
-  { manifestPath: 'packages/dsh-fft-bundle/package.json', name: '@dsh-ft/dsh-fft-plot' },
-  { manifestPath: 'packages/dsh-fft-bundle/package.json', name: '@dsh-ft/dsh-fft-paper-trading' },
-  { manifestPath: 'packages/dsh-fft-bundle/package.json', name: '@ftshare-lab/dsh-kline' },
+  { manifestPath: 'package.json', name: '@dsh-ft/dsh-fft-settings' },
+  { manifestPath: 'package.json', name: '@dsh-ft/dsh-fft-ftshare' },
+  { manifestPath: 'package.json', name: '@dsh-ft/dsh-fft-plot' },
+  { manifestPath: 'package.json', name: '@dsh-ft/dsh-fft-paper-trading' },
+  { manifestPath: 'package.json', name: '@ftshare-lab/dsh-kline' },
 ]
 
 /**

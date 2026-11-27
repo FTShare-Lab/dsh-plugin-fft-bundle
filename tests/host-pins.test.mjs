@@ -21,7 +21,7 @@ import { describe, it } from 'node:test'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const root = resolve(fileURLToPath(new URL('..', import.meta.url)), '../..')
+const root = fileURLToPath(new URL('..', import.meta.url))
 const require = createRequire(import.meta.url)
 const { load } = require('js-yaml')
 
@@ -54,6 +54,10 @@ function manifests() {
       found.push({ file, manifest: JSON.parse(readFileSync(file, 'utf8')) })
     }
   }
+  // The composition bundle is the repository's own package now; its manifest
+  // carries the same host pins as any workspace package.
+  const rootManifest = resolve(root, 'package.json')
+  if (existsSync(rootManifest)) found.push({ file: rootManifest, manifest: JSON.parse(readFileSync(rootManifest, 'utf8')) })
   return found
 }
 

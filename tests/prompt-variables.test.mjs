@@ -36,7 +36,7 @@ const REGISTERED = new Set(['provider', 'model'])
 /** `{{name}}` as the system-prompt interpolator reads it. */
 const VARIABLE = /\{\{\s*([^{}]+?)\s*\}\}/gu
 
-const repoRoot = fileURLToPath(new URL('../../..', import.meta.url))
+const repoRoot = fileURLToPath(new URL('..', import.meta.url))
 const packagesDir = resolve(repoRoot, 'packages')
 
 /**

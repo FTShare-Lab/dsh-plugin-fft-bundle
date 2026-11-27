@@ -23,8 +23,8 @@ import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { RELEASE_TAG, readEdges, refOf, repoRoot, setRef } from './edge-refs.mjs'
 
-/** The package whose version names the release. */
-const BUNDLE = 'packages/dsh-fft-bundle/package.json'
+/** The package whose version names the release: the repository itself. */
+const BUNDLE = 'package.json'
 
 /** A version npm would accept. */
 const VERSION = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/u
@@ -36,7 +36,7 @@ USAGE
   pnpm bump <version> [options]
 
 ARGUMENTS
-  <version>            New version for packages/dsh-fft-bundle, e.g. 0.6.1.
+  <version>            New version for the repository package, e.g. 0.6.1.
                        Every dependency edge is pointed at v<version> unless
                        --ref says otherwise.
 
@@ -47,13 +47,13 @@ OPTIONS
   --ref <ref>          Committish for every #path: edge. Default v<version>.
                        Use \`none\` to drop the ref entirely (the public remote has
                        a single branch).
-  --no-bundle          Leave packages/dsh-fft-bundle's version alone (edge ref
+  --no-bundle          Leave the repository package's version alone (edge ref
                        only).
   --dry-run            Print the changes without writing them.
   -h, --help           Print this help.
 
 WHAT IT CHANGES
-  packages/dsh-fft-bundle/package.json   version
+  package.json                          version
   packages/<you named>/package.json      version
   every manifest with an edge back into this repository   #<ref>&path:
 

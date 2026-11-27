@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url'
 import { dirname, resolve } from 'node:path'
 import { load } from 'js-yaml'
 import { schema } from './lib/patch-yaml.mjs'
-import { PUBLISH_TARGETS, publishManifest, readWorkspace } from '../../../scripts/pack-npm.mjs'
+import { PUBLISH_TARGETS, publishManifest, readWorkspace } from '../scripts/pack-npm.mjs'
 
 const root = fileURLToPath(new URL('..', import.meta.url))
 const manifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'))
@@ -200,7 +200,8 @@ describe('dsh-fft-bundle', () => {
     if (!INTRANET_PACKAGES.some(name => manifest.dependencies[name] !== undefined)) {
       return t.skip('this tree has no intranet edges (public branch)')
     }
-    const target = PUBLISH_TARGETS.find(entry => entry.dir.endsWith('dsh-fft-bundle'))
+    // The composition bundle is the repository's own package now.
+    const target = PUBLISH_TARGETS.find(entry => entry.dir === '.')
     const published = publishManifest(manifest, { workspace: readWorkspace(), dropDependencies: target.dropDependencies })
     for (const name of INTRANET_PACKAGES) {
       assert.equal(published.dependencies[name], undefined, `${name} must not reach the published manifest`)

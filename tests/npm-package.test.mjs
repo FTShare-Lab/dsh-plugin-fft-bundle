@@ -9,7 +9,7 @@ import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { PUBLISH_TARGETS, PUBLISHED_WORKSPACE, publishManifest, readWorkspace, repoRoot } from '../../../scripts/pack-npm.mjs'
+import { PUBLISH_TARGETS, PUBLISHED_WORKSPACE, publishManifest, readWorkspace, repoRoot } from '../scripts/pack-npm.mjs'
 
 const workspace = readWorkspace()
 const targetsOf = () => PUBLISH_TARGETS.map(target => ({ target, manifest: JSON.parse(readFileSync(join(repoRoot, target.dir, 'package.json'), 'utf8')) }))
@@ -26,7 +26,9 @@ describe('publish targets', () => {
       assert.equal(manifest.publishConfig?.access, 'public', `${manifest.name}: publishConfig.access must be public`)
       assert.equal(manifest.license, 'MIT', `${manifest.name}: license is required on a public package`)
       assert.ok((manifest.description ?? '').length > 0, `${manifest.name}: description is required`)
-      assert.equal(manifest.repository?.directory, target.dir, `${manifest.name}: repository.directory must name its sub-directory`)
+      // The entry package is the repository root, so it declares no sub-directory.
+      assert.equal(manifest.repository?.directory ?? '', target.dir === '.' ? '' : target.dir,
+        `${manifest.name}: repository.directory must name its sub-directory`)
       assert.match(manifest.repository?.url ?? '', /^git\+https:\/\//u, `${manifest.name}: repository.url must be a public clone URL`)
       assert.ok((manifest.files ?? []).includes('LICENSE'), `${manifest.name}: files must ship LICENSE`)
       assert.ok((manifest.files ?? []).includes('cordis.patch.yml'), `${manifest.name}: files must ship the patch layer`)

@@ -2,7 +2,7 @@
 /**
  * Pack the bundle and every plugin it installs into one self-contained tarball.
  *
- * A plain `pnpm pack` of `packages/dsh-fft-bundle` is not self-contained: its
+ * A plain `pnpm pack` of the bundle package is not self-contained: its
  * dependency edges are git specs, so installing it still needs the git
  * hosts (internal GitLab on `dev`, GitHub on `public`), pnpm's
  * `blockExoticSubdeps: false` escape hatch, and — because a tag's edges may
@@ -36,8 +36,27 @@ import { pathOf, refOf } from './edge-refs.mjs'
 /** Repository root, resolved from this script's location. */
 export const repoRoot = resolve(fileURLToPath(new URL('..', import.meta.url)))
 
-/** The bundle package that owns the patch layer and the dependency edges. */
-const BUNDLE_DIR = 'packages/dsh-fft-bundle'
+/**
+ * The directory holding the composition bundle inside a tree.
+ *
+ * The bundle is the repository's own package now; a tree from before that move
+ * keeps it under `packages/`. The packer accepts both so an older tag can still
+ * be repacked from a current checkout.
+ * @param {string} dir - tree root.
+ * @returns {string} bundle directory relative to the tree root (`''` for the root itself).
+ */
+function bundleDirIn(dir) {
+  for (const candidate of ['', 'packages/dsh-fft-bundle']) {
+    const manifest = join(dir, candidate, 'package.json')
+    if (!existsSync(manifest)) continue
+    try {
+      if (JSON.parse(readFileSync(manifest, 'utf8')).dsh?.bundle !== undefined) return candidate
+    } catch {
+      // An unreadable manifest is not this layout; try the next one.
+    }
+  }
+  throw new Error(`no composition bundle found under ${dir}`)
+}
 
 /** The third-party plugin `--kline-dir` substitutes. */
 const KLINE = '@ftshare-lab/dsh-kline'
@@ -56,6 +75,9 @@ export const INTRANET_PATCHES = ['./cordis.intranet.patch.yml']
 
 /** Where the tarball lands when `--out` is not given. */
 const DEFAULT_OUT = 'releases/gitlab'
+
+/** Directory names the working-tree extraction never copies. */
+const SKIP_STAGING_NAMES = new Set(['node_modules', '.git', '.worktrees', '.pnpm-store', 'tmp', 'releases', 'dsh_tmp', '.DS_Store'])
 
 /** Files every packed package must carry whatever its `files` field says. */
 const ALWAYS_INCLUDED = ['package.json']
@@ -131,7 +153,8 @@ function git(args) {
  * @returns {object} the parsed manifest.
  */
 function manifestAt(ref, dir) {
-  return JSON.parse(git(['show', `${ref}:${dir}/package.json`]))
+  const path = dir === '' ? 'package.json' : `${dir}/package.json`
+  return JSON.parse(git(['show', `${ref}:${path}`]))
 }
 
 /**
@@ -140,7 +163,7 @@ function manifestAt(ref, dir) {
  * @returns {string} a ref that resolves to a commit.
  */
 function resolveRef(requested) {
-  const ref = requested ?? `v${manifestAt('HEAD', BUNDLE_DIR).version}`
+  const ref = requested ?? `v${JSON.parse(readFileSync(join(repoRoot, bundleDirIn(repoRoot), 'package.json'), 'utf8')).version}`
   try {
     git(['rev-parse', '--verify', `${ref}^{commit}`])
   } catch {
@@ -151,10 +174,13 @@ function resolveRef(requested) {
 }
 
 /**
- * Extract the repository's `packages/` tree at one ref into a staging directory.
+ * Extract the repository tree at one ref into a staging directory.
+ *
+ * The whole tree is taken, not only `packages/`: the composition bundle is the
+ * repository root in the current layout and was a sub-package before it.
  * @param {string} ref - the ref to extract.
  * @param {string} dest - absolute staging directory.
- * @returns {string} the absolute extraction root (the directory holding `packages/`).
+ * @returns {string} the absolute extraction root.
  */
 function extractPackages(ref, dest) {
   rmSync(dest, { recursive: true, force: true })
@@ -162,10 +188,16 @@ function extractPackages(ref, dest) {
   // The working tree is what HEAD means here: the extractions below run against
   // the live files, so uncommitted edits are what this run packs.
   if (ref === 'HEAD') {
-    cpSync(join(repoRoot, 'packages'), join(dest, 'packages'), { recursive: true, filter: source => !source.includes(`${sep}node_modules`) })
+    // The staging directory lives under the repository (tmp/), so the root is
+    // copied entry by entry instead of as one tree.
+    const filter = source => !SKIP_STAGING_NAMES.has(basename(source))
+    for (const entry of readdirSync(repoRoot)) {
+      if (SKIP_STAGING_NAMES.has(entry)) continue
+      cpSync(join(repoRoot, entry), join(dest, entry), { recursive: true, filter })
+    }
     return dest
   }
-  const archive = spawnSync('git', ['archive', '--format=tar', ref, 'packages'], { cwd: repoRoot, maxBuffer: 1 << 30 })
+  const archive = spawnSync('git', ['archive', '--format=tar', ref], { cwd: repoRoot, maxBuffer: 1 << 30 })
   if (archive.status !== 0) throw new Error(`git archive ${ref} failed: ${archive.stderr.toString()}`)
   const untar = spawnSync('tar', ['-x', '-C', dest], { input: archive.stdout, maxBuffer: 1 << 30 })
   if (untar.status !== 0) throw new Error(`tar extraction failed: ${untar.stderr.toString()}`)
@@ -290,9 +322,9 @@ function copyPackage(packageDir, destDir, manifest) {
  * @returns {string[]} the package names, in file order.
  */
 function packageNamesIn(file) {
-  // `js-yaml` is a devDependency of the bundle package, not of this repository
-  // root: resolve it from there so the script runs without a root-level install.
-  const yaml = createRequire(join(repoRoot, BUNDLE_DIR, 'package.json'))('js-yaml')
+  // `js-yaml` is a devDependency of the repository package; resolve it from the
+  // root so the script runs without a package-level install.
+  const yaml = createRequire(join(repoRoot, 'package.json'))('js-yaml')
   const names = []
   const visit = (rows) => {
     for (const row of rows) {
@@ -370,7 +402,7 @@ export function assertBundledRanges(bundled) {
       if (!satisfiesRange(version, range)) {
         throw new Error(
           `${plugin.name} requires ${name}@${range}, but the bundle inlines ${name}@${version};`
-          + ' publish the required version and pin it in packages/dsh-fft-bundle/package.json',
+          + ' publish the required version and pin it in package.json',
         )
       }
     }
@@ -422,8 +454,13 @@ export function rewriteManifest(bundle, bundled) {
     ...Object.fromEntries(bundled.map(plugin => [plugin.name, plugin.manifest.version])),
     ...Object.fromEntries([...external].map(([name, declarations]) => [name, pickRange(declarations)])),
   }
+  // The repository manifest carries development-only fields that a consumer
+  // must not receive: install scripts that only the release tooling runs, the
+  // workspace's devDependencies, and its packageManager pin.
+  // eslint-disable-next-line no-unused-vars
+  const { scripts, devDependencies, packageManager, ...installable } = bundle
   return {
-    ...bundle,
+    ...installable,
     dependencies,
     ...peers.size === 0 ? {} : { peerDependencies: Object.fromEntries(peers) },
     bundledDependencies: bundled.map(plugin => plugin.name),
@@ -625,7 +662,8 @@ export function packTarball(options = {}) {
   const out = resolve(repoRoot, options.out ?? DEFAULT_OUT)
   const staging = join(repoRoot, 'tmp', 'standalone', `.staging-${ref.replace(/[^a-z0-9.-]/giu, '_')}`)
   const extractionRoot = extractPackages(ref, staging)
-  const bundle = manifestAt(ref, BUNDLE_DIR)
+  const bundleDir = bundleDirIn(extractionRoot)
+  const bundle = JSON.parse(readFileSync(join(extractionRoot, bundleDir, 'package.json'), 'utf8'))
   const bundled = []
   for (const [name, spec] of Object.entries(bundle.dependencies ?? {})) {
     const path = (() => {
@@ -654,7 +692,7 @@ export function packTarball(options = {}) {
   // internal file must install without reaching a git host.
   const intranet = []
   for (const patch of INTRANET_PATCHES) {
-    const file = join(extractionRoot, BUNDLE_DIR, patch)
+    const file = join(extractionRoot, bundleDir, patch)
     if (!existsSync(file)) throw new Error(`${patch} is missing from ${ref}; the internal artifact cannot build without it`)
     for (const name of packageNamesIn(file)) {
       // Host packages are supplied by the DSH installation and carry no edge here.
@@ -695,14 +733,14 @@ export function packTarball(options = {}) {
   const payload = join(staging, 'package')
   rmSync(payload, { recursive: true, force: true })
   mkdirSync(payload, { recursive: true })
-  const bundleDir = join(extractionRoot, BUNDLE_DIR)
   // The intranet patch files are the one thing this artifact ships beyond the
   // package's own `files` list: they are deliberately excluded from a public
   // publish, so only this writer can put them in.
-  const shipped = new Set([...shippedFiles(bundleDir, bundle), ...INTRANET_PATCHES.map(patch => patch.replace(/^\.\//u, ''))])
+  const bundleRoot = join(extractionRoot, bundleDir)
+  const shipped = new Set([...shippedFiles(bundleRoot, bundle), ...INTRANET_PATCHES.map(patch => patch.replace(/^\.\//u, ''))])
   for (const path of shipped) {
     mkdirSync(dirname(join(payload, path)), { recursive: true })
-    cpSync(join(bundleDir, path), join(payload, path))
+    cpSync(join(bundleRoot, path), join(payload, path))
   }
   writeFileSync(join(payload, 'package.json'), `${JSON.stringify(manifest, null, 2)}\n`)
   let files = 0
@@ -729,7 +767,7 @@ export function packTarball(options = {}) {
 export function intranetPackageNames(root = repoRoot) {
   const names = []
   for (const patch of INTRANET_PATCHES) {
-    const file = join(root, BUNDLE_DIR, patch)
+    const file = join(root, bundleDirIn(root), patch)
     if (!existsSync(file)) continue
     for (const name of packageNamesIn(file)) {
       if (name.startsWith('@deepseek-ai/') || name.startsWith('cordis')) continue
@@ -770,7 +808,7 @@ USAGE
 
 ARGUMENTS
   <ref>                Commit to pack: a tag, branch, or sha. Defaults to
-                       v<version of packages/dsh-fft-bundle on HEAD>.
+                       v<version of the repository package on HEAD>.
 
 OPTIONS
   --out <dir>          Directory for the .tgz. Defaults to releases/gitlab
@@ -787,7 +825,7 @@ OPTIONS
   -h, --help           Print this help.
 
 WHAT IT DOES
-  Extracts packages/ from <ref> with git archive, keeps each package's own
+  Extracts <ref> with git archive, keeps each package's own
   files entries (and fails loudly when a required entry is missing), then
   inlines the bundle's whole plugin set under its own node_modules: the
   unpublished packages from that extraction, and the published packages

@@ -117,7 +117,7 @@ overrides:
   # 且**不在这里 link**——它们与生产安装走同一份 registry 产物，本地验证才等于用户看到的。
   # 只有**未发布包**才用本仓 git 边（`dsh plugin add` 一条 spec 装全套时 pnpm 顺藤摸瓜），
   # 并在下面用 link 覆盖，否则 dev 会去远端取已推送的提交，看不到本地未推送的改动。
-  # 仓库改名时须同步：此处 0 条 + packages/dsh-fft-bundle/package.json 内的 0 处 `#path:` 地址
+  # 仓库改名时须同步：此处 0 条 + 仓根 package.json 内的 0 处 `#path:` 地址
   # （另有 kline 指向上游仓，settings/ftshare/paper/plot 走 registry，不随本仓改名）。
   #
   # settings 与 ftshare 已搬去独立的 dsh-fft-base 仓并从那里发版。**不要再加回 link**：
